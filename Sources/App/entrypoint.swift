@@ -20,6 +20,10 @@ private extension Vapor.Application {
     }
 }
 
+extension Application {
+    static var itself: Application!
+}
+
 @main
 enum Entrypoint {
     static func main() async throws {
@@ -27,6 +31,8 @@ enum Entrypoint {
         try LoggingSystem.bootstrap(from: &env)
         
         let app = Application(env)
+        Application.itself = app
+        
         defer { app.shutdown() }
         
         do {

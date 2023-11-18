@@ -19,6 +19,7 @@ public func configure(_ app: Application) async throws {
 
     app.migrations.add(CreateUser())
 
+    Repositories.useDatabase()
     // register routes
     try routes(app)
 }
