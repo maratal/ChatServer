@@ -6,9 +6,9 @@ extension UserController: RouteCollection {
     
     func boot(routes: RoutesBuilder) throws {
         let users = routes.grouped("users")
-        users.get(use: index)
+        users.get(use: search)
         users.post(use: create)
-        users.group(":id") { route in
+        users.group(Request.Parameter.id.pathComponent) { route in
             route.delete(use: delete)
             route.get(use: user)
         }
@@ -18,10 +18,6 @@ extension UserController: RouteCollection {
         try UserInfo(from: req.currentUser())
     }
     
-    func index(req: Request) async throws -> [UserInfo] {
-        try await all().map { try UserInfo(from: $0) }
-    }
-
     func create(req: Request) async throws -> UserInfo {
         let user = try req.content.decode(User.self)
         try await create(user)
@@ -34,18 +30,45 @@ extension UserController: RouteCollection {
     }
     
     func user(_ req: Request) async throws -> UserInfo {
-        let user = try await find(try req.objectID())
+        let user = try await find(req.objectID())
         return try UserInfo(from: user)
+    }
+    
+    func search(_ req: Request) async throws -> [UserInfo] {
+        let results = try await search(req.searchString())
+        return try results.map { try UserInfo(from: $0) }
     }
 }
 
 extension Request {
     
+    enum Parameter: String {
+        case id
+        
+        var pathComponent: PathComponent {
+            ":\(self)"
+        }
+    }
+    
     func objectID() throws -> Int {
-        guard let id = Int(parameters.get("id") ?? "") else {
+        guard let id = parameters.get(Parameter.id.rawValue, as: Int.self) else {
             throw Abort(.badRequest)
         }
         return id
+    }
+    
+    func objectUUID() throws -> UUID {
+        guard let uuid = parameters.get(Parameter.id.rawValue, as: UUID.self) else {
+            throw Abort(.badRequest)
+        }
+        return uuid
+    }
+    
+    func searchString() throws -> String {
+        guard let s: String = query["s"] else {
+            throw Abort(.badRequest)
+        }
+        return s.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
 }
 

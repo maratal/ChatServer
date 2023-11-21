@@ -2,10 +2,6 @@ import Foundation
 
 struct UserController {
     
-    func all() async throws -> [User] {
-        try await Repositories.users.all()
-    }
-    
     func create(_ user: User) async throws {
         try await Repositories.users.save(user)
     }
@@ -20,5 +16,13 @@ struct UserController {
             throw ServerError(.notFound)
         }
         return user
+    }
+    
+    func search(_ s: String) async throws -> [User] {
+        if let userID = Int(s) {
+            return [try await find(userID)]
+        }
+        let users = try await Repositories.users.search(s)
+        return users
     }
 }
