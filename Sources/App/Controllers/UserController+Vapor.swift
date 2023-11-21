@@ -8,30 +8,37 @@ extension UserController: RouteCollection {
         let users = routes.grouped("users")
         users.get(use: index)
         users.post(use: create)
-        users.group(":userID") { user in
-            user.delete(use: delete)
+        users.group(":id") { route in
+            route.delete(use: delete)
+            route.get(use: user)
         }
     }
 
-    func index(req: Request) async throws -> [User] {
-        try await all()
+    func index(req: Request) async throws -> [UserInfo] {
+        try await all().map { try UserInfo(from: $0) }
     }
 
-    func create(req: Request) async throws -> User {
+    func create(req: Request) async throws -> UserInfo {
         let user = try req.content.decode(User.self)
-        return try await create(user)
+        try await create(user)
+        return try UserInfo(from: user)
     }
 
     func delete(req: Request) async throws -> HTTPStatus {
-        try await delete(req.userID())
+        try await delete(req.objectID())
         return .noContent
+    }
+    
+    func user(_ req: Request) async throws -> UserInfo {
+        let user = try await find(try req.objectID())
+        return try UserInfo(from: user)
     }
 }
 
 extension Request {
     
-    func userID() throws -> Int {
-        guard let id = Int(parameters.get("userID") ?? "") else {
+    func objectID() throws -> Int {
+        guard let id = Int(parameters.get("id") ?? "") else {
             throw Abort(.badRequest)
         }
         return id

@@ -17,3 +17,14 @@ final class User: Model, Content {
         self.name = name
     }
 }
+
+struct UserInfo: Content {
+    
+    var id: Int
+    var name: String
+    
+    init(from user: User, fullInfo: Bool = true) throws {
+        self.id = try user.requireID()
+        self.name = user.name
+    }
+}
