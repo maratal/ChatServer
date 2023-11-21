@@ -1,31 +1,20 @@
-import Fluent
-import Vapor
+import Foundation
 
-struct UserController: RouteCollection {
-    func boot(routes: RoutesBuilder) throws {
-        let users = routes.grouped("users")
-        users.get(use: index)
-        users.post(use: create)
-        users.group(":userID") { user in
-            user.delete(use: delete)
-        }
+struct UserController {
+    
+    func all() async throws -> [User] {
+        try await Repositories.users.all()
     }
-
-    func index(req: Request) async throws -> [User] {
-        try await User.query(on: req.db).all()
-    }
-
-    func create(req: Request) async throws -> User {
-        let user = try req.content.decode(User.self)
-        try await user.save(on: req.db)
+    
+    func create(_ user: User) async throws -> User {
+        try await Repositories.users.save(user)
         return user
     }
-
-    func delete(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else {
-            throw Abort(.notFound)
+    
+    func delete(_ userID: Int) async throws {
+        guard let user = try? await Repositories.users.find(id: userID) else {
+            throw ServerError(.notFound)
         }
-        try await user.delete(on: req.db)
-        return .noContent
+        try await Repositories.users.delete(user)
     }
 }
