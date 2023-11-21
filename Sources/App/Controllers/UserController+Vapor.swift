@@ -13,7 +13,11 @@ extension UserController: RouteCollection {
             route.get(use: user)
         }
     }
-
+    
+    func me(_ req: Request) async throws -> UserInfo {
+        try UserInfo(from: req.currentUser())
+    }
+    
     func index(req: Request) async throws -> [UserInfo] {
         try await all().map { try UserInfo(from: $0) }
     }
@@ -42,5 +46,12 @@ extension Request {
             throw Abort(.badRequest)
         }
         return id
+    }
+}
+
+extension Request {
+    
+    func currentUser() throws -> User {
+        try auth.require(User.self)
     }
 }
