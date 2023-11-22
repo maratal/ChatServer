@@ -13,12 +13,16 @@ final class Repositories {
     }
     
     static var users: Users!
+    static var tokens: UserTokens!
     
-    static func use(users: Users) {
+    static func use(users: Users,
+                    tokens: UserTokens) {
         self.users = users
+        self.tokens = tokens
     }
     
     static func useDatabase() {
-        use(users: UsersDatabaseRepository(database: database))
+        use(users: UsersDatabaseRepository(database: database),
+            tokens: UserTokensDatabaseRepository(database: database))
     }
 }

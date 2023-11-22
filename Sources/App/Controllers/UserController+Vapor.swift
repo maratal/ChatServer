@@ -1,29 +1,40 @@
 import Vapor
 
-typealias ServerError = Abort
-
 extension UserController: RouteCollection {
     
     func boot(routes: RoutesBuilder) throws {
         let users = routes.grouped("users")
-        users.get(use: search)
-        users.post(use: create)
+        users.post(use: register)
         users.group(Request.Parameter.id.pathComponent) { route in
+            route.get(use: user)
+        }
+        
+        let auth = routes.grouped(User.authenticator()).grouped(User.guardMiddleware())
+        auth.post("login", use: login)
+        
+        let protected = users.grouped(UserToken.authenticator()).grouped(UserToken.guardMiddleware())
+        protected.get(use: search)
+        protected.group(Request.Parameter.id.pathComponent) { route in
             route.delete(use: delete)
             route.get(use: user)
         }
     }
     
-    func me(_ req: Request) async throws -> UserInfo {
-        try UserInfo(from: req.currentUser())
+    func register(req: Request) async throws -> User.LoginInfo {
+        let info = try req.content.decode(User.Registration.self)
+        return try await register(info)
     }
     
-    func create(req: Request) async throws -> UserInfo {
-        let user = try req.content.decode(User.self)
-        try await create(user)
-        return try UserInfo(from: user)
+    func login(_ req: Request) async throws -> User.LoginInfo {
+        let user = try req.currentUser()
+        let token = try await login(user)
+        return .init(info: try UserInfo(from: user), token: token)
     }
-
+    
+    func me(_ req: Request) async throws -> User.LoginInfo {
+        return .init(info: try UserInfo(from: try req.currentUser()))
+    }
+    
     func delete(req: Request) async throws -> HTTPStatus {
         try await delete(req.objectID())
         return .noContent

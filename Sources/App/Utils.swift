@@ -1,0 +1,17 @@
+import Foundation
+
+extension String {
+    
+    var isAlphanumeric: Bool {
+        let notAlphanumeric = CharacterSet.decimalDigits.union(CharacterSet.letters).inverted
+        return rangeOfCharacter(from: notAlphanumeric, options: String.CompareOptions.literal, range: nil) == nil
+    }
+    
+    func normalized() -> String {
+        trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+    
+    var isName: Bool {
+        !isEmpty && normalized().replacingOccurrences(of: " ", with: "").isAlphanumeric
+    }
+}
