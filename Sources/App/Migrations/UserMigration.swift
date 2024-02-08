@@ -6,7 +6,7 @@ extension User {
 
         func prepare(on database: Database) async throws {
             try await database.schema("users")
-                .id()
+                .field(.id, .uint32, .identifier(auto: true))
                 .field("name", .string, .required)
                 .field("username", .string, .required)
                 .field("password_hash", .string, .required)
