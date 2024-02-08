@@ -1,4 +1,4 @@
-import Foundation
+import Vapor
 
 extension String {
     
@@ -13,5 +13,48 @@ extension String {
     
     var isName: Bool {
         !isEmpty && normalized().replacingOccurrences(of: " ", with: "").isAlphanumeric
+    }
+    
+    func bcryptHash() throws -> String {
+        try Bcrypt.hash(self)
+    }
+}
+
+extension Request {
+    
+    enum Parameter: String {
+        case id
+        
+        var pathComponent: PathComponent {
+            ":\(self)"
+        }
+    }
+    
+    func objectID() throws -> Int {
+        guard let id = parameters.get(Parameter.id.rawValue, as: Int.self) else {
+            throw Abort(.badRequest)
+        }
+        return id
+    }
+    
+    func objectUUID() throws -> UUID {
+        guard let uuid = parameters.get(Parameter.id.rawValue, as: UUID.self) else {
+            throw Abort(.badRequest)
+        }
+        return uuid
+    }
+    
+    func searchString() throws -> String {
+        guard let s: String = query["s"] else {
+            throw Abort(.badRequest)
+        }
+        return s.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+}
+
+extension Request {
+    
+    func currentUser() throws -> User {
+        try auth.require(User.self)
     }
 }

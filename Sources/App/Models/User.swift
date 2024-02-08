@@ -34,12 +34,12 @@ extension User {
     }
     
     struct Info: Serializable {
-        var id: Int
+        var id: Int?
         var name: String
         var username: String
 
-        init(from user: User, fullInfo: Bool = true) throws {
-            self.id = try user.requireID()
+        init(from user: User, fullInfo: Bool = true) {
+            self.id = user.id
             self.name = user.name
             self.username = user.username
         }
@@ -51,7 +51,11 @@ extension User {
     }
     
     func generateToken() throws -> UserToken {
-        try .init(value: [UInt8].random(count: 128).base64, userID: requireID())
+        try .init(value: [UInt8].random(count: 32).base64, userID: requireID())
+    }
+    
+    func info() -> UserInfo {
+        UserInfo(from: self)
     }
 }
 

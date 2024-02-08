@@ -6,36 +6,35 @@ struct UserController {
         let registration = try validate(registration: info)
         let user = User(name: registration.name,
                         username: registration.username,
-                        passwordHash: registration.password.bcryptBase64String())
+                        passwordHash: try registration.password.bcryptHash())
         try await Repositories.users.save(user)
-        let token = try await login(user)
-        return .init(info: try UserInfo(from: user), token: token)
+        return try await login(user)
     }
     
-    func login(_ user: User) async throws -> UserToken {
+    func login(_ user: User) async throws -> User.LoginInfo {
         let token = try user.generateToken()
         try await Repositories.tokens.save(token)
-        return token
+        return .init(info: UserInfo(from: user), token: token)
     }
     
     func delete(_ userID: Int) async throws {
-        let user = try await find(userID)
-        try await Repositories.users.delete(user)
+//        let user = try await find(userID)
+//        try await Repositories.users.delete(user)
     }
     
-    func find(_ userID: Int) async throws -> User {
+    func user(_ userID: Int) async throws -> UserInfo {
         guard let user = try? await Repositories.users.find(id: userID) else {
             throw ServerError(.notFound)
         }
-        return user
+        return user.info()
     }
     
-    func search(_ s: String) async throws -> [User] {
-        if let userID = Int(s) {
-            return [try await find(userID)]
+    func search(_ s: String) async throws -> [UserInfo] {
+        if let userID = Int(s), userID > 0 {
+            return [try await user(userID)]
         }
         let users = try await Repositories.users.search(s)
-        return users
+        return users.map { $0.info() }
     }
 }
 
