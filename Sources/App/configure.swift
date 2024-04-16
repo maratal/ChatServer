@@ -4,7 +4,7 @@ import FluentPostgresDriver
 import Vapor
 
 // configures your application
-public func configure(_ app: Application) async throws {
+public func configure(_ app: Application) throws {
     Application.itself = app
     
     // uncomment to serve files from /Public folder
@@ -24,7 +24,7 @@ public func configure(_ app: Application) async throws {
     
     Repositories.useDatabase()
     
-    try await app.autoMigrate()
+    try app.autoMigrate().wait()
     
     // register routes
     try routes(app)

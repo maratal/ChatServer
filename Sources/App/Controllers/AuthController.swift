@@ -14,7 +14,7 @@ struct AuthController {
     func login(_ user: User) async throws -> User.LoginInfo {
         let token = try user.generateToken()
         try await Repositories.tokens.save(token)
-        return .init(info: UserInfo(from: user), token: token)
+        return .init(info: user.info(), token: token)
     }
 }
 

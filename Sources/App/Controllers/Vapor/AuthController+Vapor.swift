@@ -13,6 +13,9 @@ extension AuthController: RouteCollection {
         protected.group("me") { route in
             route.get(use: me)
         }
+        protected.group("current") { route in
+            route.get(use: currentUser)
+        }
     }
     
     func register(req: Request) async throws -> User.LoginInfo {
@@ -20,10 +23,15 @@ extension AuthController: RouteCollection {
     }
     
     func login(_ req: Request) async throws -> User.LoginInfo {
-        try await login(try req.currentUser())
+        try await login(try req.authenticatedUser())
     }
     
     func me(_ req: Request) async throws -> UserInfo {
-        try req.currentUser().info()
+        try req.authenticatedUser().info()
+    }
+    
+    /// In test environment returns not real user for tests purposes only. In production is the same as `me`.
+    func currentUser(_ req: Request) async throws -> UserInfo {
+        try await req.currentUser().info()
     }
 }

@@ -54,7 +54,26 @@ extension Request {
 
 extension Request {
     
-    func currentUser() throws -> User {
+    func authenticatedUser() throws -> User {
         try auth.require(User.self)
     }
+    
+#if DEBUG
+    static func testUser() async throws -> User {
+        let user = User(name: "Test", username: "test", passwordHash: "")
+        try await Repositories.users.save(user)
+        return user
+    }
+    
+    func currentUser() async throws -> User {
+        if NSClassFromString("XCTest") != nil {
+            return try await Self.testUser()
+        }
+        return try authenticatedUser()
+    }
+#else
+    func currentUser() throws -> User {
+        try authenticatedUser()
+    }
+#endif
 }

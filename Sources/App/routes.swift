@@ -6,5 +6,6 @@ func routes(_ app: Application) throws {
         "Demo Server v1.0"
     }
 
+    try app.register(collection: AuthController())
     try app.register(collection: UserController())
 }
