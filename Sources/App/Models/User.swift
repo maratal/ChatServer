@@ -15,6 +15,9 @@ final class User: Model {
     @Field(key: "password_hash")
     var passwordHash: String
     
+    @Children(for: \.$owner)
+    var contacts: [Contact]
+    
     init() { }
 
     init(id: Int? = nil, name: String, username: String, passwordHash: String) {

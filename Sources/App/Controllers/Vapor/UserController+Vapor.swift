@@ -13,10 +13,26 @@ extension UserController: RouteCollection {
     }
     
     func user(_ req: Request) async throws -> UserInfo {
-        try await user(req.objectID()).info()
+        try await find(id: req.objectID()).info()
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {
         try await search(req.searchString()).map { $0.info() }
+    }
+    
+    func contacts(_ req: Request) async throws -> [ContactInfo] {
+        let contacts = try await contacts(of: req.currentUser())
+        return contacts.map { $0.info() }
+    }
+    
+    func addContact(_ req: Request) async throws -> ContactInfo {
+        let contactInfo = try req.content.decode(ContactInfo.self)
+        let contact = try await addContact(contactInfo, to: req.currentUser())
+        return contact.info()
+    }
+    
+    func deleteContact(_ req: Request) async throws -> HTTPStatus {
+        try await deleteContact(try req.objectUUID(), from: req.currentUser())
+        return .ok
     }
 }
