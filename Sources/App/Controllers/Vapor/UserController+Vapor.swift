@@ -13,10 +13,10 @@ extension UserController: RouteCollection {
     }
     
     func user(_ req: Request) async throws -> UserInfo {
-        try await user(req.objectID())
+        try await user(req.objectID()).info()
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {
-        try await search(req.searchString())
+        try await search(req.searchString()).map { $0.info() }
     }
 }
