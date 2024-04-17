@@ -32,21 +32,21 @@ extension Request {
     
     func objectID() throws -> Int {
         guard let id = parameters.get(Parameter.id.rawValue, as: Int.self) else {
-            throw Abort(.badRequest)
+            throw Abort(.badRequest, reason: "Integer id was not found in the path.")
         }
         return id
     }
     
     func objectUUID() throws -> UUID {
         guard let uuid = parameters.get(Parameter.id.rawValue, as: UUID.self) else {
-            throw Abort(.badRequest)
+            throw Abort(.badRequest, reason: "UUID id was not found in the path.")
         }
         return uuid
     }
     
     func searchString() throws -> String {
-        guard let s: String = query["s"] else {
-            throw Abort(.badRequest)
+        guard let s: String = query["search"] ?? query["s"] else {
+            throw Abort(.badRequest, reason: "Parameter `search` (`s`) was not found in the query.")
         }
         return s.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
