@@ -15,8 +15,8 @@ extension String {
         !isEmpty && normalized().replacingOccurrences(of: " ", with: "").isAlphanumeric
     }
     
-    func bcryptHash() throws -> String {
-        try Bcrypt.hash(self)
+    func bcryptHash() -> String {
+        try! Bcrypt.hash(self)
     }
 }
 

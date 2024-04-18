@@ -21,6 +21,9 @@ final class User: Model {
     @Field(key: "password_hash")
     var passwordHash: String
     
+    @Field(key: "key_hash")
+    var keyHash: String
+    
     @Children(for: \.$owner)
     var contacts: [Contact]
     

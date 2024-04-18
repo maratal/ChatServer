@@ -34,4 +34,21 @@ extension AuthController: RouteCollection {
     func currentUser(_ req: Request) async throws -> UserInfo {
         try await req.currentUser().info()
     }
+    
+    func changePassword(_ req: Request) async throws -> HTTPStatus {
+        let currentUser = try req.authenticatedUser()
+        try await changePassword(currentUser, oldPassword: "", newPassword: "")
+        return .ok
+    }
+    
+    func resetPassword(_ req: Request) async throws -> HTTPStatus {
+        try await resetPassword(userId: 0, newPassword: "", key: "")
+        return .ok
+    }
+    
+    func changeKey(_ req: Request) async throws -> HTTPStatus {
+        let currentUser = try req.authenticatedUser()
+        try await changeKey(currentUser, password: "", newKey: "")
+        return .ok
+    }
 }
