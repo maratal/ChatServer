@@ -12,6 +12,12 @@ final class User: Model {
     @Field(key: "username")
     var username: String
     
+    @Field(key: "about")
+    var about: String?
+    
+    @Field(key: "last_access")
+    var lastAccess: Date?
+    
     @Field(key: "password_hash")
     var passwordHash: String
     
@@ -38,13 +44,19 @@ extension User {
     
     struct Info: Serializable {
         var id: Int?
-        var name: String
-        var username: String
-
-        init(from user: User, fullInfo: Bool = true) {
+        var name: String?
+        var username: String?
+        var about: String?
+        var lastAccess: Date?
+        
+        init(from user: User, fullInfo: Bool) {
             self.id = user.id
             self.name = user.name
             self.username = user.username
+            if fullInfo {
+                self.about = user.about
+                self.lastAccess = user.lastAccess
+            }
         }
     }
     
@@ -58,7 +70,11 @@ extension User {
     }
     
     func info() -> UserInfo {
-        UserInfo(from: self)
+        UserInfo(from: self, fullInfo: false)
+    }
+    
+    func fullInfo() -> UserInfo {
+        UserInfo(from: self, fullInfo: true)
     }
 }
 

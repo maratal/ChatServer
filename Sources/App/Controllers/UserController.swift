@@ -2,6 +2,23 @@ import Foundation
 
 struct UserController {
     
+    func update(_ user: User, with info: UserInfo) async throws {
+        if let id = info.id, id != user.id {
+            throw ServerError(.badRequest, reason: "You can't update other users.")
+        }
+        if let _ = info.username {
+            throw ServerError(.badRequest, reason: "Field 'username' can't be changed (yet).")
+        }
+        if let name = info.name {
+            user.name = name
+        }
+        if let about = info.about {
+            user.about = about
+        }
+        user.lastAccess = Date()
+        try await Repositories.users.save(user)
+    }
+    
     func find(id: UserID) async throws -> User {
         guard let user = try? await Repositories.users.find(id: id) else {
             throw ServerError(.notFound)
@@ -10,8 +27,8 @@ struct UserController {
     }
     
     func search(_ s: String) async throws -> [User] {
-        if let userID = Int(s), userID > 0 {
-            return [try await find(id: userID)]
+        if let userId = Int(s), userId > 0 {
+            return [try await find(id: userId)]
         }
         let users = try await Repositories.users.search(s)
         return users

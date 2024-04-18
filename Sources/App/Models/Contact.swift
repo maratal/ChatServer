@@ -50,8 +50,8 @@ extension Contact {
         ) {
             self.id = id
             self.name = name
-            self.user = UserInfo(from: user)
-            self.owner = UserInfo(from: owner)
+            self.user = UserInfo(from: user, fullInfo: false)
+            self.owner = UserInfo(from: owner, fullInfo: false)
             self.isFavorite = isFavorite
             self.isBlocked = isBlocked
         }

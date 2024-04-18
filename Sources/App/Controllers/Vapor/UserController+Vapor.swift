@@ -12,8 +12,14 @@ extension UserController: RouteCollection {
         protected.get(use: search)
     }
     
+    func update(_ req: Request) async throws -> HTTPStatus {
+        let userInfo = try req.content.decode(UserInfo.self)
+        try await update(req.currentUser(), with: userInfo)
+        return .ok
+    }
+    
     func user(_ req: Request) async throws -> UserInfo {
-        try await find(id: req.objectID()).info()
+        try await find(id: req.objectID()).fullInfo()
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {
