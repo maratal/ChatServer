@@ -22,7 +22,7 @@ final class User: Model {
     var passwordHash: String
     
     @Field(key: "key_hash")
-    var keyHash: String
+    var keyHash: String?
     
     @Children(for: \.$owner)
     var contacts: [Contact]
@@ -38,12 +38,6 @@ final class User: Model {
 }
 
 extension User {
-    
-    struct Registration: Serializable {
-        var name: String
-        var username: String
-        var password: String
-    }
     
     struct Info: Serializable {
         var id: Int?
@@ -61,11 +55,6 @@ extension User {
                 self.lastAccess = user.lastAccess
             }
         }
-    }
-    
-    struct LoginInfo: Serializable {
-        var info: Info
-        var token: UserToken?
     }
     
     func generateToken() throws -> UserToken {

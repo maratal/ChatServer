@@ -2,8 +2,8 @@ import Foundation
 
 struct AuthController {
     
-    func register(_ info: User.Registration) async throws -> User.LoginInfo {
-        let registration = try validate(registration: info)
+    func register(_ request: RegistrationRequest) async throws -> LoginResponse {
+        let registration = try validate(registration: request)
         let user = User(name: registration.name,
                         username: registration.username,
                         passwordHash: registration.password.bcryptHash())
@@ -11,10 +11,10 @@ struct AuthController {
         return try await login(user)
     }
     
-    func login(_ user: User) async throws -> User.LoginInfo {
+    func login(_ user: User) async throws -> LoginResponse {
         let token = try user.generateToken()
         try await Repositories.tokens.save(token)
-        return .init(info: user.info(), token: token)
+        return .init(info: user.info(), token: token.value)
     }
     
     func changePassword(_ user: User, oldPassword: String, newPassword: String) async throws {
@@ -78,10 +78,10 @@ extension AuthController {
         return key.count >= Self.minKeyLength
     }
     
-    func validate(registration info: User.Registration) throws -> User.Registration {
-        let registration = User.Registration(name: info.name.normalized(),
-                                             username: info.username.normalized().lowercased(),
-                                             password: info.password)
+    func validate(registration: RegistrationRequest) throws -> RegistrationRequest {
+        let registration = RegistrationRequest(name: registration.name.normalized(),
+                                               username: registration.username.normalized().lowercased(),
+                                               password: registration.password)
         guard registration.name.isName else {
             throw Errors.badName
         }

@@ -24,9 +24,9 @@ final class AuthTests: XCTestCase {
             ])
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(User.LoginInfo.self)
+            let login = try res.content.decode(AuthController.LoginResponse.self)
             XCTAssertEqual(login.info.username, "testuser")
-            XCTAssertNotNil(login.token?.value)
+            XCTAssertNotNil(login.token)
         })
     }
     
@@ -36,9 +36,9 @@ final class AuthTests: XCTestCase {
                           headers: .authWith(username: "testuser", password: "********"),
                           afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(User.LoginInfo.self)
-            XCTAssertNotNil(login.token?.value)
-            tokenString = login.token!.value
+            let login = try res.content.decode(AuthController.LoginResponse.self)
+            XCTAssertNotNil(login.token)
+            tokenString = login.token
         })
         
         try Self.app.test(.GET, "users/me",
