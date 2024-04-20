@@ -19,8 +19,8 @@ public func configure(_ app: Application) throws {
         tls: .prefer(try .init(configuration: .clientDefault)))
     ), as: .psql)
 
-    app.migrations.add(User.Migration())
-    app.migrations.add(UserToken.Migration())
+    app.migrations.add(CreateUser())
+    app.migrations.add(CreateUserToken())
     
     Repositories.useDatabase()
     

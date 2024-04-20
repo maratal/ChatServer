@@ -1,7 +1,7 @@
 @testable import App
 import XCTVapor
 
-// These tests should be run together.
+// These tests should run together.
 
 final class AuthTests: XCTestCase {
     
@@ -57,7 +57,9 @@ final class AuthTests: XCTestCase {
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
         })
     }
-    
+}
+
+extension AuthTests {
     // Tests dull test user
     func testCurrentUser() async throws {
         try Self.app.test(.GET, "users/current", headers: .none, afterResponse: { res in

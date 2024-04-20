@@ -66,8 +66,8 @@ extension Contact {
         }
     }
     
-    func info() -> ContactInfo {
-        ContactInfo(from: self)
+    func info() -> Info {
+        Info(from: self)
     }
 }
 

@@ -57,16 +57,16 @@ extension User {
         }
     }
     
+    func info() -> Info {
+        Info(from: self, fullInfo: false)
+    }
+    
+    func fullInfo() -> Info {
+        Info(from: self, fullInfo: true)
+    }
+    
     func generateToken() throws -> UserToken {
         try .init(value: [UInt8].random(count: 32).base64, userID: requireID())
-    }
-    
-    func info() -> UserInfo {
-        UserInfo(from: self, fullInfo: false)
-    }
-    
-    func fullInfo() -> UserInfo {
-        UserInfo(from: self, fullInfo: true)
     }
 }
 
