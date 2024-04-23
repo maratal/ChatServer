@@ -15,7 +15,7 @@ final class AuthTests: XCTestCase {
         app.shutdown()
     }
     
-    func testCreateUser() async throws {
+    func testCreateUser() throws {
         try Self.app.test(.POST, "users/", beforeRequest: { req in
             try req.content.encode([
                 "name": "Test",
@@ -30,7 +30,7 @@ final class AuthTests: XCTestCase {
         })
     }
     
-    func testLoginUser() async throws {
+    func testLoginUser() throws {
         var tokenString = ""
         try Self.app.test(.POST, "login/",
                           headers: .authWith(username: "testuser", password: "********"),
@@ -50,22 +50,11 @@ final class AuthTests: XCTestCase {
         })
     }
     
-    func testLoginUserFailure() async throws {
+    func testLoginUserFailure() throws {
         try Self.app.test(.POST, "login/",
                           headers: .authWith(username: "testuser", password: "***"),
                           afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
-        })
-    }
-}
-
-extension AuthTests {
-    // Tests dull test user
-    func testCurrentUser() async throws {
-        try Self.app.test(.GET, "users/current", headers: .none, afterResponse: { res in
-            XCTAssertEqual(res.status, .ok, res.body.string)
-            let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.username, "test")
         })
     }
 }

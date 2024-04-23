@@ -62,7 +62,7 @@ extension Request {
     static func testUser() async throws -> User {
         let user = User(name: "Test", username: "test", passwordHash: "")
         try await Repositories.users.save(user)
-        return user
+        return try await Repositories.users.fetch(id: user.requireID())
     }
     
     func currentUser() async throws -> User {

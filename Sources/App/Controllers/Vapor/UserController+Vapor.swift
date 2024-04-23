@@ -9,13 +9,23 @@ extension UserController: RouteCollection {
         }
         
         let protected = users.grouped(UserToken.authenticator())
-        protected.get(use: search)
+        protected.group("me") { route in
+            route.put(use: update)
+        }
+        protected.group("current") { route in
+            route.get(use: current)
+            route.put(use: update)
+        }
     }
     
-    func update(_ req: Request) async throws -> HTTPStatus {
-        let userInfo = try req.content.decode(UserInfo.self)
-        try await update(req.currentUser(), with: userInfo)
-        return .ok
+    // In test environment returns not real user for tests purposes only. In production is the same as `me`.
+    func current(_ req: Request) async throws -> UserInfo {
+        try await req.currentUser().fullInfo()
+    }
+    
+    func update(_ req: Request) async throws -> UserInfo {
+        let info = try req.content.decode(UserInfo.self)
+        return try await update(req.currentUser(), with: info)
     }
     
     func user(_ req: Request) async throws -> UserInfo {

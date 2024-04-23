@@ -1,6 +1,7 @@
 import FluentKit
 
 protocol Users {
+    func fetch(id: Int) async throws -> User
     func find(id: Int) async throws -> User?
     func save(_ user: User) async throws
     func delete(_ user: User) async throws
@@ -16,6 +17,10 @@ protocol Users {
 struct UsersDatabaseRepository: Users, DatabaseRepository {
     var database: Database
 
+    func fetch(id: UserID) async throws -> User {
+        try await User.find(id, on: database).get()!
+    }
+    
     func find(id: UserID) async throws -> User? {
         try await User.find(id, on: database).get()
     }

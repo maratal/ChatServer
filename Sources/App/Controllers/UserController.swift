@@ -2,7 +2,7 @@ import Foundation
 
 struct UserController {
     
-    func update(_ user: User, with info: UserInfo) async throws {
+    func update(_ user: User, with info: UserInfo) async throws -> UserInfo {
         if let id = info.id, id != user.id {
             throw ServerError(.badRequest, reason: "You can't update other users.")
         }
@@ -17,6 +17,7 @@ struct UserController {
         }
         user.lastAccess = Date()
         try await Repositories.users.save(user)
+        return user.fullInfo()
     }
     
     func find(id: UserID) async throws -> User {
