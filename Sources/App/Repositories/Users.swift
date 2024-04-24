@@ -46,8 +46,8 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
     
     func findContact(userId: UserID, ownerId: UserID) async throws -> Contact? {
         try await Contact.query(on: database).group(.and) { query in
-            query.filter(\.user.$id == userId)
-            query.filter(\.owner.$id == ownerId)
+            query.filter(\.$user.$id == userId)
+            query.filter(\.$owner.$id == ownerId)
         }.first()
     }
     

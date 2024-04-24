@@ -12,11 +12,13 @@ extension UserController: RouteCollection {
         protected.group("me") { route in
             route.put(use: update)
             route.get("contacts", use: contacts)
+            route.post("contacts", use: addContact)
         }
         protected.group("current") { route in
             route.get(use: current)
             route.put(use: update)
             route.get("contacts", use: contacts)
+            route.post("contacts", use: addContact)
         }
         protected.get(use: search)
     }
@@ -45,8 +47,7 @@ extension UserController: RouteCollection {
     
     func addContact(_ req: Request) async throws -> ContactInfo {
         let contactInfo = try req.content.decode(ContactInfo.self)
-        let contact = try await addContact(contactInfo, to: req.currentUser())
-        return contact.info()
+        return try await addContact(contactInfo, to: req.currentUser())
     }
     
     func deleteContact(_ req: Request) async throws -> HTTPStatus {

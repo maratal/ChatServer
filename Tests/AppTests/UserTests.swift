@@ -87,4 +87,20 @@ final class UserTests: XCTestCase {
             XCTAssertEqual(contacts.sorted(), ["User 1", "User 2"])
         })
     }
+    
+    func testAddUserContact() async throws {
+        try await seedCurrentUser()
+        let user = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user").first!
+        try app.test(.POST, "users/me/contacts", beforeRequest: { req in
+            try req.content.encode(
+                ContactInfo(name: user.name, isFavorite: true, isBlocked: false, user: user.info())
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let info = try res.content.decode(ContactInfo.self)
+            XCTAssertEqual(info.name, user.name)
+            XCTAssertEqual(info.isFavorite, true)
+            XCTAssertEqual(info.user.id, user.id)
+        })
+    }
 }

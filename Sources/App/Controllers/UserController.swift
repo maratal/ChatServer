@@ -42,16 +42,17 @@ struct UserController {
         try await Repositories.users.contacts(of: user).map { $0.info() }
     }
     
-    func addContact(_ info: ContactInfo, to user: User) async throws -> Contact {
+    func addContact(_ info: ContactInfo, to user: User) async throws -> ContactInfo {
         guard let contactUserId = info.user.id else {
             throw ServerError(.badRequest, reason: "User should have an id.")
         }
         if let contact = try await Repositories.users.findContact(userId: contactUserId, ownerId: user.requireID()) {
-            return contact
+            return contact.info()
         }
-        let contact = Contact(name: info.name, ownerId: try user.requireID(), userId: contactUserId)
+        let contact = Contact(ownerId: try user.requireID(), userId: contactUserId, isFavorite: info.isFavorite, name: info.name)
         try await Repositories.users.saveContact(contact)
-        return contact
+        // Copy old object to avoid re-fetching data from database
+        return try ContactInfo(from: info, id: contact.requireID())
     }
     
     func deleteContact(_ contactId: UUID, from user: User) async throws {

@@ -23,9 +23,11 @@ final class Contact: Model {
     
     init() {}
     
-    init(id: UUID? = nil, name: String? = nil, ownerId: UserID, userId: UserID) {
+    init(id: UUID? = nil, ownerId: UserID, userId: UserID, isFavorite: Bool = false, isBlocked: Bool = false, name: String? = nil) {
         self.id = id
         self.name = name
+        self.isFavorite = isFavorite
+        self.isBlocked = isBlocked
         self.$owner.id = ownerId
         self.$user.id = userId
     }
@@ -59,6 +61,14 @@ extension Contact {
                       isFavorite: contact.isFavorite ?? false,
                       isBlocked: contact.isBlocked ?? false,
                       user: contact.user.info())
+        }
+        
+        init(from copy: Self, id: UUID) {
+            self.id = id
+            self.name = copy.name
+            self.user = copy.user
+            self.isFavorite = copy.isFavorite
+            self.isBlocked = copy.isBlocked
         }
     }
     
