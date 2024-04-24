@@ -38,9 +38,8 @@ struct UserController {
         return users.map { $0.info() }
     }
     
-    func contacts(of user: User) async throws -> [Contact] {
-        let contacts = try await Repositories.users.contacts(of: user)
-        return contacts
+    func contacts(of user: User) async throws -> [ContactInfo] {
+        try await Repositories.users.contacts(of: user).map { $0.info() }
     }
     
     func addContact(_ info: ContactInfo, to user: User) async throws -> Contact {

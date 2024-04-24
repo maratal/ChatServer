@@ -10,10 +10,10 @@ final class Contact: Model {
     var name: String?
     
     @Field(key: "favorite")
-    var isFavorite: Bool
+    var isFavorite: Bool?
     
     @Field(key: "blocked")
-    var isBlocked: Bool
+    var isBlocked: Bool?
     
     @Parent(key: "user_id")
     var user: User
@@ -26,8 +26,8 @@ final class Contact: Model {
     init(id: UUID? = nil, name: String? = nil, ownerId: UserID, userId: UserID) {
         self.id = id
         self.name = name
-        self.owner.id = ownerId
-        self.user.id = userId
+        self.$owner.id = ownerId
+        self.$user.id = userId
     }
 }
 
@@ -39,19 +39,16 @@ extension Contact {
         var isFavorite: Bool
         var isBlocked: Bool
         var user: UserInfo
-        var owner: UserInfo
         
         init(id: UUID? = nil,
              name: String?,
              isFavorite: Bool,
              isBlocked: Bool,
-             user: User,
-             owner: User
+             user: UserInfo
         ) {
             self.id = id
             self.name = name
-            self.user = UserInfo(from: user, fullInfo: false)
-            self.owner = UserInfo(from: owner, fullInfo: false)
+            self.user = user
             self.isFavorite = isFavorite
             self.isBlocked = isBlocked
         }
@@ -59,10 +56,9 @@ extension Contact {
         init(from contact: Contact) {
             self.init(id: contact.id,
                       name: contact.name,
-                      isFavorite: contact.isFavorite,
-                      isBlocked: contact.isBlocked,
-                      user: contact.user,
-                      owner: contact.owner)
+                      isFavorite: contact.isFavorite ?? false,
+                      isBlocked: contact.isBlocked ?? false,
+                      user: contact.user.info())
         }
     }
     

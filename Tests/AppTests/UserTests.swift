@@ -18,13 +18,13 @@ final class UserTests: XCTestCase {
         try app.test(.GET, "users/current", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.username, "test")
+            XCTAssertEqual(info.username, "admin")
         })
     }
     
     func testUpdateUser() throws {
         let about = UUID().uuidString
-        try app.test(.PUT, "users/current", beforeRequest: { req in
+        try app.test(.PUT, "users/current", headers: .none, beforeRequest: { req in
             try req.content.encode([
                 "name": "Test Test",
                 "about": about
@@ -32,7 +32,7 @@ final class UserTests: XCTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.username, "test")
+            XCTAssertEqual(info.username, "admin")
             XCTAssertEqual(info.name, "Test Test")
             XCTAssertEqual(info.about, about)
         })
@@ -68,6 +68,17 @@ final class UserTests: XCTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let names = try res.content.decode([UserInfo].self).compactMap { $0.name }
             XCTAssertEqual(names.sorted(), ["Demo 1", "Demo 2"])
+        })
+    }
+    
+    func testGetUserContacts() async throws {
+        let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
+        try await makeContact(users[1], of: users[0])
+        try await makeContact(users[2], of: users[0])
+        try app.test(.GET, "users/me/contacts", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let contacts = try res.content.decode([ContactInfo].self).compactMap { $0.user.name }
+            XCTAssertEqual(contacts.sorted(), ["User 2", "User 3"])
         })
     }
 }

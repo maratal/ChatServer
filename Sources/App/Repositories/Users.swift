@@ -52,7 +52,10 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
     }
     
     func contacts(of user: User) async throws -> [Contact] {
-        try await user.$contacts.get(on: database)
+        try await Contact.query(on: database)
+            .with(\.$user)
+            .filter(\.$owner.$id == user.requireID())
+            .all()
     }
     
     func saveContact(_ contact: Contact) async throws {

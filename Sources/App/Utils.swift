@@ -59,15 +59,17 @@ extension Request {
     }
     
 #if DEBUG
-    static func testUser() async throws -> User {
-        let user = User(name: "Test", username: "test", passwordHash: "")
-        try await Repositories.users.save(user)
-        return try await Repositories.users.fetch(id: user.requireID())
+    static func testCurrentUser() async throws -> User {
+        if let user = try await Repositories.users.find(id: 1) {
+            return user
+        }
+        try await Repositories.users.save(User(name: "Admin", username: "admin", passwordHash: ""))
+        return try await Repositories.users.fetch(id: 1)
     }
     
     func currentUser() async throws -> User {
         if NSClassFromString("XCTest") != nil {
-            return try await Self.testUser()
+            return try await Self.testCurrentUser()
         }
         return try authenticatedUser()
     }

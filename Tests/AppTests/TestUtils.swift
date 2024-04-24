@@ -31,9 +31,18 @@ extension HTTPHeaders {
     }
 }
 
-func seedUsers(count: Int, namePrefix: String = "Test", usernamePrefix: String = "test") async throws {
+@discardableResult
+func seedUsers(count: Int, namePrefix: String = "Test", usernamePrefix: String = "test") async throws -> [User] {
+    var users = [User]()
     for i in 1...count {
         let user = User(name: "\(namePrefix) \(i)", username: "\(usernamePrefix)\(i)", passwordHash: "")
         try await Repositories.users.save(user)
+        users.append(user)
     }
+    return users
+}
+
+func makeContact(_ user: User, of owner: User) async throws {
+    let contact = try Contact(ownerId: owner.requireID(), userId: user.requireID())
+    try await Repositories.users.saveContact(contact)
 }

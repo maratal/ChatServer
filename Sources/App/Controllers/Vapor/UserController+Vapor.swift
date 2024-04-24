@@ -11,10 +11,12 @@ extension UserController: RouteCollection {
         let protected = users.grouped(UserToken.authenticator())
         protected.group("me") { route in
             route.put(use: update)
+            route.get("contacts", use: contacts)
         }
         protected.group("current") { route in
             route.get(use: current)
             route.put(use: update)
+            route.get("contacts", use: contacts)
         }
         protected.get(use: search)
     }
@@ -38,8 +40,7 @@ extension UserController: RouteCollection {
     }
     
     func contacts(_ req: Request) async throws -> [ContactInfo] {
-        let contacts = try await contacts(of: req.currentUser())
-        return contacts.map { $0.info() }
+        try await contacts(of: req.currentUser())
     }
     
     func addContact(_ req: Request) async throws -> ContactInfo {

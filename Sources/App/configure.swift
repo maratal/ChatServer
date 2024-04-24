@@ -21,6 +21,7 @@ public func configure(_ app: Application) throws {
 
     app.migrations.add(CreateUser())
     app.migrations.add(CreateUserToken())
+    app.migrations.add(CreateContact())
     
     Repositories.useDatabase()
     
