@@ -49,7 +49,9 @@ func seedCurrentUser() async throws -> User {
     return user
 }
 
-func makeContact(_ user: User, of owner: User) async throws {
+@discardableResult
+func makeContact(_ user: User, of owner: User) async throws -> Contact {
     let contact = try Contact(ownerId: owner.requireID(), userId: user.requireID())
     try await Repositories.users.saveContact(contact)
+    return contact
 }

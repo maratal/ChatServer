@@ -56,7 +56,7 @@ struct UserController {
     }
     
     func deleteContact(_ contactId: UUID, from user: User) async throws {
-        guard let contact = try await Repositories.users.findContact(contactId), contact.owner.id == user.id else {
+        guard let contact = try await Repositories.users.findContact(contactId), contact.$owner.id == user.id else {
             throw ServerError(.notFound, reason: "Contact not found.")
         }
         try await Repositories.users.deleteContact(contact)

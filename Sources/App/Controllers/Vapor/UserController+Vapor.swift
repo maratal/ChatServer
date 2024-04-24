@@ -13,12 +13,14 @@ extension UserController: RouteCollection {
             route.put(use: update)
             route.get("contacts", use: contacts)
             route.post("contacts", use: addContact)
+            route.delete("contacts", Request.Parameter.id.pathComponent, use: deleteContact)
         }
         protected.group("current") { route in
             route.get(use: current)
             route.put(use: update)
             route.get("contacts", use: contacts)
             route.post("contacts", use: addContact)
+            route.delete("contacts", Request.Parameter.id.pathComponent, use: deleteContact)
         }
         protected.get(use: search)
     }

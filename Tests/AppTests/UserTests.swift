@@ -103,4 +103,23 @@ final class UserTests: XCTestCase {
             XCTAssertEqual(info.user.id, user.id)
         })
     }
+    
+    func testDeleteUserContact() async throws {
+        let current = try await seedCurrentUser()
+        let user = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user").first!
+        let contact = try await makeContact(user, of: current)
+        try app.test(.GET, "users/me/contacts", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let contacts = try res.content.decode([ContactInfo].self).compactMap { $0.user.name }
+            XCTAssertEqual(contacts, ["User 1"])
+        })
+        try app.test(.DELETE, "users/me/contacts/\(contact.id!)", afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try app.test(.GET, "users/me/contacts", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let contacts = try res.content.decode([ContactInfo].self).compactMap { $0.user.name }
+            XCTAssertEqual(contacts.count, 0)
+        })
+    }
 }
