@@ -59,16 +59,12 @@ extension Request {
     }
     
 #if DEBUG
-    static func testCurrentUser() async throws -> User {
-        guard let user = try await Repositories.users.find(id: 1) else {
-            throw Abort(.notFound, reason: "Test current user not found.")
-        }
-        return user
-    }
-    
     func currentUser() async throws -> User {
         if NSClassFromString("XCTest") != nil {
-            return try await Self.testCurrentUser()
+            guard let user = try await Repositories.users.find(id: 1) else {
+                throw Abort(.notFound, reason: "Test current user not found.")
+            }
+            return user
         }
         return try authenticatedUser()
     }
