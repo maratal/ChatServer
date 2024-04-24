@@ -13,16 +13,17 @@ final class UserTests: XCTestCase {
         app.shutdown()
     }
     
-    // Tests fake current user
-    func testCurrentUser() throws {
+    func testCurrentUser() async throws {
+        try await seedCurrentUser()
         try app.test(.GET, "users/current", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.username, "admin")
+            XCTAssertEqual(info.id, 1)
         })
     }
     
-    func testUpdateUser() throws {
+    func testUpdateUser() async throws {
+        try await seedCurrentUser()
         let about = UUID().uuidString
         try app.test(.PUT, "users/current", headers: .none, beforeRequest: { req in
             try req.content.encode([
@@ -32,6 +33,7 @@ final class UserTests: XCTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try res.content.decode(UserInfo.self)
+            XCTAssertEqual(info.id, 1)
             XCTAssertEqual(info.username, "admin")
             XCTAssertEqual(info.name, "Test Test")
             XCTAssertEqual(info.about, about)
@@ -39,15 +41,18 @@ final class UserTests: XCTestCase {
     }
     
     func testGetUser() async throws {
-        try await seedUsers(count: 1)
+        // This method works without authentication.
+        try await seedUsers(count: 1, namePrefix: "Test", usernamePrefix: "test")
         try app.test(.GET, "users/1", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try res.content.decode(UserInfo.self)
+            XCTAssertEqual(info.id, 1)
             XCTAssertEqual(info.username, "test1")
         })
     }
     
     func testSearchUsers() async throws {
+        // This method works without authentication.
         try await seedUsers(count: 2, namePrefix: "Name", usernamePrefix: "user")
         try await seedUsers(count: 2, namePrefix: "Demo", usernamePrefix: "test")
         // Search by id=2
@@ -72,13 +77,14 @@ final class UserTests: XCTestCase {
     }
     
     func testGetUserContacts() async throws {
-        let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
-        try await makeContact(users[1], of: users[0])
-        try await makeContact(users[2], of: users[0])
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
+        try await makeContact(users[0], of: current)
+        try await makeContact(users[1], of: current)
         try app.test(.GET, "users/me/contacts", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let contacts = try res.content.decode([ContactInfo].self).compactMap { $0.user.name }
-            XCTAssertEqual(contacts.sorted(), ["User 2", "User 3"])
+            XCTAssertEqual(contacts.sorted(), ["User 1", "User 2"])
         })
     }
 }

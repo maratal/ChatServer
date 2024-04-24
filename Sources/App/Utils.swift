@@ -60,11 +60,10 @@ extension Request {
     
 #if DEBUG
     static func testCurrentUser() async throws -> User {
-        if let user = try await Repositories.users.find(id: 1) {
-            return user
+        guard let user = try await Repositories.users.find(id: 1) else {
+            throw Abort(.notFound, reason: "Test current user not found.")
         }
-        try await Repositories.users.save(User(name: "Admin", username: "admin", passwordHash: ""))
-        return try await Repositories.users.fetch(id: 1)
+        return user
     }
     
     func currentUser() async throws -> User {
