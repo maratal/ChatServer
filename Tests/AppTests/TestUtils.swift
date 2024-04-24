@@ -30,3 +30,10 @@ extension HTTPHeaders {
         return headers
     }
 }
+
+func seedUsers(count: Int, namePrefix: String = "Test", usernamePrefix: String = "test") async throws {
+    for i in 1...count {
+        let user = User(name: "\(namePrefix) \(i)", username: "\(usernamePrefix)\(i)", passwordHash: "")
+        try await Repositories.users.save(user)
+    }
+}

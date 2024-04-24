@@ -37,4 +37,13 @@ final class UserTests: XCTestCase {
             XCTAssertEqual(info.about, about)
         })
     }
+    
+    func testGetUser() async throws {
+        try await seedUsers(count: 1)
+        try app.test(.GET, "users/1", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let info = try res.content.decode(UserInfo.self)
+            XCTAssertEqual(info.username, "test1")
+        })
+    }
 }
