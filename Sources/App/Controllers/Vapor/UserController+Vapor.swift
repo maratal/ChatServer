@@ -16,6 +16,7 @@ extension UserController: RouteCollection {
             route.get(use: current)
             route.put(use: update)
         }
+        protected.get(use: search)
     }
     
     // In test environment returns not real user for tests purposes only. In production is the same as `me`.
@@ -33,7 +34,7 @@ extension UserController: RouteCollection {
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {
-        try await search(req.searchString()).map { $0.info() }
+        try await search(req.searchString())
     }
     
     func contacts(_ req: Request) async throws -> [ContactInfo] {

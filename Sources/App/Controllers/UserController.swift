@@ -27,12 +27,15 @@ struct UserController {
         return user
     }
     
-    func search(_ s: String) async throws -> [User] {
+    func search(_ s: String) async throws -> [UserInfo] {
         if let userId = Int(s), userId > 0 {
-            return [try await find(id: userId)]
+            return [try await find(id: userId).info()]
+        }
+        guard s.count >= 2 else {
+            throw ServerError(.notFound)
         }
         let users = try await Repositories.users.search(s)
-        return users
+        return users.map { $0.info() }
     }
     
     func contacts(of user: User) async throws -> [Contact] {

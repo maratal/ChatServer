@@ -46,4 +46,28 @@ final class UserTests: XCTestCase {
             XCTAssertEqual(info.username, "test1")
         })
     }
+    
+    func testSearchUsers() async throws {
+        try await seedUsers(count: 2, namePrefix: "Name", usernamePrefix: "user")
+        try await seedUsers(count: 2, namePrefix: "Demo", usernamePrefix: "test")
+        // Search by id=2
+        try app.test(.GET, "users?s=2", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let users = try res.content.decode([UserInfo].self)
+            XCTAssertEqual(users.count, 1)
+            XCTAssertEqual(users[0].id, 2)
+        })
+        // Search by username "u(se)r*"
+        try app.test(.GET, "users?s=se", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let names = try res.content.decode([UserInfo].self).compactMap { $0.name }
+            XCTAssertEqual(names.sorted(), ["Name 1", "Name 2"])
+        })
+        // Search by name "D(em)o *"
+        try app.test(.GET, "users?s=em", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let names = try res.content.decode([UserInfo].self).compactMap { $0.name }
+            XCTAssertEqual(names.sorted(), ["Demo 1", "Demo 2"])
+        })
+    }
 }

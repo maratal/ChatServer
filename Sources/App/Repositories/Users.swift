@@ -34,7 +34,10 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
     }
     
     func search(_ s: String) async throws -> [User] {
-        try await User.query(on: database).all()
+        try await User.query(on: database).group(.or) { query in
+            query.filter(\.$name ~~ s)
+            query.filter(\.$username ~~ s)
+        }.range(..<100).all()
     }
     
     func findContact(_ id: UUID) async throws -> Contact? {
