@@ -27,6 +27,9 @@ final class User: Model {
     @Children(for: \.$owner)
     var contacts: [Contact]
     
+    @Children(for: \.$user)
+    var chats: [ChatToUser]
+    
     init() { }
 
     init(id: Int? = nil, name: String, username: String, passwordHash: String) {
