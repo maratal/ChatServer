@@ -11,7 +11,7 @@ struct CreateChat: AsyncMigration {
             .field("participants_key", .string, .required)
             .field("created_at", .datetime, .required)
             .field("updated_at", .datetime, .required)
-            .field("owner_id", .uuid, .required, .references("users", "id", onDelete: .setNull))
+            .field("owner_id", .uint32, .required, .references("users", "id", onDelete: .setNull))
             .field("last_message_id", .uuid)
             .create()
     }

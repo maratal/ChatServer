@@ -7,11 +7,11 @@ struct CreateChatToUser: AsyncMigration {
         try await database.schema("chats_to_users")
             .id()
             .field("chat_id", .uuid, .required, .references("chats", "id", onDelete: .cascade))
-            .field("user_id", .uuid, .required, .references("users", "id", onDelete: .setNull))
-            .field("muted", .bool)
-            .field("archived", .bool)
-            .field("blocked", .bool)
-            .field("removed_on_device", .bool)
+            .field("user_id", .uint32, .required, .references("users", "id", onDelete: .setNull))
+            .field("muted", .bool, .custom("DEFAULT FALSE"))
+            .field("archived", .bool, .custom("DEFAULT FALSE"))
+            .field("blocked", .bool, .custom("DEFAULT FALSE"))
+            .field("removed_on_device", .bool, .custom("DEFAULT FALSE"))
             .create()
     }
     

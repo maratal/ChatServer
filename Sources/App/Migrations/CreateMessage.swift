@@ -16,7 +16,7 @@ struct CreateMessage: AsyncMigration {
             .field("updated_at", .datetime)
             .field("read_at", .datetime)
             .field("is_visible", .bool, .required, .custom("DEFAULT TRUE"))
-            .field("author_id", .uuid, .required, .references("users", "id", onDelete: .noAction))
+            .field("author_id", .uint32, .required, .references("users", "id", onDelete: .noAction))
             .field("chat_id", .uuid, .required, .references("chats", "id", onDelete: .cascade))
             .create()
     }

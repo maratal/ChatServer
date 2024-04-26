@@ -50,6 +50,11 @@ extension Request {
         }
         return s.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
+    
+    func fullInfo() -> Bool {
+        guard let full: String = query["full"] else { return false }
+        return full == "true" || full == "1"
+    }
 }
 
 extension Request {

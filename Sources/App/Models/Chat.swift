@@ -15,10 +15,10 @@ final class Chat: Model {
     @Field(key: "participants_key")
     var participantsKey: String
     
-    @Field(key: "created_at")
+    @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     
-    @Field(key: "updated_at")
+    @Timestamp(key: "updated_at", on: .update)
     var updatedAt: Date?
     
     @Parent(key: "owner_id")
@@ -67,20 +67,30 @@ extension Chat {
         var isArchived: Bool?
         var isBlocked: Bool?
         
-        init(from relation: ChatRelation) {
-            self.id = relation.chat.id
-            self.title = relation.chat.title
-            self.isPersonal = relation.chat.isPersonal
-            self.owner = relation.chat.owner.info()
-            self.participants = relation.chat.participants.map { $0.info() }
-            if let lastMessage = relation.chat.lastMessage {
+        init(from relation: ChatRelation, fullInfo: Bool = false) {
+            let chat = relation.chat
+            self.id = chat.id
+            self.title = chat.title
+            self.isPersonal = chat.isPersonal
+            self.owner = chat.owner.info()
+            if let lastMessage = chat.lastMessage {
                 self.lastMessage = lastMessage.info()
             }
             self.isMuted = relation.isMuted
             self.isArchived = relation.isArchived
             self.isBlocked = relation.isBlocked
+            if fullInfo {
+                self.participants = chat.participants.map { $0.info() }
+            }
         }
     }
 }
 
 typealias ChatInfo = Chat.Info
+
+extension Array where Element == UserID {
+    
+    func participantsKey() -> String {
+        sorted().map { "\($0)" }.joined(separator: "-")
+    }
+}

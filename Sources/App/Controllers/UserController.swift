@@ -21,7 +21,7 @@ struct UserController {
     }
     
     func find(id: UserID) async throws -> User {
-        guard let user = try? await Repositories.users.find(id: id) else {
+        guard let user = try await Repositories.users.find(id: id) else {
             throw ServerError(.notFound)
         }
         return user

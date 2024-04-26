@@ -13,13 +13,13 @@ final class ChatToUser: Model {
     var user: User
     
     @Field(key: "muted")
-    var isMuted: Bool?
+    var isMuted: Bool
     
     @Field(key: "archived")
-    var isArchived: Bool?
+    var isArchived: Bool
     
     @Field(key: "blocked")
-    var isBlocked: Bool?
+    var isBlocked: Bool
     
     @Field(key: "removed_on_device")
     var isRemovedOnDevice: Bool

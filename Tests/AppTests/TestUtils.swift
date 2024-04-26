@@ -55,3 +55,10 @@ func makeContact(_ user: User, of owner: User) async throws -> Contact {
     try await Repositories.users.saveContact(contact)
     return contact
 }
+
+@discardableResult
+func makeChat(_ users: [UserID], isPersonal: Bool = true) async throws -> Chat {
+    let chat = Chat(ownerId: users[0], isPersonal: isPersonal, participantsKey: users.participantsKey())
+    try await Repositories.users.saveChat(chat, with: users)
+    return chat
+}

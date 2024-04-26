@@ -3,16 +3,19 @@ import Vapor
 extension ChatController: RouteCollection {
     
     func boot(routes: RoutesBuilder) throws {
-        let route = routes.grouped("chats").grouped(UserToken.authenticator())
-        route.get("chats", use: chats)
+        let protected = routes.grouped("chats").grouped(UserToken.authenticator())
+        protected.get(use: chats)
+        protected.group(Request.Parameter.id.pathComponent) { route in
+            route.get(use: chat)
+        }
     }
     
     func chats(_ req: Request) async throws -> [ChatInfo] {
-        try await chats(of: try await req.currentUser())
+        try await chats(with: req.currentUser().requireID(), fullInfo: req.fullInfo())
     }
     
     func chat(_ req: Request) async throws -> ChatInfo {
-        throw ServerError(.notImplemented)
+        try await chat(req.objectUUID(), with: req.currentUser().requireID())
     }
     
     func createChat(_ req: Request) async throws -> ChatInfo {

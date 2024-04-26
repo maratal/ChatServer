@@ -12,6 +12,11 @@ protocol Users {
     func contacts(of user: User) async throws -> [Contact]
     func saveContact(_ contact: Contact) async throws
     func deleteContact(_ contact: Contact) async throws
+    
+    func findChat(_ id: UUID, for userId: UserID) async throws -> ChatRelation?
+    func findChat(participantsKey: String, for userId: UserID) async throws -> Chat?
+    func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation]
+    func saveChat(_ chat: Chat, with users: [UserID]?) async throws
 }
 
 struct UsersDatabaseRepository: Users, DatabaseRepository {
@@ -64,5 +69,60 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
     
     func deleteContact(_ contact: Contact) async throws {
         try await contact.delete(on: database)
+    }
+    
+    func findChat(_ id: UUID, for userId: UserID) async throws -> ChatRelation? {
+        try await ChatRelation.query(on: database)
+            .filter(\.$chat.$id == id)
+            .filter(\.$user.$id == userId)
+            .with(\.$chat) { chat in
+                chat.with(\.$owner)
+                chat.with(\.$lastMessage)
+                chat.with(\.$users) { relation in
+                    relation.with(\.$user)
+                }
+            }
+            .first()
+    }
+    
+    func findChat(participantsKey: String, for userId: UserID) async throws -> Chat? {
+        try await Chat.query(on: database)
+            .filter(\.$participantsKey == participantsKey)
+            .with(\.$owner)
+            .with(\.$users) { relation in
+                relation.with(\.$user)
+            }
+            .first()
+    }
+    
+    func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation] {
+        try await ChatRelation.query(on: database)
+            .filter(\.$user.$id == userId)
+            .filter(\.$isRemovedOnDevice == false)
+            .with(\.$chat) { chat in
+                chat.with(\.$owner)
+                chat.with(\.$lastMessage)
+                if (fullInfo) {
+                    chat.with(\.$users) { relation in
+                        relation.with(\.$user)
+                    }
+                }
+            }
+            .all()
+    }
+    
+    func saveChat(_ chat: Chat, with users: [UserID]? = nil) async throws {
+        try await chat.save(on: database)
+        if let users, !users.isEmpty {
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for userId in users {
+                    group.addTask {
+                        let relation = try ChatRelation(chatId: chat.requireID(), userId: userId)
+                        try await relation.save(on: database)
+                    }
+                }
+                try await group.waitForAll()
+            }
+        }
     }
 }
