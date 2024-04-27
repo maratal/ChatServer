@@ -13,10 +13,11 @@ protocol Users {
     func saveContact(_ contact: Contact) async throws
     func deleteContact(_ contact: Contact) async throws
     
-    func findChat(_ id: UUID, for userId: UserID) async throws -> ChatRelation?
-    func findChat(participantsKey: String, for userId: UserID) async throws -> Chat?
+    func findChat(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat?
     func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation]
     func saveChat(_ chat: Chat, with users: [UserID]?) async throws
+    
+    func findChatRelation(_ id: UUID, for userId: UserID) async throws -> ChatRelation?
 }
 
 struct UsersDatabaseRepository: Users, DatabaseRepository {
@@ -71,9 +72,9 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
         try await contact.delete(on: database)
     }
     
-    func findChat(_ id: UUID, for userId: UserID) async throws -> ChatRelation? {
+    func findChatRelation(_ chatId: UUID, for userId: UserID) async throws -> ChatRelation? {
         try await ChatRelation.query(on: database)
-            .filter(\.$chat.$id == id)
+            .filter(\.$chat.$id == chatId)
             .filter(\.$user.$id == userId)
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
@@ -85,9 +86,10 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
             .first()
     }
     
-    func findChat(participantsKey: String, for userId: UserID) async throws -> Chat? {
+    func findChat(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat? {
         try await Chat.query(on: database)
             .filter(\.$participantsKey == participantsKey)
+            .filter(\.$isPersonal == isPersonal)
             .with(\.$owner)
             .with(\.$users) { relation in
                 relation.with(\.$user)

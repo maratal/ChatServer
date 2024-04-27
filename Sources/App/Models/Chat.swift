@@ -38,14 +38,13 @@ final class Chat: Model {
     init(id: UUID? = nil,
          title: String? = nil,
          ownerId: UserID,
-         isPersonal: Bool,
          participantsKey: String
     ) {
         self.id = id
         self.title = title
         self.$owner.id = ownerId
-        self.isPersonal = isPersonal
         self.participantsKey = participantsKey
+        self.isPersonal = participantsKey.split(separator: "+").count == 2
     }
 }
 
@@ -91,6 +90,6 @@ typealias ChatInfo = Chat.Info
 extension Array where Element == UserID {
     
     func participantsKey() -> String {
-        sorted().map { "\($0)" }.joined(separator: "-")
+        sorted().map { "\($0)" }.joined(separator: "+")
     }
 }

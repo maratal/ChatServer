@@ -5,6 +5,7 @@ extension ChatController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let protected = routes.grouped("chats").grouped(UserToken.authenticator())
         protected.get(use: chats)
+        protected.post(use: createChat)
         protected.group(Request.Parameter.id.pathComponent) { route in
             route.get(use: chat)
         }
@@ -19,7 +20,7 @@ extension ChatController: RouteCollection {
     }
     
     func createChat(_ req: Request) async throws -> ChatInfo {
-        throw ServerError(.notImplemented)
+        try await createChat(with: req.content.decode(CreateChatRequest.self), by: req.currentUser().requireID())
     }
     
     func updateChat(_ req: Request) async throws -> ChatInfo {
@@ -61,4 +62,9 @@ extension ChatController: RouteCollection {
     func deleteMessage(_ req: Request) async throws -> HTTPStatus {
         throw ServerError(.notImplemented)
     }
+}
+
+struct CreateChatRequest: Content {
+    var title: String?
+    var participants: [UserID]
 }
