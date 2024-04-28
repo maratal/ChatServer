@@ -48,6 +48,12 @@ final class AuthTests: XCTestCase {
             let info = try res.content.decode(UserInfo.self)
             XCTAssertEqual(info.username, "testuser")
         })
+        
+        try Self.app.test(.GET, "users/me",
+                          headers: .authWith(token: "fake"),
+                          afterResponse: { res in
+            XCTAssertEqual(res.status, .unauthorized, res.body.string)
+        })
     }
     
     func testLoginUserFailure() throws {
