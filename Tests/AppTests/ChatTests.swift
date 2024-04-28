@@ -157,4 +157,21 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .badRequest, res.body.string)
         })
     }
+    
+    func testUpdateChatSettings() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat([current.requireID(), users[0].requireID(), users[1].requireID()])
+        let chatRelation = try await Repositories.users.findChatRelation(chat.requireID(), for: current.requireID())!
+        XCTAssertEqual(chatRelation.isMuted, false)
+        
+        try app.test(.PUT, "chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatRequest(isMuted: true))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chatInfo = try res.content.decode(ChatInfo.self)
+            XCTAssertEqual(chat.id, chatInfo.id)
+            XCTAssertEqual(chatInfo.isMuted, true)
+        })
+    }
 }

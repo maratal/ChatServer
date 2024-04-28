@@ -9,6 +9,7 @@ extension ChatController: RouteCollection {
         protected.group(Request.Parameter.id.pathComponent) { route in
             route.get(use: chat)
             route.put(use: updateChat)
+            route.put("settings", use: updateChatSettings)
         }
     }
     
@@ -30,8 +31,10 @@ extension ChatController: RouteCollection {
                              by: req.currentUser().requireID())
     }
     
-    func updateChatSettings(_ req: Request) async throws -> HTTPStatus {
-        throw ServerError(.notImplemented)
+    func updateChatSettings(_ req: Request) async throws -> ChatInfo {
+        try await updateChatSettings(req.objectUUID(),
+                                     with: req.content.decode(UpdateChatRequest.self),
+                                     by: req.currentUser().requireID())
     }
     
     func deleteChat(_ req: Request) async throws -> HTTPStatus {

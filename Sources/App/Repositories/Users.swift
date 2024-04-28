@@ -18,6 +18,7 @@ protocol Users {
     func saveChat(_ chat: Chat, with users: [UserID]?) async throws
     
     func findChatRelation(_ id: UUID, for userId: UserID) async throws -> ChatRelation?
+    func saveChatRelation(_ relation: ChatRelation) async throws
 }
 
 struct UsersDatabaseRepository: Users, DatabaseRepository {
@@ -126,5 +127,9 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
                 try await group.waitForAll()
             }
         }
+    }
+    
+    func saveChatRelation(_ relation: ChatRelation) async throws {
+        try await relation.save(on: database)
     }
 }
