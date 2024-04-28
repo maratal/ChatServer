@@ -40,4 +40,18 @@ struct ChatController {
             return ChatInfo(from: relation, fullInfo: true)
         }
     }
+    
+    func updateChat(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
+        guard let relation = try await Repositories.users.findChatRelation(id, for: userId), !relation.isBlocked else {
+            throw ServerError(.forbidden)
+        }
+        if relation.chat.isPersonal {
+            throw ServerError(.badRequest, reason: "You can't update personal chat.")
+        }
+        if let title = update.title {
+            relation.chat.title = title
+        }
+        try await Repositories.users.saveChat(relation.chat, with: nil)
+        return ChatInfo(from: relation, fullInfo: true)
+    }
 }

@@ -8,6 +8,7 @@ extension ChatController: RouteCollection {
         protected.post(use: createChat)
         protected.group(Request.Parameter.id.pathComponent) { route in
             route.get(use: chat)
+            route.put(use: updateChat)
         }
     }
     
@@ -24,7 +25,9 @@ extension ChatController: RouteCollection {
     }
     
     func updateChat(_ req: Request) async throws -> ChatInfo {
-        throw ServerError(.notImplemented)
+        try await updateChat(req.objectUUID(),
+                             with: req.content.decode(UpdateChatRequest.self),
+                             by: req.currentUser().requireID())
     }
     
     func updateChatSettings(_ req: Request) async throws -> HTTPStatus {
@@ -67,4 +70,11 @@ extension ChatController: RouteCollection {
 struct CreateChatRequest: Content {
     var title: String?
     var participants: [UserID]
+}
+
+struct UpdateChatRequest: Content {
+    var title: String?
+    var isMuted: Bool?
+    var isArchived: Bool?
+    var isBlocked: Bool?
 }
