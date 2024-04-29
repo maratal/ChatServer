@@ -31,22 +31,31 @@ extension HTTPHeaders {
     }
 }
 
+struct CurrentUser {
+    static let name = "Admin"
+    static let username = "admin"
+    static let password = "********"
+}
+
 @discardableResult
-func seedUsers(count: Int, namePrefix: String, usernamePrefix: String) async throws -> [User] {
-    var users = [User]()
-    for i in 1...count {
-        let user = User(name: "\(namePrefix) \(i)", username: "\(usernamePrefix)\(i)", passwordHash: "")
-        try await Repositories.users.save(user)
-        users.append(user)
-    }
-    return users
+func seedUser(name: String, username: String, password: String) async throws -> User {
+    let user = User(name: name, username: username, passwordHash: password.bcryptHash())
+    try await Repositories.users.save(user)
+    return user
 }
 
 @discardableResult
 func seedCurrentUser() async throws -> User {
-    let user = User(name: "Admin", username: "admin", passwordHash: "")
-    try await Repositories.users.save(user)
-    return user
+    try await seedUser(name: CurrentUser.name, username: CurrentUser.username, password: CurrentUser.password)
+}
+
+@discardableResult
+func seedUsers(count: Int, namePrefix: String, usernamePrefix: String) async throws -> [User] {
+    var users = [User]()
+    for i in 1...count {
+        try await users.append(seedUser(name: "\(namePrefix) \(i)", username: "\(usernamePrefix)\(i)", password: ""))
+    }
+    return users
 }
 
 @discardableResult

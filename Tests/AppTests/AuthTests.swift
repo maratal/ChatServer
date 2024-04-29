@@ -1,22 +1,20 @@
 @testable import App
 import XCTVapor
 
-// These tests should run together.
-
 final class AuthTests: XCTestCase {
     
-    static var app: Application!
+    var app: Application!
     
-    override class func setUp() {
+    override func setUp() {
         app = try! Application.testable()
     }
     
-    override class func tearDown() {
+    override func tearDown() {
         app.shutdown()
     }
     
     func testCreateUser() throws {
-        try Self.app.test(.POST, "users/", beforeRequest: { req in
+        try app.test(.POST, "users/", beforeRequest: { req in
             try req.content.encode([
                 "name": "Test",
                 "username": "testuser",
@@ -30,36 +28,38 @@ final class AuthTests: XCTestCase {
         })
     }
     
-    func testLoginUser() throws {
+    func testLoginUser() async throws {
+        try await seedCurrentUser()
         var tokenString = ""
-        try Self.app.test(.POST, "login/",
-                          headers: .authWith(username: "testuser", password: "********"),
-                          afterResponse: { res in
+        try app.test(.POST, "login/",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let login = try res.content.decode(AuthController.LoginResponse.self)
             XCTAssertNotNil(login.token)
             tokenString = login.token
         })
         
-        try Self.app.test(.GET, "users/me",
-                          headers: .authWith(token: tokenString),
-                          afterResponse: { res in
+        try app.test(.GET, "users/me",
+                     headers: .authWith(token: tokenString),
+                     afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.username, "testuser")
+            XCTAssertEqual(info.username, CurrentUser.username)
         })
         
-        try Self.app.test(.GET, "users/me",
-                          headers: .authWith(token: "fake"),
-                          afterResponse: { res in
+        try app.test(.GET, "users/me",
+                     headers: .authWith(token: "fake"),
+                     afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
         })
     }
     
-    func testLoginUserFailure() throws {
-        try Self.app.test(.POST, "login/",
-                          headers: .authWith(username: "testuser", password: "***"),
-                          afterResponse: { res in
+    func testLoginUserFailure() async throws {
+        try await seedCurrentUser()
+        try app.test(.POST, "login/",
+                     headers: .authWith(username: CurrentUser.username, password: "123"),
+                     afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
         })
     }
