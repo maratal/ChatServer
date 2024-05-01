@@ -73,6 +73,7 @@ extension ChatController: RouteCollection {
 struct CreateChatRequest: Content {
     var title: String?
     var participants: [UserID]
+    var isPersonal: Bool
 }
 
 struct UpdateChatRequest: Content {

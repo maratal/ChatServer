@@ -24,12 +24,12 @@ struct ChatController {
             throw ServerError(.badRequest, reason: "New chat should contain at least one participant.")
         }
 
-        let participantsKey = (users + [ownerId]).participantsKey()
-        var chat = try await Repositories.users.findChat(participantsKey: participantsKey, for: ownerId, isPersonal: users.count == 1)
+        let participantsKey = Set(users + [ownerId]).participantsKey()
+        var chat = try await Repositories.users.findChat(participantsKey: participantsKey, for: ownerId, isPersonal: info.isPersonal)
         
         if chat == nil {
-            chat = Chat(ownerId: ownerId, participantsKey: participantsKey)
-            try await Repositories.users.saveChat(chat!, with: users + [ownerId])
+            chat = Chat(title: info.title, ownerId: ownerId, isPersonal: info.isPersonal)
+            try await Repositories.users.saveChat(chat!, with: users)
             let relation = try await Repositories.users.findChatRelation(chat!.requireID(), for: ownerId)!
             return ChatInfo(from: relation, fullInfo: true)
         }

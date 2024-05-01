@@ -115,10 +115,15 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
     }
     
     func saveChat(_ chat: Chat, with users: [UserID]? = nil) async throws {
-        try await chat.save(on: database)
         if let users, !users.isEmpty {
+            if chat.isPersonal && users.count > 1 {
+                throw ServerError(.notAcceptable, reason: "Personal chat can only contain two users.")
+            }
+            let participants = Set([chat.$owner.id] + users)
+            chat.participantsKey = participants.participantsKey()
+            try await chat.save(on: database)
             try await withThrowingTaskGroup(of: Void.self) { group in
-                for userId in users {
+                for userId in participants {
                     group.addTask {
                         let relation = try ChatRelation(chatId: chat.requireID(), userId: userId)
                         try await relation.save(on: database)
@@ -126,6 +131,8 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
                 }
                 try await group.waitForAll()
             }
+        } else {
+            try await chat.save(on: database)
         }
     }
     
