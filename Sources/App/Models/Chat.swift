@@ -27,8 +27,11 @@ final class Chat: Model {
     @OptionalParent(key: "last_message_id")
     var lastMessage: Message?
     
-    @Children(for: \.$chat)
-    var users: [ChatToUser]
+    @Siblings(
+        through: ChatToUser.self,
+        from: \.$chat,
+        to: \.$user)
+    var users: [User]
     
     @Children(for: \.$chat)
     var messages: [Message]
@@ -49,16 +52,12 @@ final class Chat: Model {
 
 extension Chat {
     
-    var participants: [User] {
-        users.map { $0.user }
-    }
-    
     struct Info: Serializable {
         var id: UUID?
         var title: String?
         var isPersonal: Bool?
         var owner: UserInfo?
-        var participants: [UserInfo]?
+        var users: [UserInfo]?
         var lastMessage: MessageInfo?
         
         var isMuted: Bool?
@@ -78,7 +77,7 @@ extension Chat {
             self.isArchived = relation.isArchived
             self.isBlocked = relation.isBlocked
             if fullInfo {
-                self.participants = chat.participants.map { $0.info() }
+                self.users = chat.users.map { $0.info() }
             }
         }
     }

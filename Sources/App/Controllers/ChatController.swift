@@ -71,4 +71,24 @@ struct ChatController {
         try await Repositories.users.saveChatRelation(relation)
         return ChatInfo(from: relation, fullInfo: true)
     }
+    
+    func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo {
+        guard let relation = try await Repositories.users.findChatRelation(id, for: userId), !relation.isBlocked else {
+            throw ServerError(.forbidden)
+        }
+        let chat = relation.chat
+        if chat.isPersonal {
+            throw ServerError(.badRequest, reason: "You can't add users to a personal chat.")
+        }
+        let oldUsers = Set(chat.users.map { $0.id! })
+        let newUsers = Set(users).subtracting(oldUsers)
+        guard newUsers.count > 0 else {
+            throw ServerError(.badRequest, reason: "No users to add found.")
+        }
+        guard newUsers.count <= 10 else {
+            throw ServerError(.badRequest, reason: "To many users to add at once.")
+        }
+        try await Repositories.users.saveChat(relation.chat, with: Array(newUsers))
+        return ChatInfo(from: relation, fullInfo: true)
+    }
 }

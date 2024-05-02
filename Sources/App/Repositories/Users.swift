@@ -80,9 +80,7 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)
-                chat.with(\.$users) { relation in
-                    relation.with(\.$user)
-                }
+                chat.with(\.$users)
             }
             .first()
     }
@@ -92,9 +90,7 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
             .filter(\.$participantsKey == participantsKey)
             .filter(\.$isPersonal == isPersonal)
             .with(\.$owner)
-            .with(\.$users) { relation in
-                relation.with(\.$user)
-            }
+            .with(\.$users)
             .first()
     }
     
@@ -106,9 +102,7 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)
                 if (fullInfo) {
-                    chat.with(\.$users) { relation in
-                        relation.with(\.$user)
-                    }
+                    chat.with(\.$users)
                 }
             }
             .all()
@@ -117,19 +111,30 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
     func saveChat(_ chat: Chat, with users: [UserID]? = nil) async throws {
         if let users, !users.isEmpty {
             if chat.isPersonal && users.count > 1 {
-                throw ServerError(.notAcceptable, reason: "Personal chat can only contain two users.")
+                throw ServerError(.unprocessableEntity, reason: "Personal chat can only contain two users.")
             }
-            let participants = Set([chat.$owner.id] + users)
-            chat.participantsKey = participants.participantsKey()
-            try await chat.save(on: database)
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                for userId in participants {
-                    group.addTask {
-                        let relation = try ChatRelation(chatId: chat.requireID(), userId: userId)
-                        try await relation.save(on: database)
+            var allUsers = Set<UserID>()
+            var newUsers = Set<UserID>()
+            if chat.id == nil {
+                allUsers = Set([chat.$owner.id] + users)
+                newUsers = allUsers
+            } else {
+                allUsers = Set(users + chat.users.compactMap { $0.id })
+                newUsers = Set(users)
+            }
+            if newUsers.count > 0 {
+                chat.participantsKey = allUsers.participantsKey()
+                try await chat.save(on: database)
+                try await withThrowingTaskGroup(of: Void.self) { group in
+                    for userId in newUsers {
+                        group.addTask {
+                            let relation = try ChatRelation(chatId: chat.requireID(), userId: userId)
+                            try await relation.save(on: database)
+                        }
                     }
+                    try await group.waitForAll()
                 }
-                try await group.waitForAll()
+                _ = try await chat.$users.get(reload: true, on: database)
             }
         } else {
             try await chat.save(on: database)

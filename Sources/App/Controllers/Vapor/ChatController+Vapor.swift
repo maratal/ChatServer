@@ -10,6 +10,7 @@ extension ChatController: RouteCollection {
             route.get(use: chat)
             route.put(use: updateChat)
             route.put("settings", use: updateChatSettings)
+            route.post("users", use: addUsers)
         }
     }
     
@@ -42,7 +43,9 @@ extension ChatController: RouteCollection {
     }
     
     func addUsers(_ req: Request) async throws -> ChatInfo {
-        throw ServerError(.notImplemented)
+        try await addUsers(to: req.objectUUID(),
+                           users: req.content.decode(UpdateChatUsersRequest.self).users,
+                           by: req.currentUser().requireID())
     }
     
     func deleteUser(_ req: Request) async throws -> HTTPStatus {
@@ -81,4 +84,8 @@ struct UpdateChatRequest: Content {
     var isMuted: Bool?
     var isArchived: Bool?
     var isBlocked: Bool?
+}
+
+struct UpdateChatUsersRequest: Content {
+    var users: [UserID]
 }
