@@ -51,7 +51,7 @@ struct ChatController {
         if let title = update.title {
             relation.chat.title = title
         }
-        try await Repositories.users.saveChat(relation.chat, with: nil)
+        try await Repositories.users.saveChat(relation.chat)
         return ChatInfo(from: relation, fullInfo: true)
     }
     
@@ -89,6 +89,21 @@ struct ChatController {
             throw ServerError(.badRequest, reason: "To many users to add at once.")
         }
         try await Repositories.users.saveChat(relation.chat, with: Array(newUsers))
+        return ChatInfo(from: relation, fullInfo: true)
+    }
+    
+    func deleteUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo {
+        guard users.count > 0 else {
+            throw ServerError(.badRequest, reason: "No users to delete found.")
+        }
+        guard let relation = try await Repositories.users.findChatRelation(id, for: userId), !relation.isBlocked else {
+            throw ServerError(.forbidden)
+        }
+        let chat = relation.chat
+        if chat.isPersonal {
+            throw ServerError(.badRequest, reason: "You can't alter users in a personal chat.")
+        }
+        try await Repositories.users.deleteUsers(users, from: chat)
         return ChatInfo(from: relation, fullInfo: true)
     }
 }

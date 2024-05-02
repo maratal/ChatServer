@@ -123,7 +123,7 @@ final class ChatTests: XCTestCase {
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
         chat.participantsKey = try Set([current.requireID(), users[0].requireID()]).participantsKey()
-        try await Repositories.users.saveChat(chat, with: nil)
+        try await Repositories.users.saveChat(chat)
         XCTAssertEqual(chat.isPersonal, false)
         
         try app.test(.POST, "chats", headers: .none, beforeRequest: { req in
@@ -185,14 +185,35 @@ final class ChatTests: XCTestCase {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+        XCTAssertEqual(chat.participantsKey, "1+2+3")
         
-        try app.test(.POST, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+        try await app.test(.POST, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatUsersRequest(users: [users[1].requireID(), users[2].requireID()]))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
             XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2, 3, 4])
+            let chat = try await Repositories.users.fetchChat(id: chat.id!)
+            XCTAssertEqual(chat.participantsKey, "1+2+3+4")
+        })
+    }
+    
+    func testDeleteUsersFromChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+        XCTAssertEqual(chat.participantsKey, "1+2+3")
+        
+        try await app.test(.DELETE, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatUsersRequest(users: [users[1].requireID(), users[2].requireID()]))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chatInfo = try res.content.decode(ChatInfo.self)
+            XCTAssertEqual(chat.id, chatInfo.id)
+            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2])
+            let chat = try await Repositories.users.fetchChat(id: chat.id!)
+            XCTAssertEqual(chat.participantsKey, "1+2")
         })
     }
 }
