@@ -10,6 +10,9 @@ protocol Chats {
     func saveRelation(_ relation: ChatRelation) async throws
     func save(_ chat: Chat, with users: [UserID]) async throws
     func deleteUsers(_ users: [UserID], from chat: Chat) async throws
+    
+    func messages(from chatId: UUID, before: Date?, count: Int) async throws -> [Message]
+    func saveMessage(_ message: Message) async throws
 }
 
 struct ChatsDatabaseRepository: Chats, DatabaseRepository {
@@ -116,5 +119,26 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         _ = try await chat.$users.get(reload: true, on: database)
         chat.participantsKey = Set(chat.users.compactMap { $0.id }).participantsKey()
         try await chat.save(on: database)
+    }
+    
+    func messages(from chatId: UUID, before: Date?, count: Int) async throws -> [Message] {
+        if let date = before {
+            return try await Message.query(on: database)
+                .filter(\.$chat.$id == chatId)
+                .sort(\.$createdAt, .descending)
+                .filter(\.$createdAt < date)
+                .range(..<count)
+                .all()
+        } else {
+            return try await Message.query(on: database)
+                .filter(\.$chat.$id == chatId)
+                .sort(\.$createdAt, .descending)
+                .range(..<count)
+                .all()
+        }
+    }
+    
+    func saveMessage(_ message: Message) async throws {
+        try await message.save(on: database)
     }
 }

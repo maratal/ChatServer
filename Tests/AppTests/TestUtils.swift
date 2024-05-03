@@ -71,3 +71,21 @@ func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool) async throws -
     try await Repositories.chats.save(chat, with: users)
     return chat
 }
+
+@discardableResult
+func makeMessage(for chatId: UUID, authorId: UserID, text: String) async throws -> Message {
+    let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
+    try await Repositories.chats.saveMessage(message)
+    return message
+}
+
+@discardableResult
+func makeMessages(for chatId: UUID, authorId: UserID, count: Int) async throws -> [Message] {
+    var messages = [Message]()
+    for i in 1...count {
+        try await messages.append(makeMessage(for: chatId, authorId: authorId, text: "text \(i)"))
+        // Sleep for 1 second, bc url query sends timestamp in unix format and can't select messages with nanosecond precision
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+    }
+    return messages
+}

@@ -216,4 +216,28 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(chat.participantsKey, [1, 2].participantsKey())
         })
     }
+    
+    func testGetChatMessagesPaginated() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
+        try await makeMessages(for: chat.requireID(), authorId: current.requireID(), count: 9)
+        
+        let count = 5
+        var page1 = [MessageInfo]()
+        try app.test(.GET, "chats/\(chat.id!)/messages?count=\(count)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            page1 = try res.content.decode([MessageInfo].self)
+            XCTAssertEqual(page1.count, 5)
+            XCTAssertEqual(page1.first!.text, "text 9")
+            XCTAssertEqual(page1.last!.text, "text 5")
+        })
+        try app.test(.GET, "chats/\(chat.id!)/messages?count=\(count)&before=\(page1.last!.createdAt!.timeIntervalSinceReferenceDate)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let page2 = try res.content.decode([MessageInfo].self)
+            XCTAssertEqual(page2.count, 4)
+            XCTAssertEqual(page2.first!.text, "text 4")
+            XCTAssertEqual(page2.last!.text, "text 1")
+        })
+    }
 }

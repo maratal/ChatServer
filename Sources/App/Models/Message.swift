@@ -88,8 +88,8 @@ extension Message {
         init(from message: Message) {
             self.id = message.id
             self.localId = message.localId
-            self.chatId = message.chat.id
-            self.authorId = message.author.id
+            self.chatId = message.$chat.id
+            self.authorId = message.$author.id
             self.text = message.text
             self.fileType = message.fileType
             self.fileSize = message.fileSize

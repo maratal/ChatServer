@@ -33,9 +33,6 @@ final class Chat: Model {
         to: \.$user)
     var users: [User]
     
-    @Children(for: \.$chat)
-    var messages: [Message]
-    
     init() {}
     
     init(id: UUID? = nil,

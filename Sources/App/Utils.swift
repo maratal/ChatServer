@@ -55,6 +55,13 @@ extension Request {
         guard let full: String = query["full"] else { return false }
         return full == "true" || full == "1"
     }
+    
+    func date(from param: String) -> Date? {
+        if let ts: Double = query[param] {
+            return Date(timeIntervalSinceReferenceDate: ts)
+        }
+        return nil
+    }
 }
 
 extension Request {

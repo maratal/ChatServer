@@ -106,4 +106,12 @@ struct ChatController {
         try await Repositories.chats.deleteUsers(users, from: chat)
         return ChatInfo(from: relation, fullInfo: true)
     }
+    
+    func messages(from id: UUID, for userId: UserID, before: Date?, count: Int) async throws -> [MessageInfo] {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
+            throw ServerError(.forbidden)
+        }
+        let messages = try await Repositories.chats.messages(from: id, before: before, count: count)
+        return messages.map { $0.info() }
+    }
 }
