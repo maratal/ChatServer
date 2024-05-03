@@ -123,7 +123,7 @@ final class ChatTests: XCTestCase {
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
         chat.participantsKey = try Set([current.requireID(), users[0].requireID()]).participantsKey()
-        try await Repositories.users.saveChat(chat)
+        try await Repositories.chats.save(chat)
         XCTAssertEqual(chat.isPersonal, false)
         
         try app.test(.POST, "chats", headers: .none, beforeRequest: { req in
@@ -168,7 +168,7 @@ final class ChatTests: XCTestCase {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
-        let chatRelation = try await Repositories.users.findChatRelation(chat.requireID(), for: current.requireID())!
+        let chatRelation = try await Repositories.chats.findRelation(of: chat.requireID(), userId: current.requireID())!
         XCTAssertEqual(chatRelation.isMuted, false)
         
         try app.test(.PUT, "chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
@@ -185,7 +185,7 @@ final class ChatTests: XCTestCase {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
-        XCTAssertEqual(chat.participantsKey, "1+2+3")
+        XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
         try await app.test(.POST, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatUsersRequest(users: [users[1].requireID(), users[2].requireID()]))
@@ -194,8 +194,8 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
             XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2, 3, 4])
-            let chat = try await Repositories.users.fetchChat(id: chat.id!)
-            XCTAssertEqual(chat.participantsKey, "1+2+3+4")
+            let chat = try await Repositories.chats.fetch(id: chat.id!)
+            XCTAssertEqual(chat.participantsKey, [1, 2, 3, 4].participantsKey())
         })
     }
     
@@ -203,7 +203,7 @@ final class ChatTests: XCTestCase {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
-        XCTAssertEqual(chat.participantsKey, "1+2+3")
+        XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
         try await app.test(.DELETE, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatUsersRequest(users: [users[1].requireID(), users[2].requireID()]))
@@ -212,8 +212,8 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
             XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2])
-            let chat = try await Repositories.users.fetchChat(id: chat.id!)
-            XCTAssertEqual(chat.participantsKey, "1+2")
+            let chat = try await Repositories.chats.fetch(id: chat.id!)
+            XCTAssertEqual(chat.participantsKey, [1, 2].participantsKey())
         })
     }
 }

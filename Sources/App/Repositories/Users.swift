@@ -1,8 +1,8 @@
 import FluentKit
 
 protocol Users {
-    func fetch(id: Int) async throws -> User
-    func find(id: Int) async throws -> User?
+    func fetch(id: UserID) async throws -> User
+    func find(id: UserID) async throws -> User?
     func save(_ user: User) async throws
     func delete(_ user: User) async throws
     func search(_ s: String) async throws -> [User]
@@ -12,16 +12,6 @@ protocol Users {
     func contacts(of user: User) async throws -> [Contact]
     func saveContact(_ contact: Contact) async throws
     func deleteContact(_ contact: Contact) async throws
-    
-    func fetchChat(id: UUID) async throws -> Chat
-    func findChat(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat?
-    func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation]
-    func saveChat(_ chat: Chat) async throws
-    func saveChat(_ chat: Chat, with users: [UserID]) async throws
-    func deleteUsers(_ users: [UserID], from chat: Chat) async throws
-    
-    func findChatRelation(_ id: UUID, for userId: UserID) async throws -> ChatRelation?
-    func saveChatRelation(_ relation: ChatRelation) async throws
 }
 
 struct UsersDatabaseRepository: Users, DatabaseRepository {
@@ -74,108 +64,5 @@ struct UsersDatabaseRepository: Users, DatabaseRepository {
     
     func deleteContact(_ contact: Contact) async throws {
         try await contact.delete(on: database)
-    }
-    
-    func fetchChat(id: UUID) async throws -> Chat {
-        try await Chat.find(id, on: database)!
-    }
-    
-    func findChatRelation(_ chatId: UUID, for userId: UserID) async throws -> ChatRelation? {
-        try await ChatRelation.query(on: database)
-            .filter(\.$chat.$id == chatId)
-            .filter(\.$user.$id == userId)
-            .with(\.$chat) { chat in
-                chat.with(\.$owner)
-                chat.with(\.$lastMessage)
-                chat.with(\.$users)
-            }
-            .first()
-    }
-    
-    func findChat(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat? {
-        try await Chat.query(on: database)
-            .filter(\.$participantsKey == participantsKey)
-            .filter(\.$isPersonal == isPersonal)
-            .with(\.$owner)
-            .with(\.$users)
-            .first()
-    }
-    
-    func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation] {
-        try await ChatRelation.query(on: database)
-            .filter(\.$user.$id == userId)
-            .filter(\.$isRemovedOnDevice == false)
-            .with(\.$chat) { chat in
-                chat.with(\.$owner)
-                chat.with(\.$lastMessage)
-                if (fullInfo) {
-                    chat.with(\.$users)
-                }
-            }
-            .all()
-    }
-    
-    func saveChat(_ chat: Chat) async throws {
-        try await chat.save(on: database)
-    }
-    
-    func saveChat(_ chat: Chat, with users: [UserID]) async throws {
-        guard users.count > 0 else {
-            return try await saveChat(chat)
-        }
-        if chat.isPersonal && users.count > 1 {
-            throw ServerError(.unprocessableEntity, reason: "Personal chat can only contain two users.")
-        }
-        var allUsers = Set<UserID>()
-        var newUsers = Set<UserID>()
-        if chat.id == nil {
-            allUsers = Set([chat.$owner.id] + users)
-            newUsers = allUsers
-        } else {
-            allUsers = Set(users + chat.users.compactMap { $0.id })
-            newUsers = Set(users)
-        }
-        if newUsers.count > 0 {
-            chat.participantsKey = allUsers.participantsKey()
-            try await chat.save(on: database)
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                for userId in newUsers {
-                    group.addTask {
-                        let relation = try ChatRelation(chatId: chat.requireID(), userId: userId)
-                        try await relation.save(on: database)
-                    }
-                }
-                try await group.waitForAll()
-            }
-            _ = try await chat.$users.get(reload: true, on: database)
-        }
-    }
-    
-    func deleteUsers(_ users: [UserID], from chat: Chat) async throws {
-        guard let chatId = chat.id else {
-            throw ServerError(.unprocessableEntity, reason: "Chat wasn't saved yet.")
-        }
-        let relations = try await ChatRelation.query(on: database)
-            .filter(\.$chat.$id == chatId)
-            .filter(\.$user.$id ~~ users)
-            .all()
-        guard relations.count > 0 else {
-            throw ServerError(.unprocessableEntity, reason: "Users provided are not participants of this chat.")
-        }
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for relation in relations {
-                group.addTask {
-                    try await relation.delete(on: database)
-                }
-            }
-            try await group.waitForAll()
-        }
-        _ = try await chat.$users.get(reload: true, on: database)
-        chat.participantsKey = Set(chat.users.compactMap { $0.id }).participantsKey()
-        try await chat.save(on: database)
-    }
-    
-    func saveChatRelation(_ relation: ChatRelation) async throws {
-        try await relation.save(on: database)
     }
 }

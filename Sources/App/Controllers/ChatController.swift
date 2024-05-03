@@ -3,13 +3,13 @@ import Foundation
 struct ChatController {
     
     func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatInfo] {
-        try await Repositories.users.chats(with: userId, fullInfo: fullInfo).map {
+        try await Repositories.chats.all(with: userId, fullInfo: fullInfo).map {
             ChatInfo(from: $0, fullInfo: fullInfo)
         }
     }
     
     func chat(_ id: UUID, with userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.users.findChatRelation(id, for: userId) else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
             throw ServerError(.notFound)
         }
         guard !relation.isBlocked else {
@@ -25,16 +25,16 @@ struct ChatController {
         }
 
         let participantsKey = Set(users + [ownerId]).participantsKey()
-        var chat = try await Repositories.users.findChat(participantsKey: participantsKey, for: ownerId, isPersonal: info.isPersonal)
+        var chat = try await Repositories.chats.find(participantsKey: participantsKey, for: ownerId, isPersonal: info.isPersonal)
         
         if chat == nil {
             chat = Chat(title: info.title, ownerId: ownerId, isPersonal: info.isPersonal)
-            try await Repositories.users.saveChat(chat!, with: users)
-            let relation = try await Repositories.users.findChatRelation(chat!.requireID(), for: ownerId)!
+            try await Repositories.chats.save(chat!, with: users)
+            let relation = try await Repositories.chats.findRelation(of: chat!.requireID(), userId: ownerId)!
             return ChatInfo(from: relation, fullInfo: true)
         }
         else {
-            guard let relation = try await Repositories.users.findChatRelation(chat!.requireID(), for: ownerId), !relation.isBlocked else {
+            guard let relation = try await Repositories.chats.findRelation(of: chat!.requireID(), userId: ownerId), !relation.isBlocked else {
                 throw ServerError(.forbidden)
             }
             return ChatInfo(from: relation, fullInfo: true)
@@ -42,7 +42,7 @@ struct ChatController {
     }
     
     func updateChat(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.users.findChatRelation(id, for: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
             throw ServerError(.forbidden)
         }
         if relation.chat.isPersonal {
@@ -51,12 +51,12 @@ struct ChatController {
         if let title = update.title {
             relation.chat.title = title
         }
-        try await Repositories.users.saveChat(relation.chat)
+        try await Repositories.chats.save(relation.chat)
         return ChatInfo(from: relation, fullInfo: true)
     }
     
     func updateChatSettings(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.users.findChatRelation(id, for: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
             throw ServerError(.forbidden)
         }
         if let isMuted = update.isMuted {
@@ -68,12 +68,12 @@ struct ChatController {
         if let isBlocked = update.isBlocked {
             relation.isBlocked = isBlocked
         }
-        try await Repositories.users.saveChatRelation(relation)
+        try await Repositories.chats.saveRelation(relation)
         return ChatInfo(from: relation, fullInfo: true)
     }
     
     func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.users.findChatRelation(id, for: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
             throw ServerError(.forbidden)
         }
         let chat = relation.chat
@@ -88,7 +88,7 @@ struct ChatController {
         guard newUsers.count <= 10 else {
             throw ServerError(.badRequest, reason: "To many users to add at once.")
         }
-        try await Repositories.users.saveChat(relation.chat, with: Array(newUsers))
+        try await Repositories.chats.save(relation.chat, with: Array(newUsers))
         return ChatInfo(from: relation, fullInfo: true)
     }
     
@@ -96,14 +96,14 @@ struct ChatController {
         guard users.count > 0 else {
             throw ServerError(.badRequest, reason: "No users to delete found.")
         }
-        guard let relation = try await Repositories.users.findChatRelation(id, for: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
             throw ServerError(.forbidden)
         }
         let chat = relation.chat
         if chat.isPersonal {
             throw ServerError(.badRequest, reason: "You can't alter users in a personal chat.")
         }
-        try await Repositories.users.deleteUsers(users, from: chat)
+        try await Repositories.chats.deleteUsers(users, from: chat)
         return ChatInfo(from: relation, fullInfo: true)
     }
 }

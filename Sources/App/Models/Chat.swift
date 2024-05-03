@@ -91,3 +91,10 @@ extension Set where Element == UserID {
         sorted().map { "\($0)" }.joined(separator: "+")
     }
 }
+
+extension Array where Element == UserID {
+    
+    func participantsKey() -> String {
+        Set(self).participantsKey()
+    }
+}
