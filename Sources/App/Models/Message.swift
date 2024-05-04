@@ -33,6 +33,9 @@ final class Message: Model {
     @Field(key: "read_at")
     var readAt: Date?
     
+    @Field(key: "edited_at")
+    var editedAt: Date?
+    
     @Field(key: "is_visible")
     var isVisible: Bool
     
@@ -66,6 +69,7 @@ final class Message: Model {
         self.previewWidth = previewWidth
         self.previewHeight = previewHeight
         self.readAt = nil
+        self.editedAt = nil
         self.isVisible = isVisible
     }
 }
@@ -85,6 +89,7 @@ extension Message {
         var previewHeight: Int?
         var createdAt: Date?
         var updatedAt: Date?
+        var editedAt: Date?
         var readAt: Date?
         var isVisible: Bool?
         
@@ -101,6 +106,7 @@ extension Message {
             self.createdAt = message.createdAt
             self.updatedAt = message.updatedAt
             self.readAt = message.readAt
+            self.editedAt = message.editedAt
             self.isVisible = message.isVisible
         }
     }

@@ -12,6 +12,7 @@ protocol Chats {
     func save(_ chat: Chat, with users: [UserID]) async throws
     func deleteUsers(_ users: [UserID], from chat: Chat) async throws
     
+    func findMessage(id: UUID) async throws -> Message?
     func messages(from chatId: UUID, before: Date?, count: Int) async throws -> [Message]
     func saveMessage(_ message: Message) async throws
 }
@@ -125,6 +126,14 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         _ = try await chat.$users.get(reload: true, on: database)
         chat.participantsKey = Set(chat.users.compactMap { $0.id }).participantsKey()
         try await chat.save(on: database)
+    }
+    
+    func findMessage(id: UUID) async throws -> Message? {
+        try await Message.query(on: database)
+            .filter(\.$id == id)
+            .with(\.$author)
+            .with(\.$chat)
+            .first()
     }
     
     func messages(from chatId: UUID, before: Date?, count: Int) async throws -> [Message] {

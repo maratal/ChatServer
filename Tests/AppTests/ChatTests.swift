@@ -271,4 +271,39 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
+    
+    func testEditMessageInChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
+        
+        var message: MessageInfo!
+        try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: UUID(), text: "Hey")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            message = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(message.text, "Hey")
+            XCTAssertNil(message.editedAt)
+            XCTAssertNotNil(message.createdAt)
+        })
+        
+        sleep(1)
+        
+        try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: UUID(), text: "Hi")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let updatedMessage = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(updatedMessage.id, message.id)
+            XCTAssertEqual(updatedMessage.text, "Hi")
+            XCTAssertNotNil(updatedMessage.editedAt)
+            XCTAssertNotNil(updatedMessage.createdAt)
+            XCTAssertTrue(updatedMessage.editedAt! > updatedMessage.createdAt!)
+        })
+    }
 }

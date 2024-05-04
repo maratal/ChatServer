@@ -160,4 +160,25 @@ struct ChatController {
         
         return message.info()
     }
+    
+    func updateMessage(_ id: UUID, with update: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
+        guard let message = try await Repositories.chats.findMessage(id: id), message.author.id == userId else {
+            throw ServerError(.forbidden)
+        }
+        if let text = update.text {
+            message.text = text
+            message.editedAt = Date()
+        }
+        if let fileType = update.fileType {
+            message.fileType = fileType
+        }
+        if let fileSize = update.fileSize {
+            message.fileSize = fileSize
+        }
+        if let isVisible = update.isVisible {
+            message.isVisible = isVisible
+        }
+        try await Repositories.chats.saveMessage(message)
+        return message.info()
+    }
 }

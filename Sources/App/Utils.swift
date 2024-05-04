@@ -24,6 +24,7 @@ extension Request {
     
     enum Parameter: String {
         case id
+        case messageId
     }
     
     func objectID() throws -> Int {
@@ -36,6 +37,13 @@ extension Request {
     func objectUUID() throws -> UUID {
         guard let uuid = parameters.get(Parameter.id.rawValue, as: UUID.self) else {
             throw Abort(.badRequest, reason: "UUID id was not found in the path.")
+        }
+        return uuid
+    }
+    
+    func messageUUID() throws -> UUID {
+        guard let uuid = parameters.get(Parameter.messageId.rawValue, as: UUID.self) else {
+            throw Abort(.badRequest, reason: "Message UUID was not found in the path.")
         }
         return uuid
     }
@@ -62,6 +70,7 @@ extension Request {
 
 extension PathComponent {
     static var id: Self { ":\(Request.Parameter.id)" }
+    static var messageId: Self { ":\(Request.Parameter.messageId)" }
 }
 
 extension Request {
