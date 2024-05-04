@@ -25,6 +25,7 @@ public func configure(_ app: Application) throws {
     app.migrations.add(CreateChat())
     app.migrations.add(CreateMessage())
     app.migrations.add(CreateChatToUser())
+    app.migrations.add(CreateReaction())
 
     Repositories.useDatabase()
     

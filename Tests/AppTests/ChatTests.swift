@@ -306,4 +306,28 @@ final class ChatTests: XCTestCase {
             XCTAssertTrue(updatedMessage.editedAt! > updatedMessage.createdAt!)
         })
     }
+    
+    func testReadMessageInChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
+        let message = try await makeMessages(for: chat.requireID(), authorId: users[0].requireID(), count: 1).first!
+        let messageInfo = try await Repositories.chats.findMessage(id: message.id!)!.info()
+        XCTAssertNil(messageInfo.seenAt)
+        
+        try await app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let info = try await Repositories.chats.findMessage(id: message.id!)!.info()
+            XCTAssertEqual(info.reactions?.count, 1)
+            XCTAssertNotNil(info.seenAt)
+        })
+        
+        // Second similar request should be ignored by the server
+        try await app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let info = try await Repositories.chats.findMessage(id: message.id!)!.info()
+            XCTAssertEqual(info.reactions?.count, 1)
+            XCTAssertNotNil(info.seenAt)
+        })
+    }
 }

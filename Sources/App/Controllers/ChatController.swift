@@ -181,4 +181,17 @@ struct ChatController {
         try await Repositories.chats.saveMessage(message)
         return message.info()
     }
+    
+    func readMessage(_ id: UUID, by userId: UserID) async throws {
+        guard let message = try await Repositories.chats.findMessage(id: id) else {
+            throw ServerError(.notFound)
+        }
+        guard message.chat.users.contains(where: { $0.id == userId }) else {
+            throw ServerError(.forbidden)
+        }
+        if message.reactions.first(where: { $0.user.id == userId && $0.badge == Reactions.seen.rawValue }) == nil {
+            let reaction = Reaction(messageId: id, userId: userId, badge: .seen)
+            try await Repositories.saveItem(reaction)
+        }
+    }
 }

@@ -31,6 +31,13 @@ extension HTTPHeaders {
     }
 }
 
+extension MessageInfo {
+    
+    var seenAt: Date? {
+        reactions?.first(where: { $0.user?.id != authorId && $0.badge == Reactions.seen.rawValue })?.createdAt
+    }
+}
+
 struct CurrentUser {
     static let name = "Admin"
     static let username = "admin"

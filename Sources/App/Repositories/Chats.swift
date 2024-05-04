@@ -132,7 +132,12 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         try await Message.query(on: database)
             .filter(\.$id == id)
             .with(\.$author)
-            .with(\.$chat)
+            .with(\.$reactions) { reaction in
+                reaction.with(\.$user)
+            }
+            .with(\.$chat) { chat in
+                chat.with(\.$users)
+            }
             .first()
     }
     

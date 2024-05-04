@@ -33,6 +33,10 @@ final class Repositories {
             chats: ChatsDatabaseRepository(database: database))
     }
     
+    static func saveItem(_ item: any RepositoryItem) async throws {
+        try await item.save(on: database)
+    }
+    
     static func saveAll(_ items: [any RepositoryItem]) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for item in items {

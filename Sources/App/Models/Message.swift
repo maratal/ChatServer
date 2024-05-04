@@ -30,9 +30,6 @@ final class Message: Model {
     @Timestamp(key: "updated_at", on: .update)
     var updatedAt: Date?
     
-    @Field(key: "read_at")
-    var readAt: Date?
-    
     @Field(key: "edited_at")
     var editedAt: Date?
     
@@ -44,6 +41,9 @@ final class Message: Model {
     
     @Parent(key: "chat_id")
     var chat: Chat
+    
+    @Children(for: \.$message)
+    var reactions: [Reaction]
     
     required init() {}
     
@@ -68,7 +68,6 @@ final class Message: Model {
         self.fileSize = fileSize
         self.previewWidth = previewWidth
         self.previewHeight = previewHeight
-        self.readAt = nil
         self.editedAt = nil
         self.isVisible = isVisible
     }
@@ -90,8 +89,8 @@ extension Message {
         var createdAt: Date?
         var updatedAt: Date?
         var editedAt: Date?
-        var readAt: Date?
         var isVisible: Bool?
+        var reactions: [Reaction.Info]?
         
         init(from message: Message) {
             self.id = message.id
@@ -105,9 +104,11 @@ extension Message {
             self.previewHeight = message.previewHeight
             self.createdAt = message.createdAt
             self.updatedAt = message.updatedAt
-            self.readAt = message.readAt
             self.editedAt = message.editedAt
             self.isVisible = message.isVisible
+            if message.$reactions.value != nil {
+                self.reactions = message.reactions.map { $0.info() }
+            }
         }
     }
     

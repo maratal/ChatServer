@@ -14,7 +14,6 @@ struct CreateMessage: AsyncMigration {
             .field("preview_height", .int16)
             .field("created_at", .datetime, .required)
             .field("updated_at", .datetime)
-            .field("read_at", .datetime)
             .field("edited_at", .datetime)
             .field("is_visible", .bool, .required, .custom("DEFAULT TRUE"))
             .field("author_id", .uint32, .required, .references("users", "id", onDelete: .noAction))
