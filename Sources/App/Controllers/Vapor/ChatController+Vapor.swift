@@ -6,7 +6,7 @@ extension ChatController: RouteCollection {
         let protected = routes.grouped("chats").grouped(UserToken.authenticator())
         protected.get(use: chats)
         protected.post(use: createChat)
-        protected.group(Request.Parameter.id.pathComponent) { route in
+        protected.group(.id) { route in
             route.get(use: chat)
             route.put(use: updateChat)
             route.put("settings", use: updateChatSettings)

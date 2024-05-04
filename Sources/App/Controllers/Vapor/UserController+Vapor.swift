@@ -4,7 +4,7 @@ extension UserController: RouteCollection {
     
     func boot(routes: RoutesBuilder) throws {
         let users = routes.grouped("users")
-        users.group(Request.Parameter.id.pathComponent) { route in
+        users.group(.id) { route in
             route.get(use: user)
         }
         
@@ -13,14 +13,14 @@ extension UserController: RouteCollection {
             route.put(use: update)
             route.get("contacts", use: contacts)
             route.post("contacts", use: addContact)
-            route.delete("contacts", Request.Parameter.id.pathComponent, use: deleteContact)
+            route.delete("contacts", .id, use: deleteContact)
         }
         protected.group("current") { route in
             route.get(use: current)
             route.put(use: update)
             route.get("contacts", use: contacts)
             route.post("contacts", use: addContact)
-            route.delete("contacts", Request.Parameter.id.pathComponent, use: deleteContact)
+            route.delete("contacts", .id, use: deleteContact)
         }
         protected.get(use: search)
     }

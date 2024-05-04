@@ -24,10 +24,6 @@ extension Request {
     
     enum Parameter: String {
         case id
-        
-        var pathComponent: PathComponent {
-            ":\(self)"
-        }
     }
     
     func objectID() throws -> Int {
@@ -62,6 +58,10 @@ extension Request {
         }
         return nil
     }
+}
+
+extension PathComponent {
+    static var id: Self { ":\(Request.Parameter.id)" }
 }
 
 extension Request {
