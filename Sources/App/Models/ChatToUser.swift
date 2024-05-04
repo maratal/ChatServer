@@ -1,6 +1,6 @@
 import Fluent
 
-final class ChatToUser: Model {
+final class ChatToUser: RepositoryItem {
     static let schema = "chats_to_users"
     
     @ID(key: .id)
@@ -34,3 +34,14 @@ final class ChatToUser: Model {
 }
 
 typealias ChatRelation = ChatToUser
+
+extension Array where Element == ChatRelation {
+    
+    func ofUser(_ userId: UserID) -> ChatRelation? {
+        filter({ $0.$user.id == userId }).first
+    }
+    
+    func ofUserOtherThen(_ userId: UserID) -> ChatRelation? {
+        filter({ $0.$user.id != userId }).first
+    }
+}

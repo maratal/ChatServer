@@ -34,7 +34,7 @@ final class Message: Model {
     var readAt: Date?
     
     @Field(key: "is_visible")
-    var isVisible: Bool?
+    var isVisible: Bool
     
     @Parent(key: "author_id")
     var author: User
@@ -53,7 +53,8 @@ final class Message: Model {
         fileType: String? = nil,
         fileSize: Int64? = nil,
         previewWidth: Int? = nil,
-        previewHeight: Int? = nil
+        previewHeight: Int? = nil,
+        isVisible: Bool = true
     ) {
         self.id = id
         self.localId = localId
@@ -64,6 +65,8 @@ final class Message: Model {
         self.fileSize = fileSize
         self.previewWidth = previewWidth
         self.previewHeight = previewHeight
+        self.readAt = nil
+        self.isVisible = isVisible
     }
 }
 

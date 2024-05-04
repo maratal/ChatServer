@@ -1,6 +1,6 @@
 import Fluent
 
-final class Chat: Model {
+final class Chat: RepositoryItem {
     static let schema = "chats"
     
     @ID(key: .id)

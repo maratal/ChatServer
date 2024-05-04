@@ -114,4 +114,50 @@ struct ChatController {
         let messages = try await Repositories.chats.messages(from: id, before: before, count: count)
         return messages.map { $0.info() }
     }
+    
+    func postMessage(to id: UUID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
+        let relations = try await Repositories.chats.findRelations(of: id)
+        guard relations.count > 0 else {
+            throw ServerError(.notFound)
+        }
+        guard let authorRelation = relations.ofUser(userId), !authorRelation.isBlocked else {
+            throw ServerError(.forbidden)
+        }
+        guard info.text != nil || info.fileSize != nil else {
+            throw ServerError(.badRequest, reason: "Message is empty.")
+        }
+        if let text = info.text, (text.count == 0 || text.count > 2048) {
+            throw ServerError(.badRequest, reason: "Message text should be between 1 and 2048 characters long.")
+        }
+        let message = Message(localId: info.localId,
+                              authorId: userId,
+                              chatId: id,
+                              text: info.text,
+                              fileType: info.fileType,
+                              fileSize: info.fileSize,
+                              previewWidth: info.previewWidth,
+                              previewHeight: info.previewHeight,
+                              isVisible: info.isVisible ?? true)
+        
+        try await Repositories.chats.saveMessage(message)
+        
+        let chat = authorRelation.chat
+        
+        chat.$lastMessage.id = try message.requireID()
+        authorRelation.isArchived = false
+        authorRelation.isRemovedOnDevice = false
+        
+        var itemsToSave: [any RepositoryItem] = [chat, authorRelation]
+        
+        if chat.isPersonal {
+            if let recipientRelation = relations.ofUserOtherThen(userId), recipientRelation.isRemovedOnDevice {
+                recipientRelation.isRemovedOnDevice = false
+                itemsToSave.append(recipientRelation)
+            }
+        }
+        
+        try await Repositories.saveAll(itemsToSave)
+        
+        return message.info()
+    }
 }

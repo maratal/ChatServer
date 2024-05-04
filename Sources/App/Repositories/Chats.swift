@@ -3,6 +3,7 @@ import FluentKit
 protocol Chats {
     func fetch(id: UUID) async throws -> Chat
     func find(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat?
+    func findRelations(of chatId: UUID) async throws -> [ChatRelation]
     func findRelation(of chatId: UUID, userId: UserID) async throws -> ChatRelation?
     func all(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation]
     
@@ -20,6 +21,17 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
     
     func fetch(id: UUID) async throws -> Chat {
         try await Chat.find(id, on: database)!
+    }
+    
+    func findRelations(of chatId: UUID) async throws -> [ChatRelation] {
+        try await ChatRelation.query(on: database)
+            .filter(\.$chat.$id == chatId)
+            .with(\.$chat) { chat in
+                chat.with(\.$owner)
+                chat.with(\.$lastMessage)
+                chat.with(\.$users)
+            }
+            .all()
     }
     
     func findRelation(of chatId: UUID, userId: UserID) async throws -> ChatRelation? {
@@ -80,15 +92,9 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         if newUsers.count > 0 {
             chat.participantsKey = allUsers.participantsKey()
             try await chat.save(on: database)
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                for userId in newUsers {
-                    group.addTask {
-                        let relation = try ChatRelation(chatId: chat.requireID(), userId: userId)
-                        try await relation.save(on: database)
-                    }
-                }
-                try await group.waitForAll()
-            }
+            try await Repositories.saveAll(
+                newUsers.map { ChatRelation(chatId: try chat.requireID(), userId: $0) }
+            )
             _ = try await chat.$users.get(reload: true, on: database)
         }
     }

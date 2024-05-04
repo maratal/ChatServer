@@ -69,7 +69,9 @@ extension ChatController: RouteCollection {
     }
     
     func postMessage(_ req: Request) async throws -> MessageInfo {
-        throw ServerError(.notImplemented)
+        try await postMessage(to: req.objectUUID(),
+                              with: req.content.decode(PostMessageRequest.self),
+                              by: req.currentUser().requireID())
     }
     
     func updateMessage(_ req: Request) async throws -> MessageInfo {
@@ -100,4 +102,14 @@ struct UpdateChatRequest: Content {
 
 struct UpdateChatUsersRequest: Content {
     var users: [UserID]
+}
+
+struct PostMessageRequest: Content {
+    var localId: UUID
+    var text: String?
+    var fileType: String?
+    var fileSize: Int64?
+    var previewWidth: Int?
+    var previewHeight: Int?
+    var isVisible: Bool?
 }

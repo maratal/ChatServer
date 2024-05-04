@@ -240,4 +240,35 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(page2.last!.text, "text 1")
         })
     }
+    
+    func testPostMessageToChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
+        
+        try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: UUID(), text: "Hey")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let message = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(message.text, "Hey")
+            XCTAssertEqual(message.authorId, current.id!)
+        })
+    }
+    
+    func testPostMessageToForbiddenChat() async throws {
+        try await seedCurrentUser()
+        let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].requireID(), users: [users[1].requireID()], isPersonal: true)
+        
+        try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: UUID(), text: "Hey")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
 }
