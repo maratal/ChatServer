@@ -7,7 +7,7 @@ struct CreateUserToken: AsyncMigration {
         try await database.schema("user_tokens")
             .id()
             .field("value", .string, .required)
-            .field("user_id", .uint32, .required, .references("users", "id"))
+            .field("user_id", .uint32, .required, .references("users", "id", onDelete: .cascade))
             .unique(on: "value")
             .create()
     }
