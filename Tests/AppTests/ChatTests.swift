@@ -457,4 +457,44 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .badRequest, res.body.string)
         })
     }
+    
+    func testClearChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
+        let message = try await makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
+        
+        try await app.test(.DELETE, "chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chats = try await Repositories.chats.all(with: current.id!, fullInfo: false)
+            XCTAssertEqual(chats.count, 1)
+            let message = try await Repositories.chats.findMessage(id: message.id!)
+            XCTAssertNil(message)
+        })
+    }
+    
+    func testClearChatNotOwningIt() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
+        
+        try app.test(.DELETE, "chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
+    func testClearPersonalChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
+        let message = try await makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
+        
+        try await app.test(.DELETE, "chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chats = try await Repositories.chats.all(with: current.id!, fullInfo: false)
+            XCTAssertEqual(chats.count, 1)
+            let message = try await Repositories.chats.findMessage(id: message.id!)
+            XCTAssertNil(message)
+        })
+    }
 }
