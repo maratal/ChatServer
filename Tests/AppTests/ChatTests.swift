@@ -330,4 +330,19 @@ final class ChatTests: XCTestCase {
             XCTAssertNotNil(info.seenAt)
         })
     }
+    
+    func testDeleteMessageInChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
+        let message = try await makeMessages(for: chat.requireID(), authorId: current.requireID(), count: 1).first!
+        XCTAssertEqual(message.text, "text 1")
+        
+        try app.test(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let updatedMessage = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(updatedMessage.id, message.id)
+            XCTAssertEqual(updatedMessage.text, "")
+        })
+    }
 }

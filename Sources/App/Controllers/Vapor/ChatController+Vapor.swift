@@ -17,9 +17,9 @@ extension ChatController: RouteCollection {
             route.get("messages", use: messages)
             route.post("messages", use: postMessage)
             route.put("messages", use: updateMessage)
-            route.delete("messages", use: deleteMessage)
             route.put("messages", .messageId, use: updateMessage)
             route.put("messages", .messageId, "read", use: readMessage)
+            route.delete("messages", .messageId, use: deleteMessage)
         }
     }
     
@@ -87,8 +87,10 @@ extension ChatController: RouteCollection {
         return .ok
     }
     
-    func deleteMessage(_ req: Request) async throws -> HTTPStatus {
-        throw ServerError(.notImplemented)
+    func deleteMessage(_ req: Request) async throws -> MessageInfo {
+        try await updateMessage(req.messageUUID(),
+                                with: PostMessageRequest(text: "", fileSize: 0),
+                                by: req.currentUser().requireID())
     }
 }
 
