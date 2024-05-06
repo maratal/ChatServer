@@ -105,6 +105,7 @@ struct UpdateChatRequest: Content {
     var isMuted: Bool?
     var isArchived: Bool?
     var isBlocked: Bool?
+    var isRemovedOnDevice: Bool?
 }
 
 struct UpdateChatUsersRequest: Content {

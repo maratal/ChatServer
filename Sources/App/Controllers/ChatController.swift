@@ -56,7 +56,7 @@ struct ChatController {
     }
     
     func updateChatSettings(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
             throw ServerError(.forbidden)
         }
         if let isMuted = update.isMuted {
@@ -65,8 +65,8 @@ struct ChatController {
         if let isArchived = update.isArchived {
             relation.isArchived = isArchived
         }
-        if let isBlocked = update.isBlocked {
-            relation.isBlocked = isBlocked
+        if let isRemovedOnDevice = update.isRemovedOnDevice {
+            relation.isRemovedOnDevice = isRemovedOnDevice
         }
         try await Repositories.chats.saveRelation(relation)
         return ChatInfo(from: relation, fullInfo: true)

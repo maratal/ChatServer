@@ -345,4 +345,23 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(updatedMessage.text, "")
         })
     }
+    
+    func testDeleteChatOnDevice() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: false)
+        let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: current.id!)!
+        XCTAssertEqual(relation.isRemovedOnDevice, false)
+        
+        try app.test(.PUT, "chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatRequest(isRemovedOnDevice: true))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try app.test(.GET, "chats", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chats = try res.content.decode([ChatInfo].self)
+            XCTAssertEqual(chats.count, 0)
+        })
+    }
 }
