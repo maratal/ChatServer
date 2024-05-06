@@ -349,7 +349,7 @@ final class ChatTests: XCTestCase {
     func testDeleteChatOnDevice() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: false)
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
         let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: current.id!)!
         XCTAssertEqual(relation.isRemovedOnDevice, false)
         
@@ -363,5 +363,72 @@ final class ChatTests: XCTestCase {
             let chats = try res.content.decode([ChatInfo].self)
             XCTAssertEqual(chats.count, 0)
         })
+    }
+    
+    func testDeleteChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
+        let message = try await makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
+        
+        try app.test(.GET, "chats", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chats = try res.content.decode([ChatInfo].self)
+            XCTAssertEqual(chats.count, 1)
+        })
+        // Add reaction, should be deleted together with the messages
+        try await app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let reactions = try await Repositories.chats.findReactions(for: message.id!)
+            XCTAssertEqual(reactions.count, 1)
+        })
+        try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try await app.test(.GET, "chats", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chats = try res.content.decode([ChatInfo].self)
+            XCTAssertEqual(chats.count, 0)
+            let reactions = try await Repositories.chats.findReactions(for: message.id!)
+            XCTAssertEqual(reactions.count, 0)
+        })
+    }
+    
+    func testTryDeleteChatNotOwningIt() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
+        
+        try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
+    func testDeletePersonalChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
+        
+        try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+    }
+    
+    func testDeletePersonalChatNotOwningIt() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
+
+        try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+    }
+    
+    func testDeletePersonalChatIfRecipientIsBlocked() async throws {
+        // TODO:
+    }
+    
+    func testDeletePersonalChatIfSenderIsBlocked() async throws {
+        // TODO:
     }
 }

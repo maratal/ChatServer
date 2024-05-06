@@ -107,6 +107,21 @@ struct ChatController {
         return ChatInfo(from: relation, fullInfo: true)
     }
     
+    func deleteChat(_ id: UUID, by userId: UserID) async throws {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
+            throw ServerError(.forbidden)
+        }
+        let chat = relation.chat
+        guard chat.isPersonal || chat.owner.id == userId else {
+            throw ServerError(.forbidden, reason: "You can't delete this chat.")
+        }
+        if chat.isPersonal && relation.isBlocked {
+            try await Repositories.chats.deleteMessages(from: chat)
+        } else {
+            try await Repositories.chats.delete(chat)
+        }
+    }
+    
     func messages(from id: UUID, for userId: UserID, before: Date?, count: Int) async throws -> [MessageInfo] {
         guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
             throw ServerError(.forbidden)

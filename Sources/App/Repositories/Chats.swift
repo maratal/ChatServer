@@ -8,16 +8,22 @@ protocol Chats {
     func all(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation]
     
     func save(_ chat: Chat) async throws
-    func saveRelation(_ relation: ChatRelation) async throws
     func save(_ chat: Chat, with users: [UserID]) async throws
+    func delete(_ chat: Chat) async throws
     func deleteUsers(_ users: [UserID], from chat: Chat) async throws
-    
+    func saveRelation(_ relation: ChatRelation) async throws
+    func deleteRelation(_ relation: ChatRelation) async throws
+
     func findMessage(id: UUID) async throws -> Message?
     func messages(from chatId: UUID, before: Date?, count: Int) async throws -> [Message]
     func saveMessage(_ message: Message) async throws
+    func deleteMessages(from chat: Chat) async throws
+    
+    func findReactions(for messageId: UUID) async throws -> [Reaction]
 }
 
 struct ChatsDatabaseRepository: Chats, DatabaseRepository {
+    
     var database: Database
     
     func fetch(id: UUID) async throws -> Chat {
@@ -160,5 +166,25 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
     
     func saveMessage(_ message: Message) async throws {
         try await message.save(on: database)
+    }
+    
+    func delete(_ chat: Chat) async throws {
+        try await chat.delete(on: database)
+    }
+    
+    func deleteRelation(_ relation: ChatRelation) async throws {
+        try await relation.delete(on: database)
+    }
+    
+    func deleteMessages(from chat: Chat) async throws {
+        try await Message.query(on: database)
+            .filter(\.$chat.$id == chat.requireID())
+            .delete()
+    }
+    
+    func findReactions(for messageId: UUID) async throws -> [Reaction] {
+        try await Reaction.query(on: database)
+            .filter(\.$message.$id == messageId)
+            .all()
     }
 }
