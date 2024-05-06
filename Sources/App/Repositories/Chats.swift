@@ -114,23 +114,21 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         guard let chatId = chat.id else {
             throw ServerError(.unprocessableEntity, reason: "Chat wasn't saved yet.")
         }
-        let relations = try await ChatRelation.query(on: database)
+        guard users.count > 0 else {
+            throw ServerError(.unprocessableEntity, reason: "No users provided.")
+        }
+        try await ChatRelation.query(on: database)
             .filter(\.$chat.$id == chatId)
             .filter(\.$user.$id ~~ users)
-            .all()
-        guard relations.count > 0 else {
+            .delete()
+        
+        _ = try await chat.$users.get(reload: true, on: database)
+        
+        let participantsKey = Set(chat.users.compactMap { $0.id }).participantsKey()
+        guard participantsKey != chat.participantsKey else {
             throw ServerError(.unprocessableEntity, reason: "Users provided are not participants of this chat.")
         }
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for relation in relations {
-                group.addTask {
-                    try await relation.delete(on: database)
-                }
-            }
-            try await group.waitForAll()
-        }
-        _ = try await chat.$users.get(reload: true, on: database)
-        chat.participantsKey = Set(chat.users.compactMap { $0.id }).participantsKey()
+        chat.participantsKey = participantsKey
         try await chat.save(on: database)
     }
     
