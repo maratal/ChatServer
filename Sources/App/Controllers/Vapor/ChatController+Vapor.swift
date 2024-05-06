@@ -110,7 +110,7 @@ struct UpdateChatUsersRequest: Content {
 }
 
 struct PostMessageRequest: Content {
-    var localId: UUID
+    var localId: UUID?
     var text: String?
     var fileType: String?
     var fileSize: Int64?

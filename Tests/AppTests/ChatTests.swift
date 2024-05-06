@@ -294,7 +294,7 @@ final class ChatTests: XCTestCase {
         
         try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hi")
+                PostMessageRequest(text: "Hi")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)

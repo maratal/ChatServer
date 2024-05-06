@@ -50,7 +50,7 @@ extension Reaction {
 }
 
 enum Reactions: String {
-    case seen = ""
+    case seen
     case like = "👍"
     case loveit = "❤️"
     case boo = "👎"

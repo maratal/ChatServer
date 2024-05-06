@@ -123,13 +123,13 @@ struct ChatController {
         guard let authorRelation = relations.ofUser(userId), !authorRelation.isBlocked else {
             throw ServerError(.forbidden)
         }
-        guard info.text != nil || info.fileSize != nil else {
-            throw ServerError(.badRequest, reason: "Message is empty.")
+        guard info.localId != nil, info.text != nil || info.fileSize != nil else {
+            throw ServerError(.badRequest, reason: "Malformed message data.")
         }
         if let text = info.text, (text.count == 0 || text.count > 2048) {
             throw ServerError(.badRequest, reason: "Message text should be between 1 and 2048 characters long.")
         }
-        let message = Message(localId: info.localId,
+        let message = Message(localId: info.localId.unsafelyUnwrapped,
                               authorId: userId,
                               chatId: id,
                               text: info.text,
