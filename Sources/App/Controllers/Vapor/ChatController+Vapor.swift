@@ -11,6 +11,7 @@ extension ChatController: RouteCollection {
             route.put(use: updateChat)
             route.put("settings", use: updateChatSettings)
             route.delete(use: deleteChat)
+            route.delete("exit", use: exitChat)
             
             route.post("users", use: addUsers)
             route.delete("users", use: deleteUsers)
@@ -50,6 +51,11 @@ extension ChatController: RouteCollection {
     
     func deleteChat(_ req: Request) async throws -> HTTPStatus {
         try await deleteChat(req.objectUUID(), by: req.currentUser().requireID())
+        return .ok
+    }
+    
+    func exitChat(_ req: Request) async throws -> HTTPStatus {
+        try await exitChat(req.objectUUID(), by: req.currentUser().requireID())
         return .ok
     }
     

@@ -431,4 +431,30 @@ final class ChatTests: XCTestCase {
     func testDeletePersonalChatIfSenderIsBlocked() async throws {
         // TODO:
     }
+    
+    func testExitChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
+        let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: current.id!)
+        XCTAssertNotNil(relation)
+        
+        try await app.test(.DELETE, "chats/\(chat.id!)/exit", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: current.id!)
+            XCTAssertNil(relation)
+        })
+    }
+    
+    func testTryExitPersonalChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
+        let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: current.id!)
+        XCTAssertNotNil(relation)
+        
+        try app.test(.DELETE, "chats/\(chat.id!)/exit", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
 }
