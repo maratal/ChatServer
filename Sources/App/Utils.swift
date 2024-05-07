@@ -95,3 +95,10 @@ extension Request {
     }
 #endif
 }
+
+extension Array where Element: Hashable {
+    
+    func unique() -> [Element] {
+        Self(Set(self))
+    }
+}

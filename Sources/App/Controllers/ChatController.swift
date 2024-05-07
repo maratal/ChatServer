@@ -19,17 +19,17 @@ struct ChatController {
     }
     
     func createChat(with info: CreateChatRequest, by ownerId: UserID) async throws -> ChatInfo {
-        let users = Array(Set(info.participants.filter { $0 != ownerId }))
-        guard users.count > 0 else {
+        let participants = info.participants.unique().filter { $0 != ownerId }
+        guard participants.count > 0 else {
             throw ServerError(.badRequest, reason: "New chat should contain at least one participant.")
         }
 
-        let participantsKey = Set(users + [ownerId]).participantsKey()
+        let participantsKey = Set(participants + [ownerId]).participantsKey()
         var chat = try await Repositories.chats.find(participantsKey: participantsKey, for: ownerId, isPersonal: info.isPersonal)
         
         if chat == nil {
             chat = Chat(title: info.title, ownerId: ownerId, isPersonal: info.isPersonal)
-            try await Repositories.chats.save(chat!, with: users)
+            try await Repositories.chats.save(chat!, with: participants)
             let relation = try await Repositories.chats.findRelation(of: chat!.requireID(), userId: ownerId)!
             return ChatInfo(from: relation, fullInfo: true)
         }
