@@ -423,9 +423,11 @@ final class ChatTests: XCTestCase {
         
         try app.test(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
+            // Message is deleted by deletion of its content:
             let updatedMessage = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(updatedMessage.id, message.id)
             XCTAssertEqual(updatedMessage.text, "")
+            XCTAssertEqual(updatedMessage.fileSize, 0)
         })
     }
     
@@ -437,7 +439,11 @@ final class ChatTests: XCTestCase {
         XCTAssertEqual(message.text, "text 1")
         
         try app.test(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
-            XCTAssertEqual(res.status, .forbidden, res.body.string)
+            XCTAssertEqual(res.status, .ok, "Even blocked users should be able to delete messages in a chat - " + res.body.string)
+            let updatedMessage = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(updatedMessage.id, message.id)
+            XCTAssertEqual(updatedMessage.text, "")
+            XCTAssertEqual(updatedMessage.fileSize, 0)
         })
     }
     

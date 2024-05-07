@@ -241,6 +241,17 @@ struct ChatController {
         return message.info()
     }
     
+    func deleteMessage(_ id: UUID, by userId: UserID) async throws -> MessageInfo {
+        guard let message = try await Repositories.chats.findMessage(id: id), message.author.id == userId else {
+            throw ServerError(.forbidden)
+        }
+        message.text = ""
+        message.fileSize = 0
+        message.editedAt = Date()
+        try await Repositories.chats.saveMessage(message)
+        return message.info()
+    }
+    
     func readMessage(_ id: UUID, by userId: UserID) async throws {
         guard let message = try await Repositories.chats.findMessage(id: id) else {
             throw ServerError(.notFound)

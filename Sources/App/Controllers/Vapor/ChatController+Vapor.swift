@@ -117,9 +117,7 @@ extension ChatController: RouteCollection {
     }
     
     func deleteMessage(_ req: Request) async throws -> MessageInfo {
-        try await updateMessage(req.messageUUID(),
-                                with: PostMessageRequest(text: "", fileSize: 0),
-                                by: req.currentUser().requireID())
+        try await deleteMessage(req.messageUUID(), by: req.currentUser().requireID())
     }
 }
 
