@@ -582,7 +582,7 @@ final class ChatTests: XCTestCase {
         let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
         
         try app.test(.DELETE, "chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
-            XCTAssertEqual(res.status, .forbidden, res.body.string)
+            XCTAssertEqual(res.status, .forbidden, "Only owner should be able to clear messages in a multiuser chat - " + res.body.string) // Questionable
         })
     }
     
