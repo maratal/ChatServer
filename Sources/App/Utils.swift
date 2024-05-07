@@ -24,6 +24,7 @@ extension Request {
     
     enum Parameter: String {
         case id
+        case userId
         case messageId
     }
     
@@ -48,6 +49,13 @@ extension Request {
         return uuid
     }
     
+    func userID() throws -> Int {
+        guard let id = parameters.get(Parameter.userId.rawValue, as: Int.self) else {
+            throw Abort(.badRequest, reason: "User id was not found in the path.")
+        }
+        return id
+    }
+    
     func searchString() throws -> String {
         guard let s: String = query["search"] ?? query["s"] else {
             throw Abort(.badRequest, reason: "Parameter `search` (`s`) was not found in the query.")
@@ -70,6 +78,7 @@ extension Request {
 
 extension PathComponent {
     static var id: Self { ":\(Request.Parameter.id)" }
+    static var userId: Self { ":\(Request.Parameter.userId)" }
     static var messageId: Self { ":\(Request.Parameter.messageId)" }
 }
 

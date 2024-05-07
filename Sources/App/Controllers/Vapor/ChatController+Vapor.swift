@@ -15,10 +15,11 @@ extension ChatController: RouteCollection {
             
             route.post("users", use: addUsers)
             route.delete("users", use: deleteUsers)
+            route.put("users", .userId, "block", use: blockUserInChat)
+            route.put("users", .userId, "unblock", use: unblockUserInChat)
             
             route.get("messages", use: messages)
             route.post("messages", use: postMessage)
-            route.put("messages", use: updateMessage)
             route.put("messages", .messageId, use: updateMessage)
             route.put("messages", .messageId, "read", use: readMessage)
             route.delete("messages", .messageId, use: deleteMessage)
@@ -75,6 +76,20 @@ extension ChatController: RouteCollection {
         try await deleteUsers(req.content.decode(UpdateChatUsersRequest.self).users,
                               from: req.objectUUID(),
                               by: req.currentUser().requireID())
+    }
+    
+    func blockUserInChat(_ req: Request) async throws -> HTTPStatus {
+        try await blockUser(req.userID(),
+                            in: req.objectUUID(),
+                            by: req.currentUser().requireID())
+        return .ok
+    }
+    
+    func unblockUserInChat(_ req: Request) async throws -> HTTPStatus {
+        try await unblockUser(req.userID(),
+                              in: req.objectUUID(),
+                              by: req.currentUser().requireID())
+        return .ok
     }
     
     func messages(_ req: Request) async throws -> [MessageInfo] {

@@ -73,9 +73,16 @@ func makeContact(_ user: User, of owner: User) async throws -> Contact {
 }
 
 @discardableResult
-func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool) async throws -> Chat {
+func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: UserID? = nil) async throws -> Chat {
     let chat = Chat(ownerId: ownerId, isPersonal: isPersonal)
     try await Repositories.chats.save(chat, with: users)
+    if let blockedId = blockedId {
+        guard let relation = try await Repositories.chats.findRelations(of: chat.id!).ofUser(blockedId) else {
+            preconditionFailure("Invalid blocked user.")
+        }
+        relation.isBlocked = true
+        try await Repositories.chats.saveRelation(relation)
+    }
     return chat
 }
 

@@ -33,6 +33,9 @@ final class Chat: RepositoryItem {
         to: \.$user)
     var users: [User]
     
+    @Children(for: \.$chat)
+    var relations: [ChatRelation]
+    
     init() {}
     
     init(id: UUID? = nil,

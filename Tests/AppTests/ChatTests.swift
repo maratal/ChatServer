@@ -16,7 +16,7 @@ final class ChatTests: XCTestCase {
     func testGetUserChats() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID()], isPersonal: true)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         
         try app.test(.GET, "chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -29,7 +29,7 @@ final class ChatTests: XCTestCase {
     func testGetUserChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID()], isPersonal: true)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         
         try app.test(.GET, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -42,7 +42,7 @@ final class ChatTests: XCTestCase {
     func testGetOtherUsersChat() async throws {
         try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: users[0].requireID(), users: [users[1].requireID()], isPersonal: true)
+        let chat = try await makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
         
         try app.test(.GET, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .notFound, res.body.string)
@@ -55,7 +55,7 @@ final class ChatTests: XCTestCase {
         
         try app.test(.POST, "chats", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                CreateChatRequest(participants: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+                CreateChatRequest(participants: [users[0].id!, users[1].id!], isPersonal: false)
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -72,7 +72,7 @@ final class ChatTests: XCTestCase {
         
         try app.test(.POST, "chats", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                CreateChatRequest(participants: [users[0].requireID()], isPersonal: true)
+                CreateChatRequest(participants: [users[0].id!], isPersonal: true)
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -86,11 +86,11 @@ final class ChatTests: XCTestCase {
     func testTryCreateChatDuplicate() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         
         try app.test(.POST, "chats", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                CreateChatRequest(participants: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+                CreateChatRequest(participants: [users[0].id!, users[1].id!], isPersonal: false)
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -104,11 +104,11 @@ final class ChatTests: XCTestCase {
     func testTryCreatePersonalChatDuplicate() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID()], isPersonal: true)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         XCTAssertEqual(chat.isPersonal, true)
         
         try app.test(.POST, "chats", headers: .none, beforeRequest: { req in
-            try req.content.encode(CreateChatRequest(participants: [users[0].requireID()], isPersonal: true))
+            try req.content.encode(CreateChatRequest(participants: [users[0].id!], isPersonal: true))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
@@ -121,13 +121,13 @@ final class ChatTests: XCTestCase {
     func testCreatePersonalChatWhenParticipantsKeyDuplicateExists() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
-        chat.participantsKey = try Set([current.requireID(), users[0].requireID()]).participantsKey()
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
+        chat.participantsKey = Set([current.id!, users[0].id!]).participantsKey()
         try await Repositories.chats.save(chat)
         XCTAssertEqual(chat.isPersonal, false)
         
         try app.test(.POST, "chats", headers: .none, beforeRequest: { req in
-            try req.content.encode(CreateChatRequest(participants: [users[0].requireID()], isPersonal: true))
+            try req.content.encode(CreateChatRequest(participants: [users[0].id!], isPersonal: true))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
@@ -140,7 +140,7 @@ final class ChatTests: XCTestCase {
     func testUpdateChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         
         try app.test(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(title: "Some"))
@@ -152,10 +152,22 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testUpdateChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
+        
+        try app.test(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatRequest(title: "Some"))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
     func testUpdatePersonalChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID()], isPersonal: true)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         
         try app.test(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(title: "Some"))
@@ -164,11 +176,23 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testUpdatePersonalChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true, blockedId: current.id)
+        
+        try app.test(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatRequest(title: "Some"))
+        }, afterResponse: { res in
+            XCTAssertNotEqual(res.status, .ok, res.body.string)
+        })
+    }
+    
     func testUpdateChatSettings() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
-        let chatRelation = try await Repositories.chats.findRelation(of: chat.requireID(), userId: current.requireID())!
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
+        let chatRelation = try await Repositories.chats.findRelation(of: chat.id!, userId: current.id!)!
         XCTAssertEqual(chatRelation.isMuted, false)
         
         try app.test(.PUT, "chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
@@ -184,11 +208,11 @@ final class ChatTests: XCTestCase {
     func testAddUsersToChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
         try await app.test(.POST, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
-            try req.content.encode(UpdateChatUsersRequest(users: [users[1].requireID(), users[2].requireID()]))
+            try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
@@ -199,14 +223,27 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testAddUsersToChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
+        XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
+        
+        try app.test(.POST, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
     func testDeleteUsersFromChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: [users[0].requireID(), users[1].requireID()], isPersonal: false)
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
         try await app.test(.DELETE, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
-            try req.content.encode(UpdateChatUsersRequest(users: [users[1].requireID(), users[2].requireID()]))
+            try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
@@ -217,11 +254,24 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testDeleteUsersFromChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
+        XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
+        
+        try app.test(.DELETE, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
     func testGetChatMessagesPaginated() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
-        try await makeMessages(for: chat.requireID(), authorId: current.requireID(), count: 9)
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        try await makeMessages(for: chat.id!, authorId: current.id!, count: 9)
         
         let count = 5
         var page1 = [MessageInfo]()
@@ -241,10 +291,21 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testGetChatMessagesPaginatedByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
+        try await makeMessages(for: chat.id!, authorId: current.id!, count: 9)
+        
+        try app.test(.GET, "chats/\(chat.id!)/messages?count=5", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
     func testPostMessageToChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         
         try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
@@ -258,10 +319,24 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testPostMessageToChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
+        
+        try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: UUID(), text: "Hey")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
     func testPostMessageToForbiddenChat() async throws {
         try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: users[0].requireID(), users: [users[1].requireID()], isPersonal: true)
+        let chat = try await makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
         
         try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
@@ -275,21 +350,9 @@ final class ChatTests: XCTestCase {
     func testEditMessageInChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
-        
-        var message: MessageInfo!
-        try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
-            try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hey")
-            )
-        }, afterResponse: { res in
-            XCTAssertEqual(res.status, .ok, res.body.string)
-            message = try res.content.decode(MessageInfo.self)
-            XCTAssertEqual(message.text, "Hey")
-            XCTAssertNil(message.editedAt)
-            XCTAssertNotNil(message.createdAt)
-        })
-        
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let message = try await makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
+        XCTAssertEqual(message.text, "text 1")
         sleep(1)
         
         try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
@@ -299,6 +362,9 @@ final class ChatTests: XCTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let updatedMessage = try res.content.decode(MessageInfo.self)
+            guard updatedMessage.id != nil else {
+                return XCTFail("Message should have an id.")
+            }
             XCTAssertEqual(updatedMessage.id, message.id)
             XCTAssertEqual(updatedMessage.text, "Hi")
             XCTAssertNotNil(updatedMessage.editedAt)
@@ -307,11 +373,28 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testEditMessageInChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
+        let message = try await makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
+        XCTAssertEqual(message.text, "text 1")
+        sleep(1)
+        
+        try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(text: "Hi")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
     func testReadMessageInChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
-        let message = try await makeMessages(for: chat.requireID(), authorId: users[0].requireID(), count: 1).first!
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let message = try await makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
         let messageInfo = try await Repositories.chats.findMessage(id: message.id!)!.info()
         XCTAssertNil(messageInfo.seenAt)
         
@@ -334,8 +417,8 @@ final class ChatTests: XCTestCase {
     func testDeleteMessageInChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.requireID(), users: users.map { $0.id! }, isPersonal: true)
-        let message = try await makeMessages(for: chat.requireID(), authorId: current.requireID(), count: 1).first!
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let message = try await makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
         XCTAssertEqual(message.text, "text 1")
         
         try app.test(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
@@ -343,6 +426,18 @@ final class ChatTests: XCTestCase {
             let updatedMessage = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(updatedMessage.id, message.id)
             XCTAssertEqual(updatedMessage.text, "")
+        })
+    }
+    
+    func testDeleteMessageInChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
+        let message = try await makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
+        XCTAssertEqual(message.text, "text 1")
+        
+        try app.test(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
     
@@ -400,7 +495,7 @@ final class ChatTests: XCTestCase {
         let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
         
         try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
-            XCTAssertEqual(res.status, .forbidden, res.body.string)
+            XCTAssertEqual(res.status, .forbidden, "Only owner should be able to delete multiuser chat - " + res.body.string)
         })
     }
     
@@ -420,16 +515,24 @@ final class ChatTests: XCTestCase {
         let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
 
         try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
-            XCTAssertEqual(res.status, .ok, res.body.string)
+            XCTAssertEqual(res.status, .ok, "Both users should be able to delete personal chat - " + res.body.string)
         })
     }
     
-    func testDeletePersonalChatIfRecipientIsBlocked() async throws {
-        // TODO:
-    }
-    
-    func testDeletePersonalChatIfSenderIsBlocked() async throws {
-        // TODO:
+    func testDeletePersonalChatByBlockedUser() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true, blockedId: current.id)
+        let message = try await makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
+        
+        try await app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, "Even blocked users should be able to delete personal chat - " + res.body.string)
+            // Chat itself wasn't removed to keep relation with block settings, but messages should be deleted:
+            let chats = try await Repositories.chats.all(with: current.id!, fullInfo: false)
+            XCTAssertEqual(chats.count, 1)
+            let message = try await Repositories.chats.findMessage(id: message.id!)
+            XCTAssertNil(message)
+        })
     }
     
     func testExitChat() async throws {
@@ -495,6 +598,25 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(chats.count, 1)
             let message = try await Repositories.chats.findMessage(id: message.id!)
             XCTAssertNil(message)
+        })
+    }
+    
+    func testBlockAndUnblockUserInChat() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
+        let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: users[0].id!)!
+        XCTAssertEqual(relation.isBlocked, false)
+        
+        try await app.test(.PUT, "chats/\(chat.id!)/users/\(users[0].id!)/block", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: users[0].id!)
+            XCTAssertEqual(relation?.isBlocked, true)
+        })
+        try await app.test(.PUT, "chats/\(chat.id!)/users/\(users[0].id!)/unblock", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: users[0].id!)
+            XCTAssertEqual(relation?.isBlocked, false)
         })
     }
 }

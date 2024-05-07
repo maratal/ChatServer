@@ -140,7 +140,7 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
                 reaction.with(\.$user)
             }
             .with(\.$chat) { chat in
-                chat.with(\.$users)
+                chat.with(\.$relations)
             }
             .first()
     }
