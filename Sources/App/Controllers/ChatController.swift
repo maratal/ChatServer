@@ -225,6 +225,9 @@ struct ChatController {
             throw ServerError(.forbidden)
         }
         if let text = update.text {
+            guard message.text != "" else {
+                throw ServerError(.badRequest, reason: "You can't edit deleted message.")
+            }
             message.text = text
             message.editedAt = Date()
         }

@@ -429,6 +429,14 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(updatedMessage.text, "")
             XCTAssertEqual(updatedMessage.fileSize, 0)
         })
+        // Try to edit deleted message
+        try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(text: "Hi")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
     }
     
     func testDeleteMessageInChatByBlockedUser() async throws {
