@@ -1,5 +1,5 @@
 import Vapor
 
-typealias ServerError = Abort
+typealias ServiceError = Abort
 typealias Serializable = Content
 typealias UserID = Int

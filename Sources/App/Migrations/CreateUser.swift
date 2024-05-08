@@ -11,7 +11,7 @@ struct CreateUser: AsyncMigration {
             .field("about", .string)
             .field("last_access", .datetime)
             .field("password_hash", .string, .required)
-            .field("key_hash", .string)
+            .field("account_key", .string)
             .unique(on: "username")
             .create()
     }

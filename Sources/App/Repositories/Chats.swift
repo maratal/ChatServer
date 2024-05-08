@@ -85,7 +85,7 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
             return try await save(chat)
         }
         if chat.isPersonal && users.count > 1 {
-            throw ServerError(.unprocessableEntity, reason: "Personal chat can only contain two users.")
+            throw ServiceError(.unprocessableEntity, reason: "Personal chat can only contain two users.")
         }
         var allUsers = Set<UserID>()
         var newUsers = Set<UserID>()
@@ -112,10 +112,10 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
     
     func deleteUsers(_ users: [UserID], from chat: Chat) async throws {
         guard let chatId = chat.id else {
-            throw ServerError(.unprocessableEntity, reason: "Chat wasn't saved yet.")
+            throw ServiceError(.unprocessableEntity, reason: "Chat wasn't saved yet.")
         }
         guard users.count > 0 else {
-            throw ServerError(.unprocessableEntity, reason: "No users provided.")
+            throw ServiceError(.unprocessableEntity, reason: "No users provided.")
         }
         try await ChatRelation.query(on: database)
             .filter(\.$chat.$id == chatId)
@@ -126,7 +126,7 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         
         let participantsKey = Set(chat.users.compactMap { $0.id }).participantsKey()
         guard participantsKey != chat.participantsKey else {
-            throw ServerError(.unprocessableEntity, reason: "Users provided are not participants of this chat.")
+            throw ServiceError(.unprocessableEntity, reason: "Users provided are not participants of this chat.")
         }
         chat.participantsKey = participantsKey
         try await chat.save(on: database)

@@ -1,0 +1,103 @@
+import Foundation
+
+protocol AuthService {
+    
+    /// Registers a new user account and authenticates it.
+    func register(_ request: RegistrationRequest) async throws -> LoginResponse
+    
+    /// Authenticates user by checking username-password pair and generating an access token.
+    func login(_ user: User) async throws -> LoginResponse
+    
+    /// Changes password.
+    func changePassword(_ user: User, oldPassword: String, newPassword: String) async throws
+    
+    /// Resets password by checking the account key.
+    func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws
+    
+    /// Changes the account key by providing the current password.
+    func changeAccountKey(_ user: User, password: String, newAccountKey: String) async throws
+}
+
+extension AuthService {
+    
+    func register(_ request: RegistrationRequest) async throws -> LoginResponse {
+        let registration = try validate(registration: request)
+        let user = User(name: registration.name,
+                        username: registration.username,
+                        passwordHash: registration.password.bcryptHash())
+        try await Repositories.users.save(user)
+        return try await login(user)
+    }
+    
+    func login(_ user: User) async throws -> LoginResponse {
+        let token = try user.generateToken()
+        try await Repositories.tokens.save(token)
+        return .init(info: user.fullInfo(), token: token.value)
+    }
+    
+    func changePassword(_ user: User, oldPassword: String, newPassword: String) async throws {
+        guard oldPassword.bcryptHash() == user.passwordHash else {
+            throw Service.Errors.invalidPassword
+        }
+        guard validatePassword(newPassword) else {
+            throw Service.Errors.badPassword
+        }
+        user.passwordHash = newPassword.bcryptHash()
+        try await Repositories.users.save(user)
+    }
+    
+    func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws {
+        guard let user = try await Repositories.users.find(id: userId) else {
+            throw Service.Errors.invalidUser
+        }
+        guard accountKey.bcryptHash() == user.accountKey else {
+            throw Service.Errors.invalidKey
+        }
+        guard validatePassword(newPassword) else {
+            throw Service.Errors.badPassword
+        }
+        user.passwordHash = newPassword.bcryptHash()
+        try await Repositories.users.save(user)
+    }
+    
+    func changeAccountKey(_ user: User, password: String, newAccountKey: String) async throws {
+        guard password.bcryptHash() == user.passwordHash else {
+            throw Service.Errors.invalidPassword
+        }
+        guard validateAccountKey(newAccountKey) else {
+            throw Service.Errors.badAccountKey
+        }
+        user.accountKey = newAccountKey.bcryptHash()
+        try await Repositories.users.save(user)
+    }
+}
+
+private extension AuthService {
+    
+    func validatePassword(_ password: String) -> Bool {
+        return password.count >= Service.Constants.minPasswordLength && password.count <= Service.Constants.maxPasswordLength
+    }
+    
+    func validateAccountKey(_ key: String) -> Bool {
+        return key.count >= Service.Constants.minAccountKeyLength && key.count <= Service.Constants.maxAccountKeyLength
+    }
+    
+    func validate(registration: RegistrationRequest) throws -> RegistrationRequest {
+        let registration = RegistrationRequest(name: registration.name.normalized(),
+                                               username: registration.username.normalized().lowercased(),
+                                               password: registration.password)
+        guard registration.name.isName else {
+            throw Service.Errors.badName
+        }
+        guard registration.username.count >= Service.Constants.minUsernameLength &&
+              registration.username.count <= Service.Constants.maxUsernameLength &&
+              registration.username.isAlphanumeric &&
+              registration.username.first!.isLetter else {
+            throw Service.Errors.badUsername
+        }
+        guard validatePassword(registration.password) else {
+            throw Service.Errors.badPassword
+        }
+        return registration
+    }
+}

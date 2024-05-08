@@ -1,64 +1,57 @@
-import Foundation
+import Vapor
 
-struct UserController {
+struct UserController: UserService, RouteCollection {
     
-    func update(_ user: User, with info: UserInfo) async throws -> UserInfo {
-        if let id = info.id, id != user.id {
-            throw ServerError(.badRequest, reason: "You can't update other users.")
+    func boot(routes: RoutesBuilder) throws {
+        let users = routes.grouped("users")
+        users.group(.id) { route in
+            route.get(use: user)
         }
-        if let _ = info.username {
-            throw ServerError(.badRequest, reason: "Field 'username' can't be changed (yet).")
+        
+        let protected = users.grouped(UserToken.authenticator())
+        protected.group("me") { route in
+            route.put(use: update)
+            route.get("contacts", use: contacts)
+            route.post("contacts", use: addContact)
+            route.delete("contacts", .id, use: deleteContact)
         }
-        if let name = info.name {
-            user.name = name
+        protected.group("current") { route in
+            route.get(use: current)
+            route.put(use: update)
+            route.get("contacts", use: contacts)
+            route.post("contacts", use: addContact)
+            route.delete("contacts", .id, use: deleteContact)
         }
-        if let about = info.about {
-            user.about = about
-        }
-        user.lastAccess = Date()
-        try await Repositories.users.save(user)
-        return user.fullInfo()
+        protected.get(use: search)
     }
     
-    func find(id: UserID) async throws -> User {
-        guard let user = try await Repositories.users.find(id: id) else {
-            throw ServerError(.notFound)
-        }
-        return user
+    // In test environment returns user with id = 1. In production returns authenticated user (same as `me`).
+    func current(_ req: Request) async throws -> UserInfo {
+        try await req.currentUser().fullInfo()
     }
     
-    func search(_ s: String) async throws -> [UserInfo] {
-        if let userId = Int(s), userId > 0 {
-            return [try await find(id: userId).info()]
-        }
-        guard s.count >= 2 else {
-            throw ServerError(.notFound)
-        }
-        let users = try await Repositories.users.search(s)
-        return users.map { $0.info() }
+    func update(_ req: Request) async throws -> UserInfo {
+        try await update(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
     }
     
-    func contacts(of user: User) async throws -> [ContactInfo] {
-        try await Repositories.users.contacts(of: user).map { $0.info() }
+    func user(_ req: Request) async throws -> UserInfo {
+        try await find(id: req.objectID())
     }
     
-    func addContact(_ info: ContactInfo, to user: User) async throws -> ContactInfo {
-        guard let contactUserId = info.user.id else {
-            throw ServerError(.badRequest, reason: "User should have an id.")
-        }
-        if let contact = try await Repositories.users.findContact(userId: contactUserId, ownerId: user.requireID()) {
-            return contact.info()
-        }
-        let contact = Contact(ownerId: try user.requireID(), userId: contactUserId, isFavorite: info.isFavorite, name: info.name)
-        try await Repositories.users.saveContact(contact)
-        // Copy old object to avoid re-fetching data from database
-        return try ContactInfo(from: info, id: contact.requireID())
+    func search(_ req: Request) async throws -> [UserInfo] {
+        try await search(req.searchString())
     }
     
-    func deleteContact(_ contactId: UUID, from user: User) async throws {
-        guard let contact = try await Repositories.users.findContact(contactId), contact.$owner.id == user.id else {
-            throw ServerError(.notFound, reason: "Contact not found.")
-        }
-        try await Repositories.users.deleteContact(contact)
+    func contacts(_ req: Request) async throws -> [ContactInfo] {
+        try await contacts(of: req.currentUser())
+    }
+    
+    func addContact(_ req: Request) async throws -> ContactInfo {
+        try await addContact(req.content.decode(ContactInfo.self), to: req.currentUser())
+    }
+    
+    func deleteContact(_ req: Request) async throws -> HTTPStatus {
+        try await deleteContact(try req.objectUUID(), from: req.currentUser())
+        return .ok
     }
 }

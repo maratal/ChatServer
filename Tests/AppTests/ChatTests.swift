@@ -39,7 +39,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testGetOtherUsersChat() async throws {
+    func testTryGetOtherUsersChat() async throws {
         try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
@@ -152,7 +152,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testUpdateChatByBlockedUser() async throws {
+    func testTryUpdateChatByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
@@ -164,7 +164,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testUpdatePersonalChat() async throws {
+    func testTryUpdatePersonalChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
@@ -176,7 +176,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testUpdatePersonalChatByBlockedUser() async throws {
+    func testTryUpdatePersonalChatByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true, blockedId: current.id)
@@ -223,7 +223,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testAddUsersToChatByBlockedUser() async throws {
+    func testTryAddUsersToChatByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
@@ -254,7 +254,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testDeleteUsersFromChatByBlockedUser() async throws {
+    func testTryDeleteUsersFromChatByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
@@ -291,7 +291,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testGetChatMessagesPaginatedByBlockedUser() async throws {
+    func testTryGetChatMessagesPaginatedByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
@@ -319,7 +319,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testPostMessageToChatByBlockedUser() async throws {
+    func testTryPostMessageToChatByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
@@ -333,7 +333,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testPostMessageToForbiddenChat() async throws {
+    func testTryPostMessageToOtherUsersChat() async throws {
         try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
@@ -373,7 +373,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testEditMessageInChatByBlockedUser() async throws {
+    func testTryEditMessageInChatByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
@@ -590,7 +590,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testClearChatNotOwningIt() async throws {
+    func testTryClearChatNotOwningIt() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)

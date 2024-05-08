@@ -15,14 +15,12 @@ final class AuthTests: XCTestCase {
     
     func testCreateUser() throws {
         try app.test(.POST, "users/", beforeRequest: { req in
-            try req.content.encode([
-                "name": "Test",
-                "username": "testuser",
-                "password": "********"
-            ])
+            try req.content.encode(
+                RegistrationRequest(name: "Test", username: "testuser", password: "********")
+            )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(AuthController.LoginResponse.self)
+            let login = try res.content.decode(LoginResponse.self)
             XCTAssertEqual(login.info.username, "testuser")
             XCTAssertNotNil(login.token)
         })
@@ -35,7 +33,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(AuthController.LoginResponse.self)
+            let login = try res.content.decode(LoginResponse.self)
             XCTAssertNotNil(login.token)
             tokenString = login.token
         })

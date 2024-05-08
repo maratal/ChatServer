@@ -1,270 +1,123 @@
-import Foundation
+import Vapor
 
-struct ChatController {
+struct ChatController: ChatService, RouteCollection {
     
-    func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatInfo] {
-        try await Repositories.chats.all(with: userId, fullInfo: fullInfo).map {
-            ChatInfo(from: $0, fullInfo: fullInfo)
+    func boot(routes: RoutesBuilder) throws {
+        let protected = routes.grouped("chats").grouped(UserToken.authenticator())
+        protected.get(use: chats)
+        protected.post(use: createChat)
+        protected.group(.id) { route in
+            route.get(use: chat)
+            route.put(use: updateChat)
+            route.put("settings", use: updateChatSettings)
+            route.delete(use: deleteChat)
+            route.delete("exit", use: exitChat)
+            
+            route.post("users", use: addUsers)
+            route.delete("users", use: deleteUsers)
+            route.put("users", .userId, "block", use: blockUserInChat)
+            route.put("users", .userId, "unblock", use: unblockUserInChat)
+            
+            route.get("messages", use: messages)
+            route.post("messages", use: postMessage)
+            route.put("messages", .messageId, use: updateMessage)
+            route.put("messages", .messageId, "read", use: readMessage)
+            route.delete("messages", .messageId, use: deleteMessage)
+            route.delete("messages", use: clearChat)
         }
     }
     
-    func chat(_ id: UUID, with userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
-            throw ServerError(.notFound)
-        }
-        return ChatInfo(from: relation, fullInfo: true)
+    func chats(_ req: Request) async throws -> [ChatInfo] {
+        try await chats(with: req.currentUser().requireID(), fullInfo: req.fullInfo())
     }
     
-    func createChat(with info: CreateChatRequest, by ownerId: UserID) async throws -> ChatInfo {
-        let participants = info.participants.unique().filter { $0 != ownerId }
-        guard participants.count > 0 else {
-            throw ServerError(.badRequest, reason: "New chat should contain at least one participant.")
-        }
-
-        let participantsKey = Set(participants + [ownerId]).participantsKey()
-        var chat = try await Repositories.chats.find(participantsKey: participantsKey, for: ownerId, isPersonal: info.isPersonal)
-        
-        if chat == nil {
-            chat = Chat(title: info.title, ownerId: ownerId, isPersonal: info.isPersonal)
-            try await Repositories.chats.save(chat!, with: participants)
-            let relation = try await Repositories.chats.findRelation(of: chat!.requireID(), userId: ownerId)!
-            return ChatInfo(from: relation, fullInfo: true)
-        }
-        else {
-            guard let relation = try await Repositories.chats.findRelation(of: chat!.requireID(), userId: ownerId) else {
-                throw ServerError(.notFound)
-            }
-            return ChatInfo(from: relation, fullInfo: true)
-        }
+    func chat(_ req: Request) async throws -> ChatInfo {
+        try await chat(req.objectUUID(), with: req.currentUser().requireID())
     }
     
-    func updateChat(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
-            throw ServerError(.forbidden)
-        }
-        if relation.chat.isPersonal {
-            throw ServerError(.badRequest, reason: "You can't update personal chat.")
-        }
-        if let title = update.title {
-            relation.chat.title = title
-        }
-        try await Repositories.chats.save(relation.chat)
-        return ChatInfo(from: relation, fullInfo: true)
+    func createChat(_ req: Request) async throws -> ChatInfo {
+        try await createChat(with: req.content.decode(CreateChatRequest.self),
+                             by: req.currentUser().requireID())
     }
     
-    func updateChatSettings(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
-            throw ServerError(.forbidden)
-        }
-        if let isMuted = update.isMuted {
-            relation.isMuted = isMuted
-        }
-        if let isArchived = update.isArchived {
-            relation.isArchived = isArchived
-        }
-        if let isRemovedOnDevice = update.isRemovedOnDevice {
-            relation.isRemovedOnDevice = isRemovedOnDevice
-        }
-        try await Repositories.chats.saveRelation(relation)
-        return ChatInfo(from: relation, fullInfo: true)
+    func updateChat(_ req: Request) async throws -> ChatInfo {
+        try await updateChat(req.objectUUID(),
+                             with: req.content.decode(UpdateChatRequest.self),
+                             by: req.currentUser().requireID())
     }
     
-    func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
-            throw ServerError(.forbidden)
-        }
-        let chat = relation.chat
-        if chat.isPersonal {
-            throw ServerError(.badRequest, reason: "You can't add users to a personal chat.")
-        }
-        let oldUsers = Set(chat.users.map { $0.id! })
-        let newUsers = Set(users).subtracting(oldUsers)
-        guard newUsers.count > 0 else {
-            throw ServerError(.badRequest, reason: "No users to add found.")
-        }
-        guard newUsers.count <= 10 else {
-            throw ServerError(.badRequest, reason: "To many users to add at once.")
-        }
-        try await Repositories.chats.save(relation.chat, with: Array(newUsers))
-        return ChatInfo(from: relation, fullInfo: true)
+    func updateChatSettings(_ req: Request) async throws -> ChatInfo {
+        try await updateChatSettings(req.objectUUID(),
+                                     with: req.content.decode(UpdateChatRequest.self),
+                                     by: req.currentUser().requireID())
     }
     
-    func deleteUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo {
-        guard users.count > 0 else {
-            throw ServerError(.badRequest, reason: "No users to delete found.")
-        }
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
-            throw ServerError(.forbidden)
-        }
-        let chat = relation.chat
-        if chat.isPersonal {
-            throw ServerError(.badRequest, reason: "You can't alter users in a personal chat.")
-        }
-        try await Repositories.chats.deleteUsers(users, from: chat)
-        return ChatInfo(from: relation, fullInfo: true)
+    func deleteChat(_ req: Request) async throws -> HTTPStatus {
+        try await deleteChat(req.objectUUID(), by: req.currentUser().requireID())
+        return .ok
     }
     
-    func deleteChat(_ id: UUID, by userId: UserID) async throws {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
-            throw ServerError(.forbidden)
-        }
-        let chat = relation.chat
-        guard chat.isPersonal || chat.owner.id == userId else {
-            throw ServerError(.forbidden, reason: "You can't delete this chat.")
-        }
-        if chat.isPersonal && relation.isBlocked {
-            try await Repositories.chats.deleteMessages(from: chat)
-        } else {
-            try await Repositories.chats.delete(chat)
-        }
+    func exitChat(_ req: Request) async throws -> HTTPStatus {
+        try await exitChat(req.objectUUID(), by: req.currentUser().requireID())
+        return .ok
     }
     
-    private func setUser(_ targetId: UserID, in chatId: UUID, blocked: Bool, by userId: UserID) async throws {
-        let relations = try await Repositories.chats.findRelations(of: chatId)
-        guard relations.count > 0 else {
-            throw ServerError(.notFound)
-        }
-        guard let targetRelation = relations.ofUser(targetId) else {
-            throw ServerError(.notFound)
-        }
-        guard let blockerRelation = relations.ofUser(userId), !blockerRelation.isBlocked else {
-            throw ServerError(.forbidden)
-        }
-        targetRelation.isBlocked = blocked
-        try await Repositories.chats.saveRelation(targetRelation)
+    func clearChat(_ req: Request) async throws -> HTTPStatus {
+        try await clearChat(req.objectUUID(), by: req.currentUser().requireID())
+        return .ok
     }
     
-    func blockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws {
-        try await setUser(targetId, in: chatId, blocked: true, by: userId)
+    func addUsers(_ req: Request) async throws -> ChatInfo {
+        try await addUsers(to: req.objectUUID(),
+                           users: req.content.decode(UpdateChatUsersRequest.self).users,
+                           by: req.currentUser().requireID())
     }
     
-    func unblockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws {
-        try await setUser(targetId, in: chatId, blocked: false, by: userId)
+    func deleteUsers(_ req: Request) async throws -> ChatInfo {
+        try await deleteUsers(req.content.decode(UpdateChatUsersRequest.self).users,
+                              from: req.objectUUID(),
+                              by: req.currentUser().requireID())
     }
     
-    func exitChat(_ id: UUID, by userId: UserID) async throws {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
-            throw ServerError(.forbidden)
-        }
-        guard !relation.chat.isPersonal else {
-            throw ServerError(.badRequest)
-        }
-        try await Repositories.chats.deleteRelation(relation)
+    func blockUserInChat(_ req: Request) async throws -> HTTPStatus {
+        try await blockUser(req.userID(),
+                            in: req.objectUUID(),
+                            by: req.currentUser().requireID())
+        return .ok
     }
     
-    func clearChat(_ id: UUID, by userId: UserID) async throws {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId) else {
-            throw ServerError(.forbidden)
-        }
-        let chat = relation.chat
-        guard chat.isPersonal || chat.owner.id == userId else {
-            throw ServerError(.forbidden, reason: "You can't clear this chat.")
-        }
-        try await Repositories.chats.deleteMessages(from: chat)
+    func unblockUserInChat(_ req: Request) async throws -> HTTPStatus {
+        try await unblockUser(req.userID(),
+                              in: req.objectUUID(),
+                              by: req.currentUser().requireID())
+        return .ok
     }
     
-    func messages(from id: UUID, for userId: UserID, before: Date?, count: Int) async throws -> [MessageInfo] {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
-            throw ServerError(.forbidden)
-        }
-        let messages = try await Repositories.chats.messages(from: id, before: before, count: count)
-        return messages.map { $0.info() }
+    func messages(_ req: Request) async throws -> [MessageInfo] {
+        try await messages(from: req.objectUUID(),
+                           for: req.currentUser().requireID(),
+                           before: req.date(from: "before"),
+                           count: req.query["count"])
     }
     
-    func postMessage(to id: UUID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
-        let relations = try await Repositories.chats.findRelations(of: id)
-        guard relations.count > 0 else {
-            throw ServerError(.notFound)
-        }
-        guard let authorRelation = relations.ofUser(userId), !authorRelation.isBlocked else {
-            throw ServerError(.forbidden)
-        }
-        guard info.localId != nil, info.text != nil || info.fileSize != nil else {
-            throw ServerError(.badRequest, reason: "Malformed message data.")
-        }
-        if let text = info.text, (text.count == 0 || text.count > 2048) {
-            throw ServerError(.badRequest, reason: "Message text should be between 1 and 2048 characters long.")
-        }
-        let message = Message(localId: info.localId.unsafelyUnwrapped,
-                              authorId: userId,
-                              chatId: id,
-                              text: info.text,
-                              fileType: info.fileType,
-                              fileSize: info.fileSize,
-                              previewWidth: info.previewWidth,
-                              previewHeight: info.previewHeight,
-                              isVisible: info.isVisible ?? true)
-        
-        try await Repositories.chats.saveMessage(message)
-        
-        let chat = authorRelation.chat
-        
-        chat.$lastMessage.id = try message.requireID()
-        authorRelation.isArchived = false
-        authorRelation.isRemovedOnDevice = false
-        
-        var itemsToSave: [any RepositoryItem] = [chat, authorRelation]
-        
-        if chat.isPersonal {
-            if let recipientRelation = relations.ofUserOtherThen(userId), recipientRelation.isRemovedOnDevice {
-                recipientRelation.isRemovedOnDevice = false
-                itemsToSave.append(recipientRelation)
-            }
-        }
-        
-        try await Repositories.saveAll(itemsToSave)
-        
-        return message.info()
+    func postMessage(_ req: Request) async throws -> MessageInfo {
+        try await postMessage(to: req.objectUUID(),
+                              with: req.content.decode(PostMessageRequest.self),
+                              by: req.currentUser().requireID())
     }
     
-    func updateMessage(_ id: UUID, with update: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
-        guard let message = try await Repositories.chats.findMessage(id: id), message.author.id == userId else {
-            throw ServerError(.forbidden)
-        }
-        guard let authorRelation = message.chat.relations.ofUser(userId), !authorRelation.isBlocked else {
-            throw ServerError(.forbidden)
-        }
-        if let text = update.text {
-            guard message.text != "" else {
-                throw ServerError(.badRequest, reason: "You can't edit deleted message.")
-            }
-            message.text = text
-            message.editedAt = Date()
-        }
-        if let fileType = update.fileType {
-            message.fileType = fileType
-        }
-        if let fileSize = update.fileSize {
-            message.fileSize = fileSize
-        }
-        if let isVisible = update.isVisible {
-            message.isVisible = isVisible
-        }
-        try await Repositories.chats.saveMessage(message)
-        return message.info()
+    func updateMessage(_ req: Request) async throws -> MessageInfo {
+        try await updateMessage(req.messageUUID(),
+                                with: req.content.decode(PostMessageRequest.self),
+                                by: req.currentUser().requireID())
     }
     
-    func deleteMessage(_ id: UUID, by userId: UserID) async throws -> MessageInfo {
-        guard let message = try await Repositories.chats.findMessage(id: id), message.author.id == userId else {
-            throw ServerError(.forbidden)
-        }
-        message.text = ""
-        message.fileSize = 0
-        message.editedAt = Date()
-        try await Repositories.chats.saveMessage(message)
-        return message.info()
+    func readMessage(_ req: Request) async throws -> HTTPStatus {
+        try await readMessage(req.messageUUID(), by: req.currentUser().requireID())
+        return .ok
     }
     
-    func readMessage(_ id: UUID, by userId: UserID) async throws {
-        guard let message = try await Repositories.chats.findMessage(id: id) else {
-            throw ServerError(.notFound)
-        }
-        guard message.chat.relations.contains(where: { $0.$user.id == userId }) else {
-            throw ServerError(.forbidden)
-        }
-        if message.reactions.first(where: { $0.user.id == userId && $0.badge == Reactions.seen.rawValue }) == nil {
-            let reaction = Reaction(messageId: id, userId: userId, badge: .seen)
-            try await Repositories.saveItem(reaction)
-        }
+    func deleteMessage(_ req: Request) async throws -> MessageInfo {
+        try await deleteMessage(req.messageUUID(), by: req.currentUser().requireID())
     }
 }
