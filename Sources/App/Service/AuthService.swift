@@ -8,8 +8,8 @@ protocol AuthService {
     /// Authenticates user by checking username-password pair and generating an access token.
     func login(_ user: User) async throws -> LoginResponse
     
-    /// Changes password.
-    func changePassword(_ user: User, oldPassword: String, newPassword: String) async throws
+    /// Changes password by providing user's current password..
+    func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws
     
     /// Resets password by checking the account key.
     func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws
@@ -35,8 +35,8 @@ extension AuthService {
         return .init(info: user.fullInfo(), token: token.value)
     }
     
-    func changePassword(_ user: User, oldPassword: String, newPassword: String) async throws {
-        guard oldPassword.bcryptHash() == user.passwordHash else {
+    func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws {
+        guard try user.verify(password: currentPassword) else {
             throw Service.Errors.invalidPassword
         }
         guard validatePassword(newPassword) else {

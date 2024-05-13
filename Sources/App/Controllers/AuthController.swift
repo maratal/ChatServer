@@ -12,6 +12,7 @@ struct AuthController: AuthService, RouteCollection {
         let protected = users.grouped(UserToken.authenticator())
         protected.group("me") { route in
             route.get(use: me)
+            route.put("changePassword", use: changePassword)
         }
     }
     
@@ -30,7 +31,7 @@ struct AuthController: AuthService, RouteCollection {
     
     func changePassword(_ req: Request) async throws -> HTTPStatus {
         let content = try req.content.decode(ChangePasswordRequest.self)
-        try await changePassword(req.authenticatedUser(), oldPassword: content.oldPassword, newPassword: content.newPassword)
+        try await changePassword(req.authenticatedUser(), currentPassword: content.oldPassword, newPassword: content.newPassword)
         return .ok
     }
     
