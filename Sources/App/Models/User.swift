@@ -21,8 +21,8 @@ final class User: Model {
     @Field(key: "password_hash")
     var passwordHash: String
     
-    @Field(key: "account_key")
-    var accountKey: String?
+    @Field(key: "account_key_hash")
+    var accountKeyHash: String?
     
     @Children(for: \.$owner)
     var contacts: [Contact]
@@ -32,11 +32,14 @@ final class User: Model {
     
     init() { }
 
-    init(id: Int? = nil, name: String, username: String, passwordHash: String) {
+    init(id: Int? = nil, name: String, username: String, passwordHash: String, accountKeyHash: String?) {
         self.id = id
         self.name = name
         self.username = username
         self.passwordHash = passwordHash
+        self.accountKeyHash = accountKeyHash
+        self.about = nil
+        self.lastAccess = nil
     }
 }
 

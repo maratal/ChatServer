@@ -5,6 +5,7 @@ struct AuthController: AuthService, RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let users = routes.grouped("users")
         users.post(use: register)
+        users.post("resetPassword", use: resetPassword)
         
         let auth = routes.grouped(User.authenticator())
         auth.post("login", use: login)

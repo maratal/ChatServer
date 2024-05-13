@@ -42,18 +42,22 @@ struct CurrentUser {
     static let name = "Admin"
     static let username = "admin"
     static let password = "********"
+    static let accountKey = "abcdefghigklmnopqrstuvwxyz"
 }
 
 @discardableResult
-func seedUser(name: String, username: String, password: String) async throws -> User {
-    let user = User(name: name, username: username, passwordHash: password.bcryptHash())
+func seedUser(name: String, username: String, password: String, accountKey: String? = nil) async throws -> User {
+    let user = User(name: name, username: username, passwordHash: password.bcryptHash(), accountKeyHash: accountKey?.bcryptHash())
     try await Repositories.users.save(user)
     return user
 }
 
 @discardableResult
-func seedCurrentUser() async throws -> User {
-    try await seedUser(name: CurrentUser.name, username: CurrentUser.username, password: CurrentUser.password)
+func seedCurrentUser(name: String = CurrentUser.name,
+                     username: String = CurrentUser.username,
+                     password: String = CurrentUser.password,
+                     accountKey: String? = CurrentUser.accountKey) async throws -> User {
+    try await seedUser(name: name, username: username, password: password, accountKey: accountKey)
 }
 
 @discardableResult
