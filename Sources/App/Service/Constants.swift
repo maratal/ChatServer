@@ -13,8 +13,8 @@ struct Service {
     
     struct Errors {
         static var invalidUser       = ServiceError(.notFound, reason: "User was not found.")
-        static var invalidPassword   = ServiceError(.badRequest, reason: "Invalid user or password.")
-        static var invalidAccountKey = ServiceError(.badRequest, reason: "Invalid user or account key.")
+        static var invalidPassword   = ServiceError(.forbidden, reason: "Invalid user or password.")
+        static var invalidAccountKey = ServiceError(.forbidden, reason: "Invalid user or account key.")
         static var badPassword       = ServiceError(.badRequest, reason: "Password should be at least \(Constants.minPasswordLength) characters length.")
         static var badAccountKey     = ServiceError(.badRequest, reason: "Key should be at least \(Constants.minAccountKeyLength) characters length.")
         static var badName           = ServiceError(.badRequest, reason: "Name should consist of letters.")

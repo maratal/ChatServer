@@ -15,8 +15,8 @@ protocol AuthService {
     /// Empty account key acts as an invalid key and user is not able to restore their account.
     func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws
     
-    /// Changes the account key by providing the current password.
-    func changeAccountKey(_ user: User, password: String, newAccountKey: String) async throws
+    /// Sets an account key by providing user's current password.
+    func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws
 }
 
 extension AuthService {
@@ -62,8 +62,8 @@ extension AuthService {
         try await Repositories.users.save(user)
     }
     
-    func changeAccountKey(_ user: User, password: String, newAccountKey: String) async throws {
-        guard password.bcryptHash() == user.passwordHash else {
+    func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws {
+        guard try user.verify(password: currentPassword) else {
             throw Service.Errors.invalidPassword
         }
         guard validateAccountKey(newAccountKey) else {

@@ -22,7 +22,7 @@ struct ResetPasswordRequest: Serializable {
     var accountKey: String
 }
 
-struct ChangeAccountKeyRequest: Serializable {
+struct SetAccountKeyRequest: Serializable {
     var password: String
     var accountKey: String
 }

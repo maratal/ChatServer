@@ -107,7 +107,7 @@ final class AuthTests: XCTestCase {
                 ChangePasswordRequest(oldPassword: "87654321", newPassword: "12345678")
             )
         }, afterResponse: { res in
-            XCTAssertEqual(res.status, .badRequest, res.body.string)
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
     
@@ -136,7 +136,7 @@ final class AuthTests: XCTestCase {
                 ResetPasswordRequest(userId: 1, newPassword: "12345678", accountKey: "")
             )
         }, afterResponse: { res in
-            XCTAssertEqual(res.status, .badRequest, res.body.string)
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
     
@@ -148,7 +148,59 @@ final class AuthTests: XCTestCase {
                 ResetPasswordRequest(userId: 1, newPassword: "12345678", accountKey: CurrentUser.accountKey)
             )
         }, afterResponse: { res in
-            XCTAssertEqual(res.status, .badRequest, res.body.string)
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
+    func testSetAccountKey() async throws {
+        try await seedCurrentUser(accountKey: nil)
+        var tokenString = ""
+        try app.test(.POST, "login/",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let login = try res.content.decode(LoginResponse.self)
+            XCTAssertNotNil(login.token)
+            tokenString = login.token
+        })
+        try app.test(.PUT, "users/me/setAccountKey",
+                     headers: .authWith(token: tokenString),
+                     beforeRequest: { req in
+            try req.content.encode(
+                SetAccountKeyRequest(password: CurrentUser.password, accountKey: "\(CurrentUser.accountKey.reversed())")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try app.test(.POST, "users/resetPassword",
+                     beforeRequest: { req in
+            try req.content.encode(
+                ResetPasswordRequest(userId: 1, newPassword: "12345678", accountKey: "\(CurrentUser.accountKey.reversed())")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+    }
+    
+    func testTrySetAccountKeyWithIncorrectCurrentPassword() async throws {
+        try await seedCurrentUser(accountKey: nil)
+        var tokenString = ""
+        try app.test(.POST, "login/",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let login = try res.content.decode(LoginResponse.self)
+            XCTAssertNotNil(login.token)
+            tokenString = login.token
+        })
+        try app.test(.PUT, "users/me/setAccountKey",
+                     headers: .authWith(token: tokenString),
+                     beforeRequest: { req in
+            try req.content.encode(
+                SetAccountKeyRequest(password: "123", accountKey: "\(CurrentUser.accountKey.reversed())")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
 }

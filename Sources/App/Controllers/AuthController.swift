@@ -14,6 +14,7 @@ struct AuthController: AuthService, RouteCollection {
         protected.group("me") { route in
             route.get(use: me)
             route.put("changePassword", use: changePassword)
+            route.put("setAccountKey", use: setAccountKey)
         }
     }
     
@@ -42,9 +43,9 @@ struct AuthController: AuthService, RouteCollection {
         return .ok
     }
     
-    func changeAccountKey(_ req: Request) async throws -> HTTPStatus {
-        let content = try req.content.decode(ChangeAccountKeyRequest.self)
-        try await changeAccountKey(req.authenticatedUser(), password: content.password, newAccountKey: content.accountKey)
+    func setAccountKey(_ req: Request) async throws -> HTTPStatus {
+        let content = try req.content.decode(SetAccountKeyRequest.self)
+        try await setAccountKey(req.authenticatedUser(), currentPassword: content.password, newAccountKey: content.accountKey)
         return .ok
     }
 }
