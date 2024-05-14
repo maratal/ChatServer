@@ -14,7 +14,7 @@ final class AuthTests: XCTestCase {
     }
     
     func testCreateUser() throws {
-        try app.test(.POST, "users/", beforeRequest: { req in
+        try app.test(.POST, "users", beforeRequest: { req in
             try req.content.encode(
                 RegistrationRequest(name: "Test", username: "testuser", password: "********")
             )
@@ -29,7 +29,7 @@ final class AuthTests: XCTestCase {
     func testLoginUser() async throws {
         try await seedCurrentUser()
         var tokenString = ""
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -55,8 +55,36 @@ final class AuthTests: XCTestCase {
     
     func testLoginUserFailure() async throws {
         try await seedCurrentUser()
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: "123"),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .unauthorized, res.body.string)
+        })
+    }
+    
+    func testLogoutUser() async throws {
+        try await seedCurrentUser()
+        var tokenString = ""
+        try app.test(.POST, "users/login",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let login = try res.content.decode(LoginResponse.self)
+            XCTAssertNotNil(login.token)
+            tokenString = login.token
+        })
+        try app.test(.GET, "users/me",
+                     headers: .authWith(token: tokenString),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try app.test(.POST, "users/me/logout",
+                     headers: .authWith(token: tokenString),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try app.test(.GET, "users/me",
+                     headers: .authWith(token: tokenString),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
         })
@@ -65,7 +93,7 @@ final class AuthTests: XCTestCase {
     func testChangePassword() async throws {
         try await seedCurrentUser()
         var tokenString = ""
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -82,7 +110,7 @@ final class AuthTests: XCTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: "12345678"),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -92,7 +120,7 @@ final class AuthTests: XCTestCase {
     func testTryChangePasswordWithIncorrectCurrentPassword() async throws {
         try await seedCurrentUser()
         var tokenString = ""
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -121,7 +149,7 @@ final class AuthTests: XCTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: "12345678"),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -155,7 +183,7 @@ final class AuthTests: XCTestCase {
     func testSetAccountKey() async throws {
         try await seedCurrentUser(accountKey: nil)
         var tokenString = ""
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -185,7 +213,7 @@ final class AuthTests: XCTestCase {
     func testTrySetAccountKeyWithIncorrectCurrentPassword() async throws {
         try await seedCurrentUser(accountKey: nil)
         var tokenString = ""
-        try app.test(.POST, "login/",
+        try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)

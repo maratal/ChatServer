@@ -7,7 +7,7 @@ struct AuthController: AuthService, RouteCollection {
         users.post(use: register)
         users.post("resetPassword", use: resetPassword)
         
-        let auth = routes.grouped(User.authenticator())
+        let auth = users.grouped(User.authenticator())
         auth.post("login", use: login)
         
         let protected = users.grouped(UserToken.authenticator())
@@ -15,6 +15,7 @@ struct AuthController: AuthService, RouteCollection {
             route.get(use: me)
             route.put("changePassword", use: changePassword)
             route.put("setAccountKey", use: setAccountKey)
+            route.post("logout", use: logout)
         }
     }
     
@@ -25,6 +26,12 @@ struct AuthController: AuthService, RouteCollection {
     
     func login(_ req: Request) async throws -> LoginResponse {
         try await login(try req.authenticatedUser())
+    }
+    
+    func logout(_ req: Request) async throws -> HTTPStatus {
+        try await logout(try req.authenticatedUser())
+        req.auth.logout(User.self)
+        return .ok
     }
     
     func me(_ req: Request) async throws -> UserInfo {

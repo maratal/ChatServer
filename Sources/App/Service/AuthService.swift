@@ -6,7 +6,11 @@ protocol AuthService {
     func register(_ request: RegistrationRequest) async throws -> LoginResponse
     
     /// Authenticates user by checking username-password pair and generating an access token.
+    /// In Vapor it happens semi-automatically (see `ModelAuthenticatable`), so this method only generates a token.
     func login(_ user: User) async throws -> LoginResponse
+    
+    /// Resets user's current authentication (in Vapor) and token to `nil`.
+    func logout(_ user: User) async throws
     
     /// Changes password by providing user's current password..
     func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws
@@ -29,6 +33,10 @@ extension AuthService {
                         accountKeyHash: nil)
         try await Repositories.users.save(user)
         return try await login(user)
+    }
+    
+    func logout(_ user: User) async throws {
+        try await Repositories.tokens.delete(user: user)
     }
     
     func login(_ user: User) async throws -> LoginResponse {
