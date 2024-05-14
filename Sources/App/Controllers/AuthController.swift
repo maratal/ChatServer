@@ -16,12 +16,18 @@ struct AuthController: AuthService, RouteCollection {
             route.put("changePassword", use: changePassword)
             route.put("setAccountKey", use: setAccountKey)
             route.post("logout", use: logout)
+            route.delete(use: deregister)
         }
     }
     
     func register(req: Request) async throws -> LoginResponse {
         let content = try req.content.decode(RegistrationRequest.self)
         return try await register(content)
+    }
+    
+    func deregister(req: Request) async throws -> HTTPStatus {
+        try await deregister(try req.authenticatedUser())
+        return .ok
     }
     
     func login(_ req: Request) async throws -> LoginResponse {

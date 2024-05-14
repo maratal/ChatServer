@@ -13,7 +13,7 @@ final class AuthTests: XCTestCase {
         app.shutdown()
     }
     
-    func testCreateUser() throws {
+    func testRegisterUser() throws {
         try app.test(.POST, "users", beforeRequest: { req in
             try req.content.encode(
                 RegistrationRequest(name: "Test", username: "testuser", password: "********")
@@ -23,6 +23,34 @@ final class AuthTests: XCTestCase {
             let login = try res.content.decode(LoginResponse.self)
             XCTAssertEqual(login.info.username, "testuser")
             XCTAssertNotNil(login.token)
+        })
+    }
+    
+    func testDeregisterUser() async throws {
+        try await seedCurrentUser()
+        var tokenString = ""
+        try app.test(.POST, "users/login",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let login = try res.content.decode(LoginResponse.self)
+            XCTAssertNotNil(login.token)
+            tokenString = login.token
+        })
+        try app.test(.GET, "users/me",
+                     headers: .authWith(token: tokenString),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try app.test(.DELETE, "users/me",
+                     headers: .authWith(token: tokenString),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try app.test(.GET, "users/me",
+                     headers: .authWith(token: tokenString),
+                     afterResponse: { res in
+            XCTAssertEqual(res.status, .unauthorized, res.body.string)
         })
     }
     

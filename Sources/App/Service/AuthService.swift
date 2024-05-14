@@ -5,6 +5,9 @@ protocol AuthService {
     /// Registers a new user account and authenticates it.
     func register(_ request: RegistrationRequest) async throws -> LoginResponse
     
+    /// Deregisters user's account and deletes all associated data.
+    func deregister(_ user: User) async throws
+    
     /// Authenticates user by checking username-password pair and generating an access token.
     /// In Vapor it happens semi-automatically (see `ModelAuthenticatable`), so this method only generates a token.
     func login(_ user: User) async throws -> LoginResponse
@@ -33,6 +36,10 @@ extension AuthService {
                         accountKeyHash: nil)
         try await Repositories.users.save(user)
         return try await login(user)
+    }
+    
+    func deregister(_ user: User) async throws {
+        try await Repositories.users.delete(user)
     }
     
     func logout(_ user: User) async throws {
