@@ -75,7 +75,7 @@ extension Chat {
             }
             self.isMuted = relation.isMuted
             self.isArchived = relation.isArchived
-            self.isBlocked = relation.isBlocked
+            self.isBlocked = relation.isChatBlocked
             if fullInfo {
                 self.users = chat.users.map { $0.info() }
             }

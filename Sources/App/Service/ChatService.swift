@@ -97,7 +97,7 @@ extension ChatService {
     }
     
     func updateChat(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
         if relation.chat.isPersonal {
@@ -128,7 +128,7 @@ extension ChatService {
     }
     
     func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
         let chat = relation.chat
@@ -151,14 +151,17 @@ extension ChatService {
         guard users.count > 0 else {
             throw ServiceError(.badRequest, reason: "No users to delete found.")
         }
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
+        let relations = try await Repositories.chats.findRelations(of: id)
+        guard let relation = relations.ofUser(userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
         let chat = relation.chat
         if chat.isPersonal {
             throw ServiceError(.badRequest, reason: "You can't alter users in a personal chat.")
         }
-        try await Repositories.chats.deleteUsers(users, from: chat)
+        let usersToNotDelete = relations.filter { $0.isChatBlocked }.map { $0.$user.id }
+        let usersToDelete = Array(Set(users).subtracting(Set(usersToNotDelete)))
+        try await Repositories.chats.deleteUsers(usersToDelete, from: chat)
         return ChatInfo(from: relation, fullInfo: true)
     }
     
@@ -170,7 +173,7 @@ extension ChatService {
         guard chat.isPersonal || chat.owner.id == userId else {
             throw ServiceError(.forbidden, reason: "You can't delete this chat.")
         }
-        if chat.isPersonal && relation.isBlocked {
+        if chat.isPersonal && relation.isUserBlocked {
             try await Repositories.chats.deleteMessages(from: chat)
         } else {
             try await Repositories.chats.delete(chat)
@@ -185,10 +188,10 @@ extension ChatService {
         guard let targetRelation = relations.ofUser(targetId) else {
             throw ServiceError(.notFound)
         }
-        guard let blockerRelation = relations.ofUser(userId), !blockerRelation.isBlocked else {
+        guard let blockerRelation = relations.ofUser(userId), !blockerRelation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
-        targetRelation.isBlocked = blocked
+        targetRelation.isUserBlocked = blocked
         try await Repositories.chats.saveRelation(targetRelation)
     }
     
@@ -222,7 +225,7 @@ extension ChatService {
     }
     
     func messages(from id: UUID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo] {
-        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isBlocked else {
+        guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
         let messages = try await Repositories.chats.messages(from: id, before: before, count: count ?? 50)
@@ -234,7 +237,7 @@ extension ChatService {
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
         }
-        guard let authorRelation = relations.ofUser(userId), !authorRelation.isBlocked else {
+        guard let authorRelation = relations.ofUser(userId), !authorRelation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
         guard info.localId != nil, info.text != nil || info.fileSize != nil else {
@@ -279,7 +282,7 @@ extension ChatService {
         guard let message = try await Repositories.chats.findMessage(id: id), message.author.id == userId else {
             throw ServiceError(.forbidden)
         }
-        guard let authorRelation = message.chat.relations.ofUser(userId), !authorRelation.isBlocked else {
+        guard let authorRelation = message.chat.relations.ofUser(userId), !authorRelation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
         if let text = update.text {

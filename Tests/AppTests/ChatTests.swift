@@ -620,17 +620,17 @@ final class ChatTests: XCTestCase {
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
         let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: users[0].id!)!
-        XCTAssertEqual(relation.isBlocked, false)
+        XCTAssertEqual(relation.isUserBlocked, false)
         
         try await app.test(.PUT, "chats/\(chat.id!)/users/\(users[0].id!)/block", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: users[0].id!)
-            XCTAssertEqual(relation?.isBlocked, true)
+            XCTAssertEqual(relation?.isUserBlocked, true)
         })
         try await app.test(.PUT, "chats/\(chat.id!)/users/\(users[0].id!)/unblock", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await Repositories.chats.findRelation(of: chat.id!, userId: users[0].id!)
-            XCTAssertEqual(relation?.isBlocked, false)
+            XCTAssertEqual(relation?.isUserBlocked, false)
         })
     }
 }

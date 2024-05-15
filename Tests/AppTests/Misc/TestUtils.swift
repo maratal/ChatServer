@@ -84,7 +84,7 @@ func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: Use
         guard let relation = try await Repositories.chats.findRelations(of: chat.id!).ofUser(blockedId) else {
             preconditionFailure("Invalid blocked user.")
         }
-        relation.isBlocked = true
+        relation.isUserBlocked = true
         try await Repositories.chats.saveRelation(relation)
     }
     return chat

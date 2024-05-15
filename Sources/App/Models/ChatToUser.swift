@@ -18,8 +18,11 @@ final class ChatToUser: RepositoryItem {
     @Field(key: "archived")
     var isArchived: Bool
     
-    @Field(key: "blocked")
-    var isBlocked: Bool
+    @Field(key: "user_blocked")
+    var isUserBlocked: Bool
+    
+    @Field(key: "chat_blocked")
+    var isChatBlocked: Bool
     
     @Field(key: "removed_on_device")
     var isRemovedOnDevice: Bool

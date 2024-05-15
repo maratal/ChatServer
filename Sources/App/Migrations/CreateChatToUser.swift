@@ -10,7 +10,8 @@ struct CreateChatToUser: AsyncMigration {
             .field("user_id", .uint32, .required, .references("users", "id", onDelete: .setNull))
             .field("muted", .bool, .custom("DEFAULT FALSE"))
             .field("archived", .bool, .custom("DEFAULT FALSE"))
-            .field("blocked", .bool, .custom("DEFAULT FALSE"))
+            .field("user_blocked", .bool, .custom("DEFAULT FALSE"))
+            .field("chat_blocked", .bool, .custom("DEFAULT FALSE"))
             .field("removed_on_device", .bool, .custom("DEFAULT FALSE"))
             .create()
     }
