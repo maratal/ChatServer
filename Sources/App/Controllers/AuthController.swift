@@ -10,7 +10,7 @@ struct AuthController: AuthService, RouteCollection {
         let auth = users.grouped(User.authenticator())
         auth.post("login", use: login)
         
-        let protected = users.grouped(UserToken.authenticator())
+        let protected = users.grouped(DeviceSession.authenticator())
         protected.group("me") { route in
             route.get(use: me)
             route.put("changePassword", use: changePassword)
@@ -20,7 +20,7 @@ struct AuthController: AuthService, RouteCollection {
         }
     }
     
-    func register(req: Request) async throws -> LoginResponse {
+    func register(req: Request) async throws -> User.PrivateInfo {
         let content = try req.content.decode(RegistrationRequest.self)
         return try await register(content)
     }
@@ -30,8 +30,9 @@ struct AuthController: AuthService, RouteCollection {
         return .ok
     }
     
-    func login(_ req: Request) async throws -> LoginResponse {
-        try await login(try req.authenticatedUser())
+    func login(_ req: Request) async throws -> User.PrivateInfo {
+        let deviceInfo = try req.content.decode(DeviceInfo.self)
+        return try await login(try req.authenticatedUser(), deviceInfo: deviceInfo)
     }
     
     func logout(_ req: Request) async throws -> HTTPStatus {
@@ -40,8 +41,8 @@ struct AuthController: AuthService, RouteCollection {
         return .ok
     }
     
-    func me(_ req: Request) async throws -> UserInfo {
-        try req.authenticatedUser().fullInfo()
+    func me(_ req: Request) async throws -> User.PrivateInfo {
+        try await current(req.authenticatedUser())
     }
     
     func changePassword(_ req: Request) async throws -> HTTPStatus {

@@ -2,7 +2,7 @@ import Vapor
 import Logging
 
 extension Application {
-    static var itself: Application!
+    static var shared: Application!
 }
 
 @main

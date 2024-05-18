@@ -1,6 +1,6 @@
 import Fluent
 
-final class Contact: Model {
+final class Contact: RepositoryItem {
     static let schema = "user_contacts"
     
     @ID(key: .id)

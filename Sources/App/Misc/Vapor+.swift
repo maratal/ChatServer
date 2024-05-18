@@ -75,6 +75,10 @@ extension Request {
         try auth.require(User.self)
     }
     
+    func deviceSession() throws -> DeviceSession {
+        try auth.require(DeviceSession.self)
+    }
+    
 #if DEBUG
     func currentUser() async throws -> User {
         if NSClassFromString("XCTest") != nil {

@@ -11,25 +11,25 @@ protocol RepositoryItem: Model { }
 final class Repositories {
     
     static var database: Database {
-        Application.itself.db
+        Application.shared.db
     }
     
     static var users: Users!
     static var chats: Chats!
-    static var tokens: UserTokens!
+    static var sessions: DeviceSessions!
     
     static func use(users: Users,
-                    tokens: UserTokens,
+                    sessions: DeviceSessions,
                     chats: Chats
     ) {
         self.users = users
-        self.tokens = tokens
+        self.sessions = sessions
         self.chats = chats
     }
     
     static func useDatabase() {
         use(users: UsersDatabaseRepository(database: database),
-            tokens: UserTokensDatabaseRepository(database: database),
+            sessions: DeviceSessionsDatabaseRepository(database: database),
             chats: ChatsDatabaseRepository(database: database))
     }
     

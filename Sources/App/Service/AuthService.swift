@@ -3,17 +3,20 @@ import Foundation
 protocol AuthService {
     
     /// Registers a new user account and authenticates it.
-    func register(_ request: RegistrationRequest) async throws -> LoginResponse
+    func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo
     
     /// Deregisters user's account and deletes all associated data.
     func deregister(_ user: User) async throws
     
     /// Authenticates user by checking username-password pair and generating an access token.
     /// In Vapor it happens semi-automatically (see `ModelAuthenticatable`), so this method only generates a token.
-    func login(_ user: User) async throws -> LoginResponse
+    func login(_ user: User, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo
     
     /// Resets user's current authentication (in Vapor) and token to `nil`.
     func logout(_ user: User) async throws
+    
+    /// Returns full information about current user including all logged in sessions.
+    func current(_ user: User) async throws -> User.PrivateInfo
     
     /// Changes password by providing user's current password..
     func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws
@@ -28,14 +31,14 @@ protocol AuthService {
 
 extension AuthService {
     
-    func register(_ request: RegistrationRequest) async throws -> LoginResponse {
+    func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo {
         let registration = try validate(registration: request)
         let user = User(name: registration.name,
                         username: registration.username,
                         passwordHash: registration.password.bcryptHash(),
                         accountKeyHash: nil)
         try await Repositories.users.save(user)
-        return try await login(user)
+        return try await login(user, deviceInfo: request.deviceInfo)
     }
     
     func deregister(_ user: User) async throws {
@@ -43,13 +46,25 @@ extension AuthService {
     }
     
     func logout(_ user: User) async throws {
-        try await Repositories.tokens.delete(user: user)
+        try await Repositories.sessions.delete(user: user)
     }
     
-    func login(_ user: User) async throws -> LoginResponse {
-        let token = try user.generateToken()
-        try await Repositories.tokens.save(token)
-        return .init(info: user.fullInfo(), token: token.value)
+    func current(_ user: User) async throws -> User.PrivateInfo {
+        _ = try await Repositories.sessions.allForUser(user)
+        return user.privateInfo()
+    }
+    
+    func login(_ user: User, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
+        let deviceSession = DeviceSession(accessToken: generateAccessToken(),
+                                          userID: user.id!,
+                                          deviceId: deviceInfo.id,
+                                          deviceName: deviceInfo.name,
+                                          deviceModel: deviceInfo.model,
+                                          deviceToken: deviceInfo.token,
+                                          pushTransport: deviceInfo.transport.rawValue)
+        try await Repositories.sessions.save(deviceSession)
+        _ = try await Repositories.sessions.allForUser(user)
+        return user.privateInfo()
     }
     
     func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws {
@@ -102,7 +117,8 @@ private extension AuthService {
     func validate(registration: RegistrationRequest) throws -> RegistrationRequest {
         let registration = RegistrationRequest(name: registration.name.normalized(),
                                                username: registration.username.normalized().lowercased(),
-                                               password: registration.password)
+                                               password: registration.password,
+                                               deviceInfo: registration.deviceInfo)
         guard registration.name.isName else {
             throw Service.Errors.badName
         }
@@ -116,5 +132,9 @@ private extension AuthService {
             throw Service.Errors.badPassword
         }
         return registration
+    }
+    
+    func generateAccessToken() -> String {
+        [UInt8].random(count: 32).base64
     }
 }

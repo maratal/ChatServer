@@ -4,11 +4,7 @@ struct RegistrationRequest: Serializable {
     var name: String
     var username: String
     var password: String
-}
-
-struct LoginResponse: Serializable {
-    var info: UserInfo
-    var token: String
+    var deviceInfo: DeviceInfo
 }
 
 struct ChangePasswordRequest: Serializable {

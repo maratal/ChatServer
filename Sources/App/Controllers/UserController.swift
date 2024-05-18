@@ -8,7 +8,7 @@ struct UserController: UserService, RouteCollection {
             route.get(use: user)
         }
         
-        let protected = users.grouped(UserToken.authenticator())
+        let protected = users.grouped(DeviceSession.authenticator())
         protected.group("me") { route in
             route.put(use: update)
             route.get("contacts", use: contacts)
@@ -26,8 +26,8 @@ struct UserController: UserService, RouteCollection {
     }
     
     // In test environment returns user with id = 1. In production returns authenticated user (same as `me`).
-    func current(_ req: Request) async throws -> UserInfo {
-        try await req.currentUser().fullInfo()
+    func current(_ req: Request) async throws -> User.PrivateInfo {
+        try await current(req.currentUser())
     }
     
     func update(_ req: Request) async throws -> UserInfo {

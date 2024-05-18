@@ -33,6 +33,9 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
     func findRelations(of chatId: UUID) async throws -> [ChatRelation] {
         try await ChatRelation.query(on: database)
             .filter(\.$chat.$id == chatId)
+            .with(\.$user) { user in
+                user.with(\.$deviceSessions)
+            }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)

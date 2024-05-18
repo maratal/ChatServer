@@ -16,13 +16,14 @@ final class AuthTests: XCTestCase {
     func testRegisterUser() throws {
         try app.test(.POST, "users", beforeRequest: { req in
             try req.content.encode(
-                RegistrationRequest(name: "Test", username: "testuser", password: "********")
+                RegistrationRequest(name: "Test", username: "testuser", password: "********", deviceInfo: .testInfo)
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertEqual(login.info.username, "testuser")
-            XCTAssertNotNil(login.token)
+            let response = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(response.info.username, "testuser")
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
         })
     }
     
@@ -31,11 +32,16 @@ final class AuthTests: XCTestCase {
         var tokenString = ""
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertNotNil(login.token)
-            tokenString = login.token
+            let response = try res.content.decode(User.PrivateInfo.self)
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
+            tokenString = session!.accessToken
         })
         try app.test(.GET, "users/me",
                      headers: .authWith(token: tokenString),
@@ -59,19 +65,24 @@ final class AuthTests: XCTestCase {
         var tokenString = ""
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertNotNil(login.token)
-            tokenString = login.token
+            let response = try res.content.decode(User.PrivateInfo.self)
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
+            tokenString = session!.accessToken
         })
         
         try app.test(.GET, "users/me",
                      headers: .authWith(token: tokenString),
                      afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.username, CurrentUser.username)
+            let response = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(response.info.username, CurrentUser.username)
         })
         
         try app.test(.GET, "users/me",
@@ -85,7 +96,11 @@ final class AuthTests: XCTestCase {
         try await seedCurrentUser()
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: "123"),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
         })
     }
@@ -95,11 +110,16 @@ final class AuthTests: XCTestCase {
         var tokenString = ""
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertNotNil(login.token)
-            tokenString = login.token
+            let response = try res.content.decode(User.PrivateInfo.self)
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
+            tokenString = session!.accessToken
         })
         try app.test(.GET, "users/me",
                      headers: .authWith(token: tokenString),
@@ -123,11 +143,16 @@ final class AuthTests: XCTestCase {
         var tokenString = ""
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertNotNil(login.token)
-            tokenString = login.token
+            let response = try res.content.decode(User.PrivateInfo.self)
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
+            tokenString = session!.accessToken
         })
         try app.test(.PUT, "users/me/changePassword",
                      headers: .authWith(token: tokenString),
@@ -140,7 +165,11 @@ final class AuthTests: XCTestCase {
         })
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: "12345678"),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
     }
@@ -150,11 +179,16 @@ final class AuthTests: XCTestCase {
         var tokenString = ""
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertNotNil(login.token)
-            tokenString = login.token
+            let response = try res.content.decode(User.PrivateInfo.self)
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
+            tokenString = session!.accessToken
         })
         try app.test(.PUT, "users/me/changePassword",
                      headers: .authWith(token: tokenString),
@@ -179,7 +213,11 @@ final class AuthTests: XCTestCase {
         })
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: "12345678"),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
     }
@@ -213,11 +251,16 @@ final class AuthTests: XCTestCase {
         var tokenString = ""
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertNotNil(login.token)
-            tokenString = login.token
+            let response = try res.content.decode(User.PrivateInfo.self)
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
+            tokenString = session!.accessToken
         })
         try app.test(.PUT, "users/me/setAccountKey",
                      headers: .authWith(token: tokenString),
@@ -243,11 +286,16 @@ final class AuthTests: XCTestCase {
         var tokenString = ""
         try app.test(.POST, "users/login",
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     afterResponse: { res in
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfo
+            )
+        }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let login = try res.content.decode(LoginResponse.self)
-            XCTAssertNotNil(login.token)
-            tokenString = login.token
+            let response = try res.content.decode(User.PrivateInfo.self)
+            let session = response.deviceSessions.first
+            XCTAssertNotNil(session)
+            tokenString = session!.accessToken
         })
         try app.test(.PUT, "users/me/setAccountKey",
                      headers: .authWith(token: tokenString),

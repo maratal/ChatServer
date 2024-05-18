@@ -2,6 +2,9 @@ import Foundation
 
 protocol UserService {
     
+    /// Returns full information about current user including all logged in sessions.
+    func current(_ user: User) async throws -> User.PrivateInfo
+    
     /// Updates current user with the information from the request fields.
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
     
@@ -22,6 +25,11 @@ protocol UserService {
 }
 
 extension UserService {
+    
+    func current(_ user: User) async throws -> User.PrivateInfo {
+        _ = try await Repositories.sessions.allForUser(user)
+        return user.privateInfo()
+    }
     
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo {
         if let name = info.name {

@@ -1,6 +1,6 @@
 import Fluent
 
-final class User: Model {
+final class User: RepositoryItem {
     static let schema = "users"
     
     @ID(custom: .id)
@@ -24,11 +24,20 @@ final class User: Model {
     @Field(key: "account_key_hash")
     var accountKeyHash: String?
     
+    @Timestamp(key: "created_at", on: .create)
+    var createdAt: Date?
+    
+    @Timestamp(key: "updated_at", on: .update)
+    var updatedAt: Date?
+    
     @Children(for: \.$owner)
     var contacts: [Contact]
     
     @Children(for: \.$user)
     var chats: [ChatToUser]
+    
+    @Children(for: \.$user)
+    var deviceSessions: [DeviceSession]
     
     init() { }
 
@@ -63,6 +72,16 @@ extension User {
         }
     }
     
+    struct PrivateInfo: Serializable {
+        var info: Info
+        var deviceSessions: [DeviceSession.Info]
+        
+        init(from user: User) {
+            self.info = user.fullInfo()
+            self.deviceSessions = user.deviceSessions.map { $0.info() }
+        }
+    }
+    
     func info() -> Info {
         Info(from: self, fullInfo: false)
     }
@@ -71,8 +90,8 @@ extension User {
         Info(from: self, fullInfo: true)
     }
     
-    func generateToken() throws -> UserToken {
-        try .init(value: [UInt8].random(count: 32).base64, userID: requireID())
+    func privateInfo() -> PrivateInfo {
+        PrivateInfo(from: self)
     }
 }
 

@@ -17,8 +17,8 @@ final class UserTests: XCTestCase {
         try await seedCurrentUser()
         try app.test(.GET, "users/current", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.id, 1)
+            let response = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(response.info.id, 1)
         })
     }
     

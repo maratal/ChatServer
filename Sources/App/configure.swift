@@ -5,7 +5,7 @@ import Vapor
 
 // configures your application
 public func configure(_ app: Application) throws {
-    Application.itself = app
+    Application.shared = app
     
     // uncomment to serve files from /Public folder
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
@@ -20,7 +20,7 @@ public func configure(_ app: Application) throws {
     ), as: .psql)
 
     app.migrations.add(CreateUser())
-    app.migrations.add(CreateUserToken())
+    app.migrations.add(CreateDeviceSession())
     app.migrations.add(CreateContact())
     app.migrations.add(CreateChat())
     app.migrations.add(CreateMessage())

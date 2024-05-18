@@ -107,3 +107,8 @@ func makeMessages(for chatId: UUID, authorId: UserID, count: Int) async throws -
     }
     return messages
 }
+
+extension DeviceInfo {
+    
+    static var testInfo = DeviceInfo(id: UUID(), name: "My Phone", model: "iPhone", token: "\(UUID())", transport: .apns)
+}

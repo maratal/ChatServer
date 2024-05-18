@@ -3,7 +3,7 @@ import Vapor
 struct ChatController: ChatService, RouteCollection {
     
     func boot(routes: RoutesBuilder) throws {
-        let protected = routes.grouped("chats").grouped(UserToken.authenticator())
+        let protected = routes.grouped("chats").grouped(DeviceSession.authenticator())
         protected.get(use: chats)
         protected.post(use: createChat)
         protected.group(.id) { route in
