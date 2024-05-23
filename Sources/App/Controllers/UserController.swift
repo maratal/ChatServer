@@ -25,6 +25,11 @@ struct UserController: UserService, RouteCollection {
         protected.get(use: search)
     }
     
+    func online(_ req: Request) async throws -> User.PrivateInfo {
+        let deviceInfo = try req.content.decode(DeviceInfo.self)
+        return try await online(req.deviceSession(), deviceInfo: deviceInfo)
+    }
+    
     // In test environment returns user with id = 1. In production returns authenticated user (same as `me`).
     func current(_ req: Request) async throws -> User.PrivateInfo {
         try await current(req.currentUser())

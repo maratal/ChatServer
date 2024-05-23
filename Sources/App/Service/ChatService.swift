@@ -100,14 +100,17 @@ extension ChatService {
         guard let relation = try await Repositories.chats.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
+        let chat = relation.chat
         if relation.chat.isPersonal {
             throw ServiceError(.badRequest, reason: "You can't update personal chat.")
         }
         if let title = update.title {
-            relation.chat.title = title
+            chat.title = title
         }
-        try await Repositories.chats.save(relation.chat)
-        return ChatInfo(from: relation, fullInfo: true)
+        try await Repositories.chats.save(chat)
+        let info = ChatInfo(from: relation, fullInfo: true)
+        try await Service.notificator.notify(chat: chat, with: info, about: .chatUpdate, from: relation.user)
+        return info
     }
     
     func updateChatSettings(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
@@ -144,7 +147,9 @@ extension ChatService {
             throw ServiceError(.badRequest, reason: "To many users to add at once.")
         }
         try await Repositories.chats.save(relation.chat, with: Array(newUsers))
-        return ChatInfo(from: relation, fullInfo: true)
+        let info = ChatInfo(from: relation, fullInfo: true)
+        try await Service.notificator.notify(chat: chat, with: info, about: .addedUsers, from: relation.user)
+        return info
     }
     
     func deleteUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo {
@@ -162,7 +167,9 @@ extension ChatService {
         let usersToNotDelete = relations.filter { $0.isChatBlocked }.map { $0.$user.id }
         let usersToDelete = Array(Set(users).subtracting(Set(usersToNotDelete)))
         try await Repositories.chats.deleteUsers(usersToDelete, from: chat)
-        return ChatInfo(from: relation, fullInfo: true)
+        let info = ChatInfo(from: relation, fullInfo: true)
+        try await Service.notificator.notify(chat: chat, with: info, about: .deletedUsers, from: relation.user)
+        return info
     }
     
     func deleteChat(_ id: UUID, by userId: UserID) async throws {
@@ -175,7 +182,9 @@ extension ChatService {
         }
         if chat.isPersonal && relation.isUserBlocked {
             try await Repositories.chats.deleteMessages(from: chat)
+            try await Service.notificator.notify(chat: chat, about: .chatCleared, from: relation.user)
         } else {
+            try await Service.notificator.notify(chat: chat, about: .chatDeleted, from: relation.user)
             try await Repositories.chats.delete(chat)
         }
     }
@@ -222,6 +231,7 @@ extension ChatService {
             throw ServiceError(.forbidden, reason: "You can't clear this chat.")
         }
         try await Repositories.chats.deleteMessages(from: chat)
+        try await Service.notificator.notify(chat: chat, about: .chatCleared, from: relation.user)
     }
     
     func messages(from id: UUID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo] {
@@ -275,7 +285,9 @@ extension ChatService {
         
         try await Repositories.saveAll(itemsToSave)
         
-        return message.info()
+        let info = message.info()
+        try await Service.notificator.notify(chat: chat, with: info, about: .message, from: authorRelation.user)
+        return info
     }
     
     func updateMessage(_ id: UUID, with update: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
@@ -302,7 +314,10 @@ extension ChatService {
             message.isVisible = isVisible
         }
         try await Repositories.chats.saveMessage(message)
-        return message.info()
+        
+        let info = message.info()
+        try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: authorRelation.user)
+        return info
     }
     
     func deleteMessage(_ id: UUID, by userId: UserID) async throws -> MessageInfo {
@@ -313,19 +328,24 @@ extension ChatService {
         message.fileSize = 0
         message.editedAt = Date()
         try await Repositories.chats.saveMessage(message)
-        return message.info()
+        
+        let info = message.info()
+        try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: message.author)
+        return info
     }
     
     func readMessage(_ id: UUID, by userId: UserID) async throws {
         guard let message = try await Repositories.chats.findMessage(id: id) else {
             throw ServiceError(.notFound)
         }
-        guard message.chat.relations.contains(where: { $0.$user.id == userId }) else {
+        guard let readerRelation = message.chat.relations.ofUser(userId) else {
             throw ServiceError(.forbidden)
         }
         if message.reactions.first(where: { $0.user.id == userId && $0.badge == Reactions.seen.rawValue }) == nil {
             let reaction = Reaction(messageId: id, userId: userId, badge: .seen)
             try await Repositories.saveItem(reaction)
+            let info = message.info()
+            try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: readerRelation.user)
         }
     }
 }

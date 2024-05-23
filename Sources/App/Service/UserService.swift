@@ -2,6 +2,9 @@ import Foundation
 
 protocol UserService {
     
+    /// Creates web socket for user and updates his device information.
+    func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo
+    
     /// Returns full information about current user including all logged in sessions.
     func current(_ user: User) async throws -> User.PrivateInfo
     
@@ -25,6 +28,16 @@ protocol UserService {
 }
 
 extension UserService {
+    
+    func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
+        session.deviceName = deviceInfo.name
+        session.deviceToken = deviceInfo.token
+        let user = session.user
+        user.lastAccess = Date()
+        try await Repositories.saveAll([session, user])
+        try Service.listener.listenForDeviceSession(session)
+        return user.privateInfo()
+    }
     
     func current(_ user: User) async throws -> User.PrivateInfo {
         _ = try await Repositories.sessions.allForUser(user)

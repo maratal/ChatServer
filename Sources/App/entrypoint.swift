@@ -16,7 +16,9 @@ enum Entrypoint {
         
         do {
             try configure(app)
-        } catch {
+            Service.configure()
+        }
+        catch {
             app.logger.report(error: error)
             throw error
         }

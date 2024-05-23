@@ -10,6 +10,8 @@ extension Application {
         try app.autoRevert().wait()
         try app.autoMigrate().wait()
         
+        Service.configureTesting()
+        
         return app
     }
 }
