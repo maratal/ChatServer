@@ -10,7 +10,7 @@ final class TestPushManager: PushSender {
 
 final class TestWebSocketServer: WebSocketListener, WebSocketSender {
     
-    func listenForDeviceSession(_ session: DeviceSession) throws {
+    func listenForDeviceWithSession(_ session: DeviceSession) throws {
         //
     }
     

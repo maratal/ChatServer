@@ -35,7 +35,7 @@ extension UserService {
         let user = session.user
         user.lastAccess = Date()
         try await Repositories.saveAll([session, user])
-        try Service.listener.listenForDeviceSession(session)
+        try Service.listener.listenForDeviceWithSession(session)
         return user.privateInfo()
     }
     

@@ -2,7 +2,7 @@ import Vapor
 import WebSocketKit
 
 protocol WebSocketListener {
-    func listenForDeviceSession(_ session: DeviceSession) throws
+    func listenForDeviceWithSession(_ session: DeviceSession) throws
 }
 
 protocol WebSocketSender {
@@ -32,7 +32,7 @@ final class WebSocketServer: WebSocketListener, WebSocketSender {
         return ws
     }
     
-    func listenForDeviceSession(_ session: DeviceSession) throws {
+    func listenForDeviceWithSession(_ session: DeviceSession) throws {
         guard let channel = session.id?.uuidString else { throw Service.Errors.idRequired }
         setClient(nil, for: channel)
         Application.shared.webSocket("\(channel)") { [weak self] req, ws in
