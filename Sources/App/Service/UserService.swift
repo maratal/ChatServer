@@ -30,12 +30,16 @@ protocol UserService {
 extension UserService {
     
     func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
+        guard session.deviceId == deviceInfo.id, session.deviceModel == deviceInfo.model else {
+            throw ServiceError(.badRequest, reason: "You can only change device's name and token.")
+        }
         session.deviceName = deviceInfo.name
         session.deviceToken = deviceInfo.token
         let user = session.user
         user.lastAccess = Date()
         try await Repositories.saveAll([session, user])
         try Service.listener.listenForDeviceWithSession(session)
+        _ = try await Repositories.sessions.allForUser(user)
         return user.privateInfo()
     }
     

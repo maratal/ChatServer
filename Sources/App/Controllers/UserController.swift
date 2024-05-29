@@ -11,6 +11,7 @@ struct UserController: UserService, RouteCollection {
         let protected = users.grouped(DeviceSession.authenticator())
         protected.group("me") { route in
             route.put(use: update)
+            route.put("online", use: online)
             route.get("contacts", use: contacts)
             route.post("contacts", use: addContact)
             route.delete("contacts", .id, use: deleteContact)

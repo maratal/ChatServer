@@ -112,5 +112,18 @@ func makeMessages(for chatId: UUID, authorId: UserID, count: Int) async throws -
 
 extension DeviceInfo {
     
-    static var testInfo = DeviceInfo(id: UUID(), name: "My Phone", model: "iPhone", token: "\(UUID())", transport: .apns)
+    static var testInfoMobile = DeviceInfo(id: UUID(), name: "My Phone", model: "iPhone", token: "\(UUID())", transport: .apns)
+    
+    static var testInfoDesktop = DeviceInfo(id: UUID(), name: "My Mac", model: "MBA", token: "\(UUID())", transport: .web)
+}
+
+extension User.PrivateInfo {
+    
+    func sessionForAccessToken(_ token: String) -> DeviceSession.Info? {
+        deviceSessions.first(where: { $0.accessToken == token })
+    }
+    
+    func sessionForDeviceId(_ deviceId: UUID) -> DeviceSession.Info? {
+        deviceSessions.first(where: { $0.deviceInfo.id == deviceId })
+    }
 }

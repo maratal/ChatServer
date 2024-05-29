@@ -16,7 +16,7 @@ final class AuthTests: XCTestCase {
     func testRegisterUser() throws {
         try app.test(.POST, "users", beforeRequest: { req in
             try req.content.encode(
-                RegistrationRequest(name: "Test", username: "testuser", password: "********", deviceInfo: .testInfo)
+                RegistrationRequest(name: "Test", username: "testuser", password: "********", deviceInfo: .testInfoMobile)
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -34,7 +34,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -67,7 +67,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -98,7 +98,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: "123"),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
@@ -112,7 +112,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -145,7 +145,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -167,7 +167,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: "12345678"),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -181,7 +181,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -215,7 +215,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: "12345678"),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -253,7 +253,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -288,7 +288,7 @@ final class AuthTests: XCTestCase {
                      headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                      beforeRequest: { req in
             try req.content.encode(
-                DeviceInfo.testInfo
+                DeviceInfo.testInfoMobile
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -305,6 +305,101 @@ final class AuthTests: XCTestCase {
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
+    func testGoOnline() async throws {
+        try await seedCurrentUser()
+        var tokenString = ""
+        try app.test(.POST, "users/login",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfoMobile
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let privateInfo = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(privateInfo.deviceSessions.count, 1)
+            XCTAssertEqual(privateInfo.deviceSessions[0].deviceInfo.id, DeviceInfo.testInfoMobile.id)
+        })
+        try app.test(.POST, "users/login",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfoDesktop
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let privateInfo = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(privateInfo.deviceSessions.count, 2)
+            tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoDesktop.id)).accessToken
+        })
+        try app.test(.PUT, "users/me/online",
+                     headers: .authWith(token: tokenString),
+                     beforeRequest: { req in
+            var info = DeviceInfo.testInfoDesktop
+            info.name = "My computer"
+            try req.content.encode(info)
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let privateInfo = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(privateInfo.deviceSessions.count, 2)
+            let deviceInfo = try XCTUnwrap(privateInfo.sessionForAccessToken(tokenString)?.deviceInfo)
+            XCTAssertEqual(deviceInfo.id, DeviceInfo.testInfoDesktop.id)
+            XCTAssertEqual(deviceInfo.name, "My computer")
+        })
+    }
+    
+    func testTryGoOnlineWithDifferentDeviceId() async throws {
+        try await seedCurrentUser()
+        var tokenString = ""
+        try app.test(.POST, "users/login",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfoMobile
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let privateInfo = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(privateInfo.deviceSessions.count, 1)
+            tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoMobile.id)).accessToken
+        })
+        try app.test(.PUT, "users/me/online",
+                     headers: .authWith(token: tokenString),
+                     beforeRequest: { req in
+            var info = DeviceInfo.testInfoMobile
+            info.id = UUID()
+            try req.content.encode(info)
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
+    
+    func testTryGoOnlineWithDifferentModel() async throws {
+        try await seedCurrentUser()
+        var tokenString = ""
+        try app.test(.POST, "users/login",
+                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                     beforeRequest: { req in
+            try req.content.encode(
+                DeviceInfo.testInfoMobile
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let privateInfo = try res.content.decode(User.PrivateInfo.self)
+            XCTAssertEqual(privateInfo.deviceSessions.count, 1)
+            tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoMobile.id)).accessToken
+        })
+        try app.test(.PUT, "users/me/online",
+                     headers: .authWith(token: tokenString),
+                     beforeRequest: { req in
+            var info = DeviceInfo.testInfoMobile
+            info.model = "iPad"
+            try req.content.encode(info)
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
         })
     }
 }
