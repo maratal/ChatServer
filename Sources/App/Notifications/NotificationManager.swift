@@ -1,6 +1,10 @@
 import Foundation
 
-public final class NotificationManager {
+protocol Notificator {
+    func notify(chat: Chat, with info: Encodable?, about event: Service.Event, from user: User?) async throws
+}
+
+public final class NotificationManager: Notificator {
     
     private let wsSender: WebSocketSender
     private let pushSender: PushSender

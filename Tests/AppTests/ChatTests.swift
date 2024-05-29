@@ -149,6 +149,8 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
             XCTAssertEqual(chatInfo.title, "Some")
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .chatUpdate)
         })
     }
     
@@ -220,6 +222,8 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(chatInfo.addedUsers?.compactMap({ $0.id }).sorted(), [4])
             let chat = try await Repositories.chats.fetch(id: chat.id!)
             XCTAssertEqual(chat.participantsKey, [1, 2, 3, 4].participantsKey())
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .addedUsers)
         })
     }
     
@@ -251,6 +255,8 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(chatInfo.removedUsers?.compactMap({ $0.id }).sorted(), [3])
             let chat = try await Repositories.chats.fetch(id: chat.id!)
             XCTAssertEqual(chat.participantsKey, [1, 2].participantsKey())
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .removedUsers)
         })
     }
     
@@ -316,6 +322,8 @@ final class ChatTests: XCTestCase {
             let message = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(message.text, "Hey")
             XCTAssertEqual(message.authorId, current.id!)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .message)
         })
     }
     
@@ -370,6 +378,8 @@ final class ChatTests: XCTestCase {
             XCTAssertNotNil(updatedMessage.editedAt)
             XCTAssertNotNil(updatedMessage.createdAt)
             XCTAssertTrue(updatedMessage.editedAt! > updatedMessage.createdAt!)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .messageUpdate)
         })
     }
     
@@ -493,6 +503,7 @@ final class ChatTests: XCTestCase {
         })
         try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
+            XCTAssertTrue(Service.testNotificator.sentNotifications.contains(where: { $0.event == .chatDeleted }))
         })
         try await app.test(.GET, "chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -520,6 +531,8 @@ final class ChatTests: XCTestCase {
         
         try app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .chatDeleted)
         })
     }
     
@@ -587,6 +600,8 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(chats.count, 1)
             let message = try await Repositories.chats.findMessage(id: message.id!)
             XCTAssertNil(message)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .chatCleared)
         })
     }
     
@@ -612,6 +627,8 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(chats.count, 1)
             let message = try await Repositories.chats.findMessage(id: message.id!)
             XCTAssertNil(message)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 1)
+            XCTAssertTrue(Service.testNotificator.sentNotifications[0].event == .chatCleared)
         })
     }
     

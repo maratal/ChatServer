@@ -188,9 +188,9 @@ extension ChatService {
         }
         if chat.isPersonal && relation.isUserBlocked {
             try await Repositories.chats.deleteMessages(from: chat)
-            try await Service.notificator.notify(chat: chat, about: .chatCleared, from: relation.user)
+            try await Service.notificator.notify(chat: chat, with: nil, about: .chatCleared, from: relation.user)
         } else {
-            try await Service.notificator.notify(chat: chat, about: .chatDeleted, from: relation.user)
+            try await Service.notificator.notify(chat: chat, with: nil, about: .chatDeleted, from: relation.user)
             try await Repositories.chats.delete(chat)
         }
     }
@@ -237,7 +237,7 @@ extension ChatService {
             throw ServiceError(.forbidden, reason: "You can't clear this chat.")
         }
         try await Repositories.chats.deleteMessages(from: chat)
-        try await Service.notificator.notify(chat: chat, about: .chatCleared, from: relation.user)
+        try await Service.notificator.notify(chat: chat, with: nil, about: .chatCleared, from: relation.user)
     }
     
     func messages(from id: UUID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo] {

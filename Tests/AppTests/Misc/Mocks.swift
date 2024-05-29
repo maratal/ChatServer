@@ -21,11 +21,25 @@ final class TestWebSocketServer: WebSocketListener, WebSocketSender {
     }
 }
 
+final class TestNotificationManager: Notificator {
+    
+    var sentNotifications = [Service.Notification]()
+    
+    func notify(chat: Chat, with info: Encodable? = nil, about event: Service.Event, from user: User?) async throws {
+        let source = user == nil ? "system" : "\(user!.id ?? 0)"
+        let notification = Service.Notification(event: event, source: source, payload: info)
+        print("--- TEST notification '\(notification.event)' sent to chat '\(chat.id!)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
+        sentNotifications.append(notification)
+    }
+}
+
 extension Service {
     
     static func configureTesting() {
-        let server = TestWebSocketServer()
-        Service.configure(listener: server,
-                          notificator: NotificationManager(wsSender: server, pushSender: TestPushManager()))
+        Service.configure(listener: TestWebSocketServer(), notificator: TestNotificationManager())
+    }
+    
+    static var testNotificator: TestNotificationManager {
+        notificator as! TestNotificationManager
     }
 }

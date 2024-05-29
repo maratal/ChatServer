@@ -25,9 +25,9 @@ struct Service {
     }
     
     static var listener: WebSocketListener!
-    static var notificator: NotificationManager!
+    static var notificator: Notificator!
     
-    static func configure(listener: WebSocketListener, notificator: NotificationManager) {
+    static func configure(listener: WebSocketListener, notificator: Notificator) {
         Self.listener = listener
         Self.notificator = notificator
     }
