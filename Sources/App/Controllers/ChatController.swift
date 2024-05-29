@@ -14,7 +14,7 @@ struct ChatController: ChatService, RouteCollection {
             route.delete("exit", use: exitChat)
             
             route.post("users", use: addUsers)
-            route.delete("users", use: deleteUsers)
+            route.delete("users", use: removeUsers)
             route.put("users", .userId, "block", use: blockUserInChat)
             route.put("users", .userId, "unblock", use: unblockUserInChat)
             
@@ -73,8 +73,8 @@ struct ChatController: ChatService, RouteCollection {
                            by: req.currentUser().requireID())
     }
     
-    func deleteUsers(_ req: Request) async throws -> ChatInfo {
-        try await deleteUsers(req.content.decode(UpdateChatUsersRequest.self).users,
+    func removeUsers(_ req: Request) async throws -> ChatInfo {
+        try await removeUsers(req.content.decode(UpdateChatUsersRequest.self).users,
                               from: req.objectUUID(),
                               by: req.currentUser().requireID())
     }

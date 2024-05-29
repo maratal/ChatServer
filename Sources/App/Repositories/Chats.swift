@@ -10,7 +10,7 @@ protocol Chats {
     func save(_ chat: Chat) async throws
     func save(_ chat: Chat, with users: [UserID]) async throws
     func delete(_ chat: Chat) async throws
-    func deleteUsers(_ users: [UserID], from chat: Chat) async throws
+    func removeUsers(_ users: [UserID], from chat: Chat) async throws
     func saveRelation(_ relation: ChatRelation) async throws
     func deleteRelation(_ relation: ChatRelation) async throws
 
@@ -48,6 +48,9 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         try await ChatRelation.query(on: database)
             .filter(\.$chat.$id == chatId)
             .filter(\.$user.$id == userId)
+            .with(\.$user) { user in
+                user.with(\.$deviceSessions)
+            }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)
@@ -113,7 +116,7 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         try await relation.save(on: database)
     }
     
-    func deleteUsers(_ users: [UserID], from chat: Chat) async throws {
+    func removeUsers(_ users: [UserID], from chat: Chat) async throws {
         guard let chatId = chat.id else {
             throw ServiceError(.unprocessableEntity, reason: "Chat wasn't saved yet.")
         }
@@ -143,7 +146,9 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
                 reaction.with(\.$user)
             }
             .with(\.$chat) { chat in
-                chat.with(\.$relations)
+                chat.with(\.$relations) { relation in
+                    relation.with(\.$user)
+                }
             }
             .first()
     }

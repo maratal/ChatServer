@@ -57,7 +57,9 @@ extension Chat {
         var title: String?
         var isPersonal: Bool?
         var owner: UserInfo?
-        var users: [UserInfo]?
+        var allUsers: [UserInfo]?
+        var addedUsers: [UserInfo]?
+        var removedUsers: [UserInfo]?
         var lastMessage: MessageInfo?
         
         var isMuted: Bool?
@@ -77,8 +79,24 @@ extension Chat {
             self.isArchived = relation.isArchived
             self.isBlocked = relation.isChatBlocked
             if fullInfo {
-                self.users = chat.users.map { $0.info() }
+                self.allUsers = chat.users.map { $0.info() }
             }
+        }
+        
+        init(from relation: ChatRelation, addedUsers: [UserInfo]?, removedUsers: [UserInfo]?) {
+            let chat = relation.chat
+            self.id = chat.id
+            self.title = chat.title
+            self.isPersonal = chat.isPersonal
+            self.owner = chat.owner.info()
+            if let lastMessage = chat.lastMessage {
+                self.lastMessage = lastMessage.info()
+            }
+            self.isMuted = relation.isMuted
+            self.isArchived = relation.isArchived
+            self.isBlocked = relation.isChatBlocked
+            self.addedUsers = addedUsers
+            self.removedUsers = removedUsers
         }
     }
 }

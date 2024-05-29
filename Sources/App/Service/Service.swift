@@ -10,7 +10,7 @@ struct Service {
         case chatUpdate
         case userUpdate
         case addedUsers
-        case deletedUsers
+        case removedUsers
         case typing
         case chatCleared
         case chatDeleted

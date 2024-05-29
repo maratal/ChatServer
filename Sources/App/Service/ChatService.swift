@@ -24,7 +24,7 @@ protocol ChatService {
     func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo
     
     /// Removes users from a chat by a participant with `userId`.
-    func deleteUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo
+    func removeUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo
     
     /// Deletes chat together with messages. If settings for a chat exist (such as `isBlocked`) only messages will be deleted.
     func deleteChat(_ id: UUID, by userId: UserID) async throws
@@ -108,7 +108,7 @@ extension ChatService {
             chat.title = title
         }
         try await Repositories.chats.save(chat)
-        let info = ChatInfo(from: relation, fullInfo: true)
+        let info = ChatInfo(from: relation, fullInfo: false)
         try await Service.notificator.notify(chat: chat, with: info, about: .chatUpdate, from: relation.user)
         return info
     }
@@ -127,7 +127,7 @@ extension ChatService {
             relation.isRemovedOnDevice = isRemovedOnDevice
         }
         try await Repositories.chats.saveRelation(relation)
-        return ChatInfo(from: relation, fullInfo: true)
+        return ChatInfo(from: relation, fullInfo: false)
     }
     
     func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo {
@@ -147,14 +147,15 @@ extension ChatService {
             throw ServiceError(.badRequest, reason: "To many users to add at once.")
         }
         try await Repositories.chats.save(relation.chat, with: Array(newUsers))
-        let info = ChatInfo(from: relation, fullInfo: true)
+        let addedUsers = chat.users.filter { newUsers.contains($0.id!) }.map { $0.info() }
+        let info = ChatInfo(from: relation, addedUsers: addedUsers, removedUsers: nil)
         try await Service.notificator.notify(chat: chat, with: info, about: .addedUsers, from: relation.user)
         return info
     }
     
-    func deleteUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo {
+    func removeUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo {
         guard users.count > 0 else {
-            throw ServiceError(.badRequest, reason: "No users to delete found.")
+            throw ServiceError(.badRequest, reason: "No users to remove found.")
         }
         let relations = try await Repositories.chats.findRelations(of: id)
         guard let relation = relations.ofUser(userId), !relation.isUserBlocked else {
@@ -164,11 +165,16 @@ extension ChatService {
         if chat.isPersonal {
             throw ServiceError(.badRequest, reason: "You can't alter users in a personal chat.")
         }
-        let usersToNotDelete = relations.filter { $0.isChatBlocked }.map { $0.$user.id }
-        let usersToDelete = Array(Set(users).subtracting(Set(usersToNotDelete)))
-        try await Repositories.chats.deleteUsers(usersToDelete, from: chat)
-        let info = ChatInfo(from: relation, fullInfo: true)
-        try await Service.notificator.notify(chat: chat, with: info, about: .deletedUsers, from: relation.user)
+        let usersToNotRemove = relations.filter { $0.isChatBlocked }.map { $0.$user.id }
+        let usersToRemove = Array(Set(users).subtracting(Set(usersToNotRemove)))
+        let usersCache = chat.users.map { $0.info() }
+        let usersBefore = chat.users.map { $0.id! }
+        try await Repositories.chats.removeUsers(usersToRemove, from: chat)
+        let usersAfter = chat.users.map { $0.id! }
+        let removedUsersSet = Set(usersBefore).subtracting(Set(usersAfter))
+        let removedUsers = usersCache.filter { removedUsersSet.contains($0.id!) }
+        let info = ChatInfo(from: relation, addedUsers: nil, removedUsers: removedUsers)
+        try await Service.notificator.notify(chat: chat, with: info, about: .removedUsers, from: relation.user)
         return info
     }
     

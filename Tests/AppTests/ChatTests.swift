@@ -35,7 +35,7 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2])
+            XCTAssertEqual(chatInfo.allUsers?.compactMap({ $0.id }).sorted(), [1, 2])
         })
     }
     
@@ -62,7 +62,7 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertNotNil(chatInfo.id)
             XCTAssertEqual(chatInfo.isPersonal, false)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2, 3])
+            XCTAssertEqual(chatInfo.allUsers?.compactMap({ $0.id }).sorted(), [1, 2, 3])
         })
     }
     
@@ -79,7 +79,7 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertNotNil(chatInfo.id)
             XCTAssertEqual(chatInfo.isPersonal, true)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2])
+            XCTAssertEqual(chatInfo.allUsers?.compactMap({ $0.id }).sorted(), [1, 2])
         })
     }
     
@@ -97,7 +97,7 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
             XCTAssertEqual(chatInfo.isPersonal, false)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2, 3])
+            XCTAssertEqual(chatInfo.allUsers?.compactMap({ $0.id }).sorted(), [1, 2, 3])
         })
     }
     
@@ -114,7 +114,7 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
             XCTAssertEqual(chatInfo.isPersonal, true)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2])
+            XCTAssertEqual(chatInfo.allUsers?.compactMap({ $0.id }).sorted(), [1, 2])
         })
     }
     
@@ -133,7 +133,7 @@ final class ChatTests: XCTestCase {
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertNotEqual(chat.id, chatInfo.id)
             XCTAssertEqual(chatInfo.isPersonal, true)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2])
+            XCTAssertEqual(chatInfo.allUsers?.compactMap({ $0.id }).sorted(), [1, 2])
         })
     }
     
@@ -217,7 +217,7 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2, 3, 4])
+            XCTAssertEqual(chatInfo.addedUsers?.compactMap({ $0.id }).sorted(), [4])
             let chat = try await Repositories.chats.fetch(id: chat.id!)
             XCTAssertEqual(chat.participantsKey, [1, 2, 3, 4].participantsKey())
         })
@@ -236,7 +236,7 @@ final class ChatTests: XCTestCase {
         })
     }
     
-    func testDeleteUsersFromChat() async throws {
+    func testRemoveUsersFromChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
@@ -248,13 +248,13 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
-            XCTAssertEqual(chatInfo.users?.compactMap({ $0.id }).sorted(), [1, 2])
+            XCTAssertEqual(chatInfo.removedUsers?.compactMap({ $0.id }).sorted(), [3])
             let chat = try await Repositories.chats.fetch(id: chat.id!)
             XCTAssertEqual(chat.participantsKey, [1, 2].participantsKey())
         })
     }
     
-    func testTryDeleteUsersFromChatByBlockedUser() async throws {
+    func testTryRemoveUsersFromChatByBlockedUser() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
