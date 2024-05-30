@@ -286,10 +286,14 @@ final class ChatService: ChatServiceProtocol {
         let chat = authorRelation.chat
         
         chat.$lastMessage.id = message.id!
-        authorRelation.isArchived = false
-        authorRelation.isRemovedOnDevice = false
         
-        var itemsToSave: [any RepositoryItem] = [chat, authorRelation]
+        var itemsToSave: [any RepositoryItem] = [chat]
+        
+        if authorRelation.isArchived || authorRelation.isRemovedOnDevice {
+            authorRelation.isArchived = false
+            authorRelation.isRemovedOnDevice = false
+            itemsToSave.append(authorRelation)
+        }
         
         if chat.isPersonal {
             if let recipientRelation = relations.ofUserOtherThen(userId), recipientRelation.isRemovedOnDevice {
