@@ -2,11 +2,34 @@ import Foundation
 
 protocol UserService {
     
-    /// Creates web socket for user and updates his device information.
-    func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo
+    /// Registers a new user account and authenticates it.
+    func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo
+    
+    /// Deregisters user's account and deletes all associated data.
+    func deregister(_ user: User) async throws
+    
+    /// Authenticates user by checking username-password pair and generating an access token.
+    /// In Vapor it happens semi-automatically (see `ModelAuthenticatable`), so this method only generates a token.
+    func login(_ user: User, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo
+    
+    /// Resets user's current authentication (in Vapor) and token to `nil`.
+    func logout(_ user: User) async throws
     
     /// Returns full information about current user including all logged in sessions.
     func current(_ user: User) async throws -> User.PrivateInfo
+    
+    /// Changes password by providing user's current password..
+    func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws
+    
+    /// Resets password by checking the account key.
+    /// Empty account key acts as an invalid key and user is not able to restore their account.
+    func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws
+    
+    /// Sets an account key by providing user's current password.
+    func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws
+    
+    /// Creates web socket for user and updates his device information.
+    func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo
     
     /// Updates current user with the information from the request fields.
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
@@ -16,18 +39,81 @@ protocol UserService {
     
     /// Looking for users with an `id`, `username` or `name` using the provided string as a substring for those fields (except `id` which should be an exact match).
     func search(_ s: String) async throws -> [UserInfo]
-    
-    /// Returns all contacts for the current user.
-    func contacts(of user: User) async throws -> [ContactInfo]
-    
-    /// Adds a user as a contact of the current user.
-    func addContact(_ info: ContactInfo, to user: User) async throws -> ContactInfo
-    
-    /// Deletes the contact of the current user.
-    func deleteContact(_ contactId: UUID, from user: User) async throws
 }
 
 extension UserService {
+    
+    func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo {
+        let registration = try validate(registration: request)
+        let user = User(name: registration.name,
+                        username: registration.username,
+                        passwordHash: registration.password.bcryptHash(),
+                        accountKeyHash: nil)
+        try await Repositories.users.save(user)
+        return try await login(user, deviceInfo: request.deviceInfo)
+    }
+    
+    func deregister(_ user: User) async throws {
+        try await Repositories.users.delete(user)
+    }
+    
+    func logout(_ user: User) async throws {
+        try await Repositories.sessions.delete(user: user)
+    }
+    
+    func current(_ user: User) async throws -> User.PrivateInfo {
+        _ = try await Repositories.sessions.allForUser(user)
+        return user.privateInfo()
+    }
+    
+    func login(_ user: User, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
+        let deviceSession = DeviceSession(accessToken: generateAccessToken(),
+                                          userID: user.id!,
+                                          deviceId: deviceInfo.id,
+                                          deviceName: deviceInfo.name,
+                                          deviceModel: deviceInfo.model,
+                                          deviceToken: deviceInfo.token,
+                                          pushTransport: deviceInfo.transport.rawValue)
+        try await Repositories.sessions.save(deviceSession)
+        _ = try await Repositories.sessions.allForUser(user)
+        return user.privateInfo()
+    }
+    
+    func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws {
+        guard try user.verify(password: currentPassword) else {
+            throw Service.Errors.invalidPassword
+        }
+        guard validatePassword(newPassword) else {
+            throw Service.Errors.badPassword
+        }
+        user.passwordHash = newPassword.bcryptHash()
+        try await Repositories.users.save(user)
+    }
+    
+    func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws {
+        guard let user = try await Repositories.users.find(id: userId) else {
+            throw Service.Errors.invalidUser
+        }
+        guard try user.verify(accountKey: accountKey) else {
+            throw Service.Errors.invalidAccountKey
+        }
+        guard validatePassword(newPassword) else {
+            throw Service.Errors.badPassword
+        }
+        user.passwordHash = newPassword.bcryptHash()
+        try await Repositories.users.save(user)
+    }
+    
+    func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws {
+        guard try user.verify(password: currentPassword) else {
+            throw Service.Errors.invalidPassword
+        }
+        guard validateAccountKey(newAccountKey) else {
+            throw Service.Errors.badAccountKey
+        }
+        user.accountKeyHash = newAccountKey.bcryptHash()
+        try await Repositories.users.save(user)
+    }
     
     func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
         guard session.deviceId == deviceInfo.id, session.deviceModel == deviceInfo.model else {
@@ -39,11 +125,6 @@ extension UserService {
         user.lastAccess = Date()
         try await Repositories.saveAll([session, user])
         try Service.listener.listenForDeviceWithSession(session)
-        _ = try await Repositories.sessions.allForUser(user)
-        return user.privateInfo()
-    }
-    
-    func current(_ user: User) async throws -> User.PrivateInfo {
         _ = try await Repositories.sessions.allForUser(user)
         return user.privateInfo()
     }
@@ -77,28 +158,39 @@ extension UserService {
         let users = try await Repositories.users.search(s)
         return users.map { $0.info() }
     }
+}
+
+private extension UserService {
     
-    func contacts(of user: User) async throws -> [ContactInfo] {
-        try await Repositories.users.contacts(of: user).map { $0.info() }
+    func validatePassword(_ password: String) -> Bool {
+        return password.count >= Service.Constants.minPasswordLength && password.count <= Service.Constants.maxPasswordLength
     }
     
-    func addContact(_ info: ContactInfo, to user: User) async throws -> ContactInfo {
-        guard let contactUserId = info.user.id else {
-            throw ServiceError(.badRequest, reason: "User should have an id.")
-        }
-        if let contact = try await Repositories.users.findContact(userId: contactUserId, ownerId: user.id!) {
-            return contact.info()
-        }
-        let contact = Contact(ownerId: user.id!, userId: contactUserId, isFavorite: info.isFavorite, name: info.name)
-        try await Repositories.users.saveContact(contact)
-        // Copy old object to avoid re-fetching data from database
-        return ContactInfo(from: info, id: contact.id!)
+    func validateAccountKey(_ key: String) -> Bool {
+        return key.count >= Service.Constants.minAccountKeyLength && key.count <= Service.Constants.maxAccountKeyLength
     }
     
-    func deleteContact(_ contactId: UUID, from user: User) async throws {
-        guard let contact = try await Repositories.users.findContact(contactId), contact.$owner.id == user.id else {
-            throw ServiceError(.notFound, reason: "Contact not found.")
+    func validate(registration: RegistrationRequest) throws -> RegistrationRequest {
+        let registration = RegistrationRequest(name: registration.name.normalized(),
+                                               username: registration.username.normalized().lowercased(),
+                                               password: registration.password,
+                                               deviceInfo: registration.deviceInfo)
+        guard registration.name.isName else {
+            throw Service.Errors.badName
         }
-        try await Repositories.users.deleteContact(contact)
+        guard registration.username.count >= Service.Constants.minUsernameLength &&
+              registration.username.count <= Service.Constants.maxUsernameLength &&
+              registration.username.isAlphanumeric &&
+              registration.username.first!.isLetter else {
+            throw Service.Errors.badUsername
+        }
+        guard validatePassword(registration.password) else {
+            throw Service.Errors.badPassword
+        }
+        return registration
+    }
+    
+    func generateAccessToken() -> String {
+        [UInt8].random(count: 32).base64
     }
 }
