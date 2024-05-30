@@ -1,7 +1,47 @@
-import Foundation
+import FluentKit
 
-/// Root service object. Use only for declarations.
 struct Service {
+    
+    static var database: Database!
+    
+    static var users: UserService!
+    static var chats: ChatService!
+    static var contacts: ContactsService!
+    
+    static var listener: WebSocketListener!
+    static var notificator: Notificator!
+    
+    static func configure(database: Database,
+                          listener: WebSocketListener,
+                          notificator: Notificator) {
+        self.database = database
+        self.users = UserService(repo: UsersDatabaseRepository(database: database))
+        self.chats = ChatService(repo: ChatsDatabaseRepository(database: database))
+        self.contacts = ContactsService(repo: ContactsDatabaseRepository(database: database))
+        self.listener = listener
+        self.notificator = notificator
+    }
+}
+
+extension Service {
+    
+    static func saveItem(_ item: any RepositoryItem) async throws {
+        try await item.save(on: database)
+    }
+    
+    static func saveAll(_ items: [any RepositoryItem]) async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for item in items {
+                group.addTask {
+                    try await item.save(on: database)
+                }
+            }
+            try await group.waitForAll()
+        }
+    }
+}
+
+extension Service {
     
     enum Event: String {
         /// Chat related events
@@ -23,24 +63,6 @@ struct Service {
         
         func jsonString() -> String { "" }
     }
-    
-    static var listener: WebSocketListener!
-    static var notificator: Notificator!
-    
-    static func configure(listener: WebSocketListener, notificator: Notificator) {
-        Self.listener = listener
-        Self.notificator = notificator
-    }
-    
-    /// Default configuration
-    static func configure() {
-        let server = WebSocketServer()
-        let notificator = NotificationManager(wsSender: server, pushSender: PushManager(apnsKeyPath: "", fcmKeyPath: ""))
-        configure(listener: server, notificator: notificator)
-    }
-}
-
-extension Service {
     
     struct Constants {
         /// Registration constants

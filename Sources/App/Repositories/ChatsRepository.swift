@@ -1,6 +1,6 @@
 import FluentKit
 
-protocol Chats {
+protocol ChatsRepository {
     func fetch(id: UUID) async throws -> Chat
     func find(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat?
     func findRelations(of chatId: UUID) async throws -> [ChatRelation]
@@ -22,9 +22,7 @@ protocol Chats {
     func findReactions(for messageId: UUID) async throws -> [Reaction]
 }
 
-struct ChatsDatabaseRepository: Chats, DatabaseRepository {
-    
-    var database: Database
+final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     
     func fetch(id: UUID) async throws -> Chat {
         try await Chat.find(id, on: database)!
@@ -105,7 +103,7 @@ struct ChatsDatabaseRepository: Chats, DatabaseRepository {
         if newUsers.count > 0 {
             chat.participantsKey = allUsers.participantsKey()
             try await chat.save(on: database)
-            try await Repositories.saveAll(
+            try await Service.saveAll(
                 newUsers.map { ChatRelation(chatId: try chat.requireID(), userId: $0) }
             )
             _ = try await chat.$users.get(reload: true, on: database)

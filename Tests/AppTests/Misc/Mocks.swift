@@ -1,4 +1,5 @@
 @testable import App
+import XCTVapor
 
 final class TestPushManager: PushSender {
     
@@ -34,10 +35,6 @@ final class TestNotificationManager: Notificator {
 }
 
 extension Service {
-    
-    static func configureTesting() {
-        Service.configure(listener: TestWebSocketServer(), notificator: TestNotificationManager())
-    }
     
     static var testNotificator: TestNotificationManager {
         notificator as! TestNotificationManager

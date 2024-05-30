@@ -26,10 +26,15 @@ public func configure(_ app: Application) throws {
     app.migrations.add(CreateMessage())
     app.migrations.add(CreateChatToUser())
     app.migrations.add(CreateReaction())
-
-    Repositories.useDatabase()
     
     try app.autoMigrate().wait()
+    
+    let wsServer = WebSocketServer()
+    let pushes = PushManager(apnsKeyPath: "", fcmKeyPath: "")
+    
+    Service.configure(database: app.db,
+                      listener: wsServer,
+                      notificator: NotificationManager(wsSender: wsServer, pushSender: pushes))
     
     // register routes
     try routes(app)

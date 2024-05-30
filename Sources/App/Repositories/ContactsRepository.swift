@@ -1,12 +1,6 @@
 import FluentKit
 
-protocol Users {
-    func fetch(id: UserID) async throws -> User
-    func find(id: UserID) async throws -> User?
-    func save(_ user: User) async throws
-    func delete(_ user: User) async throws
-    func search(_ s: String) async throws -> [User]
-    
+protocol ContactsRepository {
     func findContact(_ id: UUID) async throws -> Contact?
     func findContact(userId: UserID, ownerId: UserID) async throws -> Contact?
     func contacts(of user: User) async throws -> [Contact]
@@ -14,31 +8,7 @@ protocol Users {
     func deleteContact(_ contact: Contact) async throws
 }
 
-struct UsersDatabaseRepository: Users, DatabaseRepository {
-    var database: Database
-
-    func fetch(id: UserID) async throws -> User {
-        try await User.find(id, on: database).get()!
-    }
-    
-    func find(id: UserID) async throws -> User? {
-        try await User.find(id, on: database).get()
-    }
-    
-    func save(_ user: User) async throws {
-        try await user.save(on: database)
-    }
-    
-    func delete(_ user: User) async throws {
-        try await user.delete(on: database)
-    }
-    
-    func search(_ s: String) async throws -> [User] {
-        try await User.query(on: database).group(.or) { query in
-            query.filter(\.$name ~~ s)
-            query.filter(\.$username ~~ s)
-        }.range(..<100).all()
-    }
+final class ContactsDatabaseRepository: DatabaseRepository, ContactsRepository {
     
     func findContact(_ id: UUID) async throws -> Contact? {
         try await Contact.find(id, on: database)

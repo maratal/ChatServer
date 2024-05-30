@@ -15,7 +15,7 @@ public final class NotificationManager: Notificator {
     }
     
     func notify(chat: Chat, with info: Encodable? = nil, about event: Service.Event, from user: User?) async throws {
-        let relations = try await Repositories.chats.findRelations(of: chat.id!)
+        let relations = try await Service.chats.repo.findRelations(of: chat.id!)
         let allowed = relations.filter { !$0.isChatBlocked && !$0.isUserBlocked }
         for relation in allowed {
             for session in relation.user.deviceSessions {

@@ -1,6 +1,9 @@
 import Foundation
 
-protocol UserService {
+protocol UserServiceProtocol {
+    
+    /// Repository for storing and fetching users data.
+    var repo: UsersRepository { get }
     
     /// Registers a new user account and authenticates it.
     func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo
@@ -37,11 +40,17 @@ protocol UserService {
     /// Finds user by `id`.
     func find(id: UserID) async throws -> UserInfo
     
-    /// Looking for users with an `id`, `username` or `name` using the provided string as a substring for those fields (except `id` which should be an exact match).
+    /// Looking for users with a `username` or `name` using the provided string as a substring for those fields.
     func search(_ s: String) async throws -> [UserInfo]
 }
 
-extension UserService {
+final class UserService: UserServiceProtocol {
+    
+    var repo: UsersRepository
+    
+    init(repo: UsersRepository) {
+        self.repo = repo
+    }
     
     func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo {
         let registration = try validate(registration: request)
@@ -49,20 +58,20 @@ extension UserService {
                         username: registration.username,
                         passwordHash: registration.password.bcryptHash(),
                         accountKeyHash: nil)
-        try await Repositories.users.save(user)
+        try await repo.save(user)
         return try await login(user, deviceInfo: request.deviceInfo)
     }
     
     func deregister(_ user: User) async throws {
-        try await Repositories.users.delete(user)
+        try await repo.delete(user)
     }
     
     func logout(_ user: User) async throws {
-        try await Repositories.sessions.delete(user: user)
+        try await repo.deleteSession(of: user)
     }
     
     func current(_ user: User) async throws -> User.PrivateInfo {
-        _ = try await Repositories.sessions.allForUser(user)
+        _ = try await repo.allSessions(of: user)
         return user.privateInfo()
     }
     
@@ -74,8 +83,8 @@ extension UserService {
                                           deviceModel: deviceInfo.model,
                                           deviceToken: deviceInfo.token,
                                           pushTransport: deviceInfo.transport.rawValue)
-        try await Repositories.sessions.save(deviceSession)
-        _ = try await Repositories.sessions.allForUser(user)
+        try await repo.saveSession(deviceSession)
+        _ = try await repo.allSessions(of: user)
         return user.privateInfo()
     }
     
@@ -87,11 +96,11 @@ extension UserService {
             throw Service.Errors.badPassword
         }
         user.passwordHash = newPassword.bcryptHash()
-        try await Repositories.users.save(user)
+        try await repo.save(user)
     }
     
     func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws {
-        guard let user = try await Repositories.users.find(id: userId) else {
+        guard let user = try await repo.find(id: userId) else {
             throw Service.Errors.invalidUser
         }
         guard try user.verify(accountKey: accountKey) else {
@@ -101,7 +110,7 @@ extension UserService {
             throw Service.Errors.badPassword
         }
         user.passwordHash = newPassword.bcryptHash()
-        try await Repositories.users.save(user)
+        try await repo.save(user)
     }
     
     func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws {
@@ -112,7 +121,7 @@ extension UserService {
             throw Service.Errors.badAccountKey
         }
         user.accountKeyHash = newAccountKey.bcryptHash()
-        try await Repositories.users.save(user)
+        try await repo.save(user)
     }
     
     func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
@@ -123,9 +132,9 @@ extension UserService {
         session.deviceToken = deviceInfo.token
         let user = session.user
         user.lastAccess = Date()
-        try await Repositories.saveAll([session, user])
+        try await Service.saveAll([session, user])
         try Service.listener.listenForDeviceWithSession(session)
-        _ = try await Repositories.sessions.allForUser(user)
+        _ = try await repo.allSessions(of: user)
         return user.privateInfo()
     }
     
@@ -137,12 +146,12 @@ extension UserService {
             user.about = about
         }
         user.lastAccess = Date()
-        try await Repositories.users.save(user)
+        try await repo.save(user)
         return user.fullInfo()
     }
     
     func find(id: UserID) async throws -> UserInfo {
-        guard let user = try await Repositories.users.find(id: id) else {
+        guard let user = try await repo.find(id: id) else {
             throw ServiceError(.notFound)
         }
         return user.fullInfo()
@@ -155,7 +164,7 @@ extension UserService {
         guard s.count >= 2 else {
             throw ServiceError(.notFound)
         }
-        let users = try await Repositories.users.search(s)
+        let users = try await repo.search(s)
         return users.map { $0.info() }
     }
 }

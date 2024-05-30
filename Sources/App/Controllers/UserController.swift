@@ -1,6 +1,6 @@
 import Vapor
 
-struct UserController: UserService, RouteCollection {
+struct UserController: RouteCollection {
     
     func boot(routes: RoutesBuilder) throws {
         let users = routes.grouped("users")
@@ -30,61 +30,61 @@ struct UserController: UserService, RouteCollection {
     
     func register(req: Request) async throws -> User.PrivateInfo {
         let content = try req.content.decode(RegistrationRequest.self)
-        return try await register(content)
+        return try await Service.users.register(content)
     }
     
     func deregister(req: Request) async throws -> HTTPStatus {
-        try await deregister(try req.authenticatedUser())
+        try await Service.users.deregister(try req.authenticatedUser())
         return .ok
     }
     
     func login(_ req: Request) async throws -> User.PrivateInfo {
         let deviceInfo = try req.content.decode(DeviceInfo.self)
-        return try await login(try req.authenticatedUser(), deviceInfo: deviceInfo)
+        return try await Service.users.login(try req.authenticatedUser(), deviceInfo: deviceInfo)
     }
     
     func logout(_ req: Request) async throws -> HTTPStatus {
-        try await logout(try req.authenticatedUser())
+        try await Service.users.logout(try req.authenticatedUser())
         req.auth.logout(User.self)
         return .ok
     }
     
     func current(_ req: Request) async throws -> User.PrivateInfo {
-        try await current(req.authenticatedUser())
+        try await Service.users.current(req.authenticatedUser())
     }
     
     func changePassword(_ req: Request) async throws -> HTTPStatus {
         let content = try req.content.decode(ChangePasswordRequest.self)
-        try await changePassword(req.authenticatedUser(), currentPassword: content.oldPassword, newPassword: content.newPassword)
+        try await Service.users.changePassword(req.authenticatedUser(), currentPassword: content.oldPassword, newPassword: content.newPassword)
         return .ok
     }
     
     func resetPassword(_ req: Request) async throws -> HTTPStatus {
         let content = try req.content.decode(ResetPasswordRequest.self)
-        try await resetPassword(userId: content.userId, newPassword: content.newPassword, accountKey: content.accountKey)
+        try await Service.users.resetPassword(userId: content.userId, newPassword: content.newPassword, accountKey: content.accountKey)
         return .ok
     }
     
     func setAccountKey(_ req: Request) async throws -> HTTPStatus {
         let content = try req.content.decode(SetAccountKeyRequest.self)
-        try await setAccountKey(req.authenticatedUser(), currentPassword: content.password, newAccountKey: content.accountKey)
+        try await Service.users.setAccountKey(req.authenticatedUser(), currentPassword: content.password, newAccountKey: content.accountKey)
         return .ok
     }
     
     func online(_ req: Request) async throws -> User.PrivateInfo {
         let deviceInfo = try req.content.decode(DeviceInfo.self)
-        return try await online(req.deviceSession(), deviceInfo: deviceInfo)
+        return try await Service.users.online(req.deviceSession(), deviceInfo: deviceInfo)
     }
     
     func update(_ req: Request) async throws -> UserInfo {
-        try await update(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
+        try await Service.users.update(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
     }
     
     func user(_ req: Request) async throws -> UserInfo {
-        try await find(id: req.objectID())
+        try await Service.users.find(id: req.objectID())
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {
-        try await search(req.searchString())
+        try await Service.users.search(req.searchString())
     }
 }

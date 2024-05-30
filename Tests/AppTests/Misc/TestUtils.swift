@@ -10,8 +10,9 @@ extension Application {
         try app.autoRevert().wait()
         try app.autoMigrate().wait()
         
-        Service.configureTesting()
-        
+        Service.configure(database: app.db,
+                          listener: TestWebSocketServer(),
+                          notificator: TestNotificationManager())
         return app
     }
 }
@@ -50,7 +51,7 @@ struct CurrentUser {
 @discardableResult
 func seedUser(name: String, username: String, password: String, accountKey: String? = nil) async throws -> User {
     let user = User(name: name, username: username, passwordHash: password.bcryptHash(), accountKeyHash: accountKey?.bcryptHash())
-    try await Repositories.users.save(user)
+    try await Service.users.repo.save(user)
     return user
 }
 
@@ -74,20 +75,20 @@ func seedUsers(count: Int, namePrefix: String, usernamePrefix: String) async thr
 @discardableResult
 func makeContact(_ user: User, of owner: User) async throws -> Contact {
     let contact = try Contact(ownerId: owner.requireID(), userId: user.requireID())
-    try await Repositories.users.saveContact(contact)
+    try await Service.contacts.repo.saveContact(contact)
     return contact
 }
 
 @discardableResult
 func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: UserID? = nil) async throws -> Chat {
     let chat = Chat(ownerId: ownerId, isPersonal: isPersonal)
-    try await Repositories.chats.save(chat, with: users)
+    try await Service.chats.repo.save(chat, with: users)
     if let blockedId = blockedId {
-        guard let relation = try await Repositories.chats.findRelations(of: chat.id!).ofUser(blockedId) else {
+        guard let relation = try await Service.chats.repo.findRelations(of: chat.id!).ofUser(blockedId) else {
             preconditionFailure("Invalid blocked user.")
         }
         relation.isUserBlocked = true
-        try await Repositories.chats.saveRelation(relation)
+        try await Service.chats.repo.saveRelation(relation)
     }
     return chat
 }
@@ -95,7 +96,7 @@ func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: Use
 @discardableResult
 func makeMessage(for chatId: UUID, authorId: UserID, text: String) async throws -> Message {
     let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
-    try await Repositories.chats.saveMessage(message)
+    try await Service.chats.repo.saveMessage(message)
     return message
 }
 
@@ -111,9 +112,7 @@ func makeMessages(for chatId: UUID, authorId: UserID, count: Int) async throws -
 }
 
 extension DeviceInfo {
-    
     static var testInfoMobile = DeviceInfo(id: UUID(), name: "My Phone", model: "iPhone", token: "\(UUID())", transport: .apns)
-    
     static var testInfoDesktop = DeviceInfo(id: UUID(), name: "My Mac", model: "MBA", token: "\(UUID())", transport: .web)
 }
 
