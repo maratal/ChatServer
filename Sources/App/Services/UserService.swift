@@ -66,15 +66,6 @@ final class UserService: UserServiceProtocol {
         try await repo.delete(user)
     }
     
-    func logout(_ user: User) async throws {
-        try await repo.deleteSession(of: user)
-    }
-    
-    func current(_ user: User) async throws -> User.PrivateInfo {
-        _ = try await repo.allSessions(of: user)
-        return user.privateInfo()
-    }
-    
     func login(_ user: User, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
         let deviceSession = DeviceSession(accessToken: generateAccessToken(),
                                           userID: user.id!,
@@ -84,6 +75,15 @@ final class UserService: UserServiceProtocol {
                                           deviceToken: deviceInfo.token,
                                           pushTransport: deviceInfo.transport.rawValue)
         try await repo.saveSession(deviceSession)
+        _ = try await repo.allSessions(of: user)
+        return user.privateInfo()
+    }
+    
+    func logout(_ user: User) async throws {
+        try await repo.deleteSession(of: user)
+    }
+    
+    func current(_ user: User) async throws -> User.PrivateInfo {
         _ = try await repo.allSessions(of: user)
         return user.privateInfo()
     }

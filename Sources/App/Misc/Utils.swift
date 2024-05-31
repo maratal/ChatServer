@@ -8,7 +8,7 @@ extension String {
     }
     
     func normalized() -> String {
-        trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).replacingOccurrences(of: "  ", with: " ")
     }
     
     var isName: Bool {

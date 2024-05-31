@@ -176,12 +176,12 @@ final class ChatService: ChatServiceProtocol {
         }
         let usersToNotRemove = relations.filter { $0.isChatBlocked }.map { $0.$user.id }
         let usersToRemove = Array(Set(users).subtracting(Set(usersToNotRemove)))
-        let usersCache = chat.users.map { $0.info() }
+        let usersCache = chat.users
         let usersBefore = chat.users.map { $0.id! }
         try await repo.removeUsers(usersToRemove, from: chat)
         let usersAfter = chat.users.map { $0.id! }
         let removedUsersSet = Set(usersBefore).subtracting(Set(usersAfter))
-        let removedUsers = usersCache.filter { removedUsersSet.contains($0.id!) }
+        let removedUsers = usersCache.filter { removedUsersSet.contains($0.id!) }.map { $0.info() }
         let info = ChatInfo(from: relation, addedUsers: nil, removedUsers: removedUsers)
         try await Service.notificator.notify(chat: chat, with: info, about: .removedUsers, from: relation.user)
         return info
