@@ -29,7 +29,7 @@ protocol ChatServiceProtocol {
     /// Removes users from a chat by a participant with `userId`.
     func removeUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo
     
-    /// Deletes chat together with messages. If settings for a chat exist (such as `isBlocked`) only messages will be deleted.
+    /// Deletes chat locally and all of its messages from the server.
     func deleteChat(_ id: UUID, by userId: UserID) async throws
     
     /// Blocks a participant with `targetId` from a chat by another participant with `userId`.
@@ -188,20 +188,27 @@ final class ChatService: ChatServiceProtocol {
     }
     
     func deleteChat(_ id: UUID, by userId: UserID) async throws {
-        guard let relation = try await repo.findRelation(of: id, userId: userId) else {
-            throw ServiceError(.forbidden)
+        let relations = try await repo.findRelations(of: id)
+        guard relations.count > 0 else {
+            throw ServiceError(.notFound)
         }
-        let chat = relation.chat
+        guard let sourceRelation = relations.ofUser(userId) else {
+            throw ServiceError(.notFound)
+        }
+        let chat = sourceRelation.chat
         guard chat.isPersonal || chat.owner.id == userId else {
             throw ServiceError(.forbidden, reason: "You can't delete this chat.")
         }
-        if chat.isPersonal && relation.isUserBlocked {
-            try await repo.deleteMessages(from: chat)
-            try await Service.notificator.notify(chat: chat, with: nil, about: .chatCleared, from: relation.user)
-        } else {
-            try await Service.notificator.notify(chat: chat, with: nil, about: .chatDeleted, from: relation.user)
-            try await repo.delete(chat)
+        try await repo.deleteMessages(from: chat)
+        var itemsToSave = [ChatRelation]()
+        for relation in relations {
+            if !relation.isChatBlocked { // should be visible locally for unblocking
+                relation.isRemovedOnDevice = true
+                itemsToSave.append(relation)
+            }
         }
+        try await Service.saveAll(itemsToSave)
+        try await Service.notificator.notify(chat: chat, with: nil, about: .chatDeleted, from: sourceRelation.user)
     }
     
     private func setUser(_ targetId: UserID, in chatId: UUID, blocked: Bool, by userId: UserID) async throws {

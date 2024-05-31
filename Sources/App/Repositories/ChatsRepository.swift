@@ -19,7 +19,7 @@ protocol ChatsRepository {
     func saveMessage(_ message: Message) async throws
     func deleteMessages(from chat: Chat) async throws
     
-    func findReactions(for messageId: UUID) async throws -> [ReadMark]
+    func findReadMarks(for messageId: UUID) async throws -> [ReadMark]
 }
 
 final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
@@ -186,7 +186,7 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .delete()
     }
     
-    func findReactions(for messageId: UUID) async throws -> [ReadMark] {
+    func findReadMarks(for messageId: UUID) async throws -> [ReadMark] {
         try await ReadMark.query(on: database)
             .filter(\.$message.$id == messageId)
             .all()
