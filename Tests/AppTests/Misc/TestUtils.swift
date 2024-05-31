@@ -36,8 +36,8 @@ extension HTTPHeaders {
 
 extension MessageInfo {
     
-    var seenAt: Date? {
-        reactions?.first(where: { $0.user?.id != authorId && $0.badge == Reactions.seen.rawValue })?.createdAt
+    var readAt: Date? {
+        readMarks?.first(where: { $0.user?.id != authorId })?.createdAt
     }
 }
 

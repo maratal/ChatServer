@@ -43,7 +43,7 @@ final class Message: RepositoryItem {
     var chat: Chat
     
     @Children(for: \.$message)
-    var reactions: [Reaction]
+    var readMarks: [ReadMark]
     
     required init() {}
     
@@ -90,7 +90,7 @@ extension Message {
         var updatedAt: Date?
         var editedAt: Date?
         var isVisible: Bool?
-        var reactions: [Reaction.Info]?
+        var readMarks: [ReadMark.Info]?
         
         init(from message: Message) {
             self.id = message.id
@@ -106,8 +106,8 @@ extension Message {
             self.updatedAt = message.updatedAt
             self.editedAt = message.editedAt
             self.isVisible = message.isVisible
-            if message.$reactions.value != nil {
-                self.reactions = message.reactions.map { $0.info() }
+            if message.$readMarks.value != nil {
+                self.readMarks = message.readMarks.map { $0.info() }
             }
         }
     }

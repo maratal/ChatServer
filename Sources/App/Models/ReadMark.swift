@@ -1,7 +1,7 @@
 import Fluent
 
-final class Reaction: RepositoryItem {
-    static let schema = "reactions"
+final class ReadMark: RepositoryItem {
+    static let schema = "read_marks"
     
     @ID(key: .id)
     var id: UUID?
@@ -12,34 +12,28 @@ final class Reaction: RepositoryItem {
     @Parent(key: "user_id")
     var user: User
     
-    @Field(key: "badge")
-    var badge: String?
-    
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     
     init() {}
     
-    init(id: UUID? = nil, messageId: UUID, userId: UserID, badge: Reactions) {
+    init(id: UUID? = nil, messageId: UUID, userId: UserID) {
         self.id = id
         self.$message.id = messageId
         self.$user.id = userId
-        self.badge = badge.rawValue
     }
 }
 
-extension Reaction {
+extension ReadMark {
     
     struct Info: Serializable {
         var id: UUID?
         var user: UserInfo?
-        var badge: String?
         var createdAt: Date?
         
-        init(from source: Reaction) {
+        init(from source: ReadMark) {
             self.id = source.id
             self.user = source.user.info()
-            self.badge = source.badge
             self.createdAt = source.createdAt
         }
     }
@@ -47,14 +41,4 @@ extension Reaction {
     func info() -> Info {
         Info(from: self)
     }
-}
-
-enum Reactions: String {
-    case seen
-    case like = "👍"
-    case loveit = "❤️"
-    case boo = "👎"
-    case ffs = "🤌"
-    case wtf = "⁉️"
-    case bananas = "🍌🍌🍌"
 }

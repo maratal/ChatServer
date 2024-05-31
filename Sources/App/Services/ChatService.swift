@@ -360,9 +360,9 @@ final class ChatService: ChatServiceProtocol {
         guard let readerRelation = message.chat.relations.ofUser(userId) else {
             throw ServiceError(.forbidden)
         }
-        if message.reactions.first(where: { $0.user.id == userId && $0.badge == Reactions.seen.rawValue }) == nil {
-            let reaction = Reaction(messageId: id, userId: userId, badge: .seen)
-            try await Service.saveItem(reaction)
+        if message.readMarks.first(where: { $0.user.id == userId }) == nil {
+            let readMark = ReadMark(messageId: id, userId: userId)
+            try await Service.saveItem(readMark)
             let info = message.info()
             try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: readerRelation.user)
         }
