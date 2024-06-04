@@ -12,11 +12,14 @@ struct ChatController: RouteCollection {
             route.put("settings", use: updateChatSettings)
             route.delete(use: deleteChat)
             route.delete("exit", use: exitChat)
+            route.put("block", use: blockChat)
+            route.put("unblock", use: unblockChat)
             
             route.post("users", use: addUsers)
             route.delete("users", use: removeUsers)
             route.put("users", .userId, "block", use: blockUserInChat)
             route.put("users", .userId, "unblock", use: unblockUserInChat)
+            route.get("users", "blocked", use: blockedUsersInChat)
             
             route.get("messages", use: messages)
             route.post("messages", use: postMessage)
@@ -79,6 +82,18 @@ struct ChatController: RouteCollection {
                                             by: req.currentUser().requireID())
     }
     
+    func blockChat(_ req: Request) async throws -> HTTPStatus {
+        try await Service.chats.blockChat(req.objectUUID(),
+                                          by: req.currentUser().requireID())
+        return .ok
+    }
+    
+    func unblockChat(_ req: Request) async throws -> HTTPStatus {
+        try await Service.chats.unblockChat(req.objectUUID(),
+                                            by: req.currentUser().requireID())
+        return .ok
+    }
+    
     func blockUserInChat(_ req: Request) async throws -> HTTPStatus {
         try await Service.chats.blockUser(req.userID(),
                                           in: req.objectUUID(),
@@ -91,6 +106,11 @@ struct ChatController: RouteCollection {
                                             in: req.objectUUID(),
                                             by: req.currentUser().requireID())
         return .ok
+    }
+    
+    func blockedUsersInChat(_ req: Request) async throws -> [UserInfo] {
+        try await Service.chats.blockedUsersInChat(req.objectUUID(),
+                                                   with: req.currentUser().requireID())
     }
     
     func messages(_ req: Request) async throws -> [MessageInfo] {

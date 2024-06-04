@@ -44,7 +44,7 @@ extension Array where Element == ChatRelation {
         filter({ $0.$user.id == userId }).first
     }
     
-    func ofUserOtherThen(_ userId: UserID) -> ChatRelation? {
-        filter({ $0.$user.id != userId }).first
+    func otherThen(_ userId: UserID) -> [ChatRelation] {
+        filter({ $0.$user.id != userId })
     }
 }

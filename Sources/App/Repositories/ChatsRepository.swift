@@ -3,7 +3,7 @@ import FluentKit
 protocol ChatsRepository {
     func fetch(id: UUID) async throws -> Chat
     func find(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat?
-    func findRelations(of chatId: UUID) async throws -> [ChatRelation]
+    func findRelations(of chatId: UUID, isUserBlocked: Bool?) async throws -> [ChatRelation]
     func findRelation(of chatId: UUID, userId: UserID) async throws -> ChatRelation?
     func all(with userId: UserID, fullInfo: Bool) async throws -> [ChatRelation]
     
@@ -28,16 +28,19 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         try await Chat.find(id, on: database)!
     }
     
-    func findRelations(of chatId: UUID) async throws -> [ChatRelation] {
-        try await ChatRelation.query(on: database)
-            .filter(\.$chat.$id == chatId)
+    func findRelations(of chatId: UUID, isUserBlocked: Bool? = nil) async throws -> [ChatRelation] {
+        var query = ChatRelation.query(on: database).filter(\.$chat.$id == chatId)
+        if let isUserBlocked = isUserBlocked {
+            query = query.filter(\.$isUserBlocked == isUserBlocked)
+        }
+        return try await query
             .with(\.$user) { user in
                 user.with(\.$deviceSessions)
             }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)
-                chat.with(\.$users)
+                chat.with(\.$users) // TODO: optimise
             }
             .all()
     }

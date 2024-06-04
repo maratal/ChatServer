@@ -59,6 +59,7 @@ extension Service {
     struct Notification {
         var event: Event
         var source: String
+        var destination: String?
         var payload: Encodable?
         
         func jsonString() -> String { "" }

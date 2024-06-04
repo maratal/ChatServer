@@ -38,6 +38,13 @@ protocol ChatServiceProtocol {
     /// Unblocks a participant with `targetId` from a chat by another participant with `userId`.
     func unblockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws
     
+    /// Blocks a chat with `id` by a participant with `userId` to avoid re-appearing of the chat on the user's device or being removed from and then re-added.
+    /// In personal chats this setting doesn't matter, because sender's `isUserBlocked` is checked first, preventing posting messages to the chat.
+    func blockChat(_ id: UUID, by userId: UserID) async throws
+    
+    /// Unblocks a chat with `id` by a participant with `userId`.
+    func unblockChat(_ id: UUID, by userId: UserID) async throws
+    
     /// A participant of a multiuser chat uses this method to leave the chat. One can't exit personal chat (results in an error).
     func exitChat(_ id: UUID, by userId: UserID) async throws
     
@@ -166,8 +173,8 @@ final class ChatService: ChatServiceProtocol {
         guard users.count > 0 else {
             throw ServiceError(.badRequest, reason: "No users to remove found.")
         }
-        let relations = try await repo.findRelations(of: id)
-        guard let relation = relations.ofUser(userId), !relation.isUserBlocked else {
+        let relations = try await repo.findRelations(of: id, isUserBlocked: false)
+        guard let relation = relations.ofUser(userId) else {
             throw ServiceError(.forbidden)
         }
         let chat = relation.chat
@@ -188,7 +195,7 @@ final class ChatService: ChatServiceProtocol {
     }
     
     func deleteChat(_ id: UUID, by userId: UserID) async throws {
-        let relations = try await repo.findRelations(of: id)
+        let relations = try await repo.findRelations(of: id, isUserBlocked: nil)
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
         }
@@ -212,7 +219,7 @@ final class ChatService: ChatServiceProtocol {
     }
     
     private func setUser(_ targetId: UserID, in chatId: UUID, blocked: Bool, by userId: UserID) async throws {
-        let relations = try await repo.findRelations(of: chatId)
+        let relations = try await repo.findRelations(of: chatId, isUserBlocked: nil)
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
         }
@@ -232,6 +239,30 @@ final class ChatService: ChatServiceProtocol {
     
     func unblockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws {
         try await setUser(targetId, in: chatId, blocked: false, by: userId)
+    }
+    
+    func blockChat(_ id: UUID, by userId: UserID) async throws {
+        guard let relation = try await repo.findRelation(of: id, userId: userId) else {
+            throw ServiceError(.forbidden)
+        }
+        relation.isChatBlocked = true
+        try await repo.saveRelation(relation)
+    }
+    
+    func unblockChat(_ id: UUID, by userId: UserID) async throws {
+        guard let relation = try await repo.findRelation(of: id, userId: userId) else {
+            throw ServiceError(.forbidden)
+        }
+        relation.isChatBlocked = false
+        try await repo.saveRelation(relation)
+    }
+    
+    func blockedUsersInChat(_ id: UUID, with userId: UserID) async throws -> [UserInfo] {
+        guard let relation = try await repo.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
+            throw ServiceError(.forbidden)
+        }
+        let relations = try await repo.findRelations(of: id, isUserBlocked: true)
+        return relations.map { $0.user.info() }
     }
     
     func exitChat(_ id: UUID, by userId: UserID) async throws {
@@ -265,12 +296,22 @@ final class ChatService: ChatServiceProtocol {
     }
     
     func postMessage(to id: UUID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
-        let relations = try await repo.findRelations(of: id)
+        let relations = try await repo.findRelations(of: id, isUserBlocked: false)
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
         }
-        guard let authorRelation = relations.ofUser(userId), !authorRelation.isUserBlocked else {
-            throw ServiceError(.forbidden)
+        guard let authorRelation = relations.ofUser(userId) else {
+            throw ServiceError(.forbidden, reason: "You can't post into this chat.")
+        }
+        let chat = authorRelation.chat
+        let recipientsRelations = relations.otherThen(userId)
+        if chat.isPersonal {
+            guard recipientsRelations.count == 1 else {
+                throw ServiceError(.internalServerError, reason: "Personal chat should have only one recipient.")
+            }
+            guard !recipientsRelations[0].isChatBlocked else {
+                throw ServiceError(.forbidden, reason: "This chat was blocked.")
+            }
         }
         guard info.localId != nil, info.text != nil || info.fileSize != nil else {
             throw ServiceError(.badRequest, reason: "Malformed message data.")
@@ -290,8 +331,6 @@ final class ChatService: ChatServiceProtocol {
         
         try await repo.saveMessage(message)
         
-        let chat = authorRelation.chat
-        
         chat.$lastMessage.id = message.id!
         
         var itemsToSave: [any RepositoryItem] = [chat]
@@ -303,9 +342,9 @@ final class ChatService: ChatServiceProtocol {
         }
         
         if chat.isPersonal {
-            if let recipientRelation = relations.ofUserOtherThen(userId), recipientRelation.isRemovedOnDevice {
-                recipientRelation.isRemovedOnDevice = false
-                itemsToSave.append(recipientRelation)
+            if recipientsRelations[0].isRemovedOnDevice {
+                recipientsRelations[0].isRemovedOnDevice = false
+                itemsToSave.append(recipientsRelations[0])
             }
         }
         

@@ -28,9 +28,14 @@ final class TestNotificationManager: Notificator {
     
     func notify(chat: Chat, with info: Encodable? = nil, about event: Service.Event, from user: User?) async throws {
         let source = user == nil ? "system" : "\(user!.id ?? 0)"
-        let notification = Service.Notification(event: event, source: source, payload: info)
-        print("--- TEST notification '\(notification.event)' sent to chat '\(chat.id!)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
-        sentNotifications.append(notification)
+        var notification = Service.Notification(event: event, source: source, payload: info)
+        let relations = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: false)
+        let allowed = relations.filter { !$0.isChatBlocked }
+        for relation in allowed {
+            notification.destination = "\(relation.user.id!)"
+            print("--- TEST notification '\(notification.event)' sent to '\(relation.user.username)' of chat '\(chat.id!)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
+            sentNotifications.append(notification)
+        }
     }
 }
 

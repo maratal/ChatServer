@@ -80,14 +80,21 @@ func makeContact(_ user: User, of owner: User) async throws -> Contact {
 }
 
 @discardableResult
-func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: UserID? = nil) async throws -> Chat {
+func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: UserID? = nil, blockedById: UserID? = nil) async throws -> Chat {
     let chat = Chat(ownerId: ownerId, isPersonal: isPersonal)
     try await Service.chats.repo.save(chat, with: users)
     if let blockedId = blockedId {
-        guard let relation = try await Service.chats.repo.findRelations(of: chat.id!).ofUser(blockedId) else {
+        guard let relation = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: nil).ofUser(blockedId) else {
             preconditionFailure("Invalid blocked user.")
         }
         relation.isUserBlocked = true
+        try await Service.chats.repo.saveRelation(relation)
+    }
+    if let blockedById = blockedById {
+        guard let relation = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: nil).ofUser(blockedById) else {
+            preconditionFailure("Invalid blocked user.")
+        }
+        relation.isChatBlocked = true
         try await Service.chats.repo.saveRelation(relation)
     }
     return chat

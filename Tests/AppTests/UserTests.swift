@@ -445,7 +445,6 @@ final class UserTests: XCTestCase {
     }
     
     func testGetUser() async throws {
-        // This method works without authentication.
         try await seedUsers(count: 1, namePrefix: "Test", usernamePrefix: "test")
         try app.test(.GET, "users/1", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -456,7 +455,6 @@ final class UserTests: XCTestCase {
     }
     
     func testSearchUsers() async throws {
-        // This method works without authentication.
         try await seedUsers(count: 2, namePrefix: "Name", usernamePrefix: "user")
         try await seedUsers(count: 2, namePrefix: "Demo", usernamePrefix: "test")
         // Search by id=2

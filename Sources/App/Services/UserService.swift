@@ -38,9 +38,11 @@ protocol UserServiceProtocol {
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
     
     /// Finds user by `id`.
+    /// This method works without authentication.
     func find(id: UserID) async throws -> UserInfo
     
     /// Looking for users with a `username` or `name` using the provided string as a substring for those fields.
+    /// This method works without authentication.
     func search(_ s: String) async throws -> [UserInfo]
 }
 
