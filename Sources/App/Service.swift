@@ -84,6 +84,9 @@ extension Service {
         static var badAccountKey     = ServiceError(.badRequest, reason: "Key should be at least \(Constants.minAccountKeyLength) characters length.")
         static var badName           = ServiceError(.badRequest, reason: "Name should consist of letters.")
         static var badUsername       = ServiceError(.badRequest, reason: "Username should be at least \(Constants.minUsernameLength) characters length, start with letter and consist of letters and digits.")
+        
+        /// Upload errors
+        static var uploadTooLarge    = ServiceError(.payloadTooLarge, reason: "Your upload exeeded max limit of 50Mb.")
     }
 }
 

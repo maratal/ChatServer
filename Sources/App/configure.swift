@@ -7,8 +7,7 @@ import Vapor
 public func configure(_ app: Application) throws {
     Application.shared = app
     
-    // uncomment to serve files from /Public folder
-    // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
     app.databases.use(DatabaseConfigurationFactory.postgres(configuration: .init(
         hostname: Environment.get("DATABASE_HOST") ?? "localhost",
@@ -28,6 +27,8 @@ public func configure(_ app: Application) throws {
     app.migrations.add(CreateReaction())
     
     try app.autoMigrate().wait()
+    
+    try app.createUploadsDirectory()
     
     let wsServer = WebSocketServer()
     let pushes = PushManager(apnsKeyPath: "", fcmKeyPath: "")

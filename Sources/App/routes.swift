@@ -9,4 +9,5 @@ func routes(_ app: Application) throws {
     try app.register(collection: UserController())
     try app.register(collection: ChatController())
     try app.register(collection: ContactsController())
+    try app.register(collection: UploadController())
 }
