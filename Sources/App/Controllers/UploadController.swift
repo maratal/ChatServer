@@ -13,16 +13,29 @@ struct UploadController: RouteCollection {
     func upload(_ req: Request) async throws -> some AsyncResponseEncodable {
         let logger = Logger(label: "\(UploadController.self)")
         
-        let fileName = req.fileName
-        let filePath = req.uploadPath(for: fileName)
-        
-        // Remove any file with the same name
-        try? FileManager.default.removeItem(atPath: filePath)
-        guard FileManager.default.createFile(atPath: filePath, contents: nil, attributes: nil) else {
-            logger.critical("Could not upload '\(fileName)'")
-            throw Abort(.internalServerError)
+        guard var fileName = req.fileName else {
+            logger.critical("Could not upload without file name.")
+            throw Abort(.internalServerError, reason: "Could not upload without file name.")
         }
-        let fileHandle = try NIOFileHandle(path: filePath, mode: .write)
+        guard let fileType = req.fileType else {
+            logger.critical("Could not upload without file type.")
+            throw Abort(.internalServerError, reason: "Could not upload without file type.")
+        }
+        fileName = fileName + "." + fileType
+        let tmpFileName = fileName + ".upload"
+        
+        let filePath = req.application.uploadPath(for: fileName)
+        let tmpFilePath = req.application.uploadPath(for: tmpFileName)
+        
+        // Remove any files with the same names
+        try? FileManager.default.removeItem(atPath: filePath)
+        try? FileManager.default.removeItem(atPath: tmpFilePath)
+        
+        guard FileManager.default.createFile(atPath: tmpFilePath, contents: nil, attributes: nil) else {
+            logger.critical("Could not create '\(tmpFilePath)'")
+            throw Abort(.internalServerError, reason: "Could not create file.")
+        }
+        let fileHandle = try NIOFileHandle(path: tmpFilePath, mode: .write)
         defer {
             do {
                 try fileHandle.close()
@@ -49,10 +62,12 @@ struct UploadController: RouteCollection {
             guard offset < Self.maxBytes else {
                 throw Service.Errors.uploadTooLarge
             }
+            // Rename temporary upload file 
+            try FileManager.default.moveItem(atPath: tmpFilePath, toPath: filePath)
         }
         catch {
-            try FileManager.default.removeItem(atPath: filePath)
-            logger.error("Failed to save '\(filePath)': \(error)")
+            try FileManager.default.removeItem(atPath: tmpFilePath)
+            logger.error("Failed to save file: \(error)")
             throw error
         }
         logger.info("File '\(fileName)' saved successfully.")
@@ -62,33 +77,22 @@ struct UploadController: RouteCollection {
 
 extension Request {
     
-    var fileName: String {
-        let fileNameHeader = headers["File-Name"]
-        if let inferredName = fileNameHeader.first {
-            return inferredName
-        }
-        return "\(UUID().uuidString).\(fileExtension)"
+    var fileName: String? {
+        headers["File-Name"].first
     }
     
-    var fileExtension: String {
-        var fileExtension = "tmp"
-        if let contentType = headers.contentType {
-            switch contentType {
-            case .jpeg:
-                fileExtension = "jpg"
-            case .mp3:
-                fileExtension = "mp3"
-            case .init(type: "video", subType: "mp4"):
-                fileExtension = "mp4"
-            default:
-                fileExtension = "data"
-            }
+    var fileType: String? {
+        guard let contentType = headers.contentType else { return nil }
+        switch contentType {
+        case .jpeg:
+            return "jpg"
+        case .mp3:
+            return "mp3"
+        case .init(type: "video", subType: "mp4"):
+            return "mp4"
+        default:
+            return "data"
         }
-        return fileExtension
-    }
-    
-    func uploadPath(for fileName: String) -> String {
-        application.uploadsDirectory + fileName
     }
 }
 
@@ -98,7 +102,59 @@ extension Application {
         directory.publicDirectory
     }
     
+    func uploadPath(for fileName: String) -> String {
+        uploadsDirectory + fileName
+    }
+    
     func createUploadsDirectory() throws {
         try FileManager.default.createDirectory(atPath: uploadsDirectory, withIntermediateDirectories: true, attributes: nil)
+    }
+}
+
+extension MediaResource {
+    
+    var fileName: String? {
+        guard let fileName = self.id else { return nil }
+        return "\(fileName).\(fileType)"
+    }
+    
+    var previewFileName: String? {
+        guard let fileName = self.id else { return nil }
+        return "\(fileName)-preview.\(fileType)"
+    }
+    
+    var filePath: String? {
+        guard let fileName = self.fileName else { return nil }
+        return Application.shared.uploadPath(for: fileName)
+    }
+    
+    var previewFilePath: String? {
+        guard let fileName = self.previewFileName else { return nil }
+        return Application.shared.uploadPath(for: fileName)
+    }
+    
+    func fileExists() -> Bool {
+        guard let filePath = self.filePath else { return false }
+        return FileManager.default.fileExists(atPath: filePath)
+    }
+    
+    func previewExists() -> Bool {
+        guard let filePath = self.previewFilePath else { return false }
+        return FileManager.default.fileExists(atPath: filePath)
+    }
+    
+    func removeFile() throws {
+        guard let filePath = self.filePath else { return }
+        try FileManager.default.removeItem(atPath: filePath)
+    }
+    
+    func removePreview() throws {
+        guard let filePath = self.previewFilePath else { return }
+        try FileManager.default.removeItem(atPath: filePath)
+    }
+    
+    func removeFiles() throws {
+        try removeFile()
+        try removePreview()
     }
 }

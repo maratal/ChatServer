@@ -523,7 +523,7 @@ final class ChatTests: XCTestCase {
             let updatedMessage = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(updatedMessage.id, message.id)
             XCTAssertEqual(updatedMessage.text, "")
-            XCTAssertEqual(updatedMessage.fileSize, 0)
+            XCTAssertEqual(updatedMessage.attachments?.first?.fileSize, 0)
         })
         // Try to edit deleted message
         try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
@@ -547,7 +547,7 @@ final class ChatTests: XCTestCase {
             let updatedMessage = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(updatedMessage.id, message.id)
             XCTAssertEqual(updatedMessage.text, "")
-            XCTAssertEqual(updatedMessage.fileSize, 0)
+            XCTAssertEqual(updatedMessage.attachments?.first?.fileSize, 0)
         })
     }
     

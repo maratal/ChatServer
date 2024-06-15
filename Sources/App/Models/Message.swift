@@ -12,18 +12,6 @@ final class Message: RepositoryItem {
     @Field(key: "text")
     var text: String?
     
-    @Field(key: "file_type")
-    var fileType: String?
-    
-    @Field(key: "file_size")
-    var fileSize: Int64?
-    
-    @Field(key: "preview_width")
-    var previewWidth: Int?
-    
-    @Field(key: "preview_height")
-    var previewHeight: Int?
-    
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     
@@ -45,6 +33,9 @@ final class Message: RepositoryItem {
     @Children(for: \.$message)
     var readMarks: [ReadMark]
     
+    @Children(for: \.$attachmentOf)
+    var attachments: [MediaResource]
+    
     required init() {}
     
     init(
@@ -53,10 +44,6 @@ final class Message: RepositoryItem {
         authorId: UserID,
         chatId: UUID,
         text: String?,
-        fileType: String? = nil,
-        fileSize: Int64? = nil,
-        previewWidth: Int? = nil,
-        previewHeight: Int? = nil,
         isVisible: Bool = true
     ) {
         self.id = id
@@ -64,10 +51,6 @@ final class Message: RepositoryItem {
         self.$author.id = authorId
         self.$chat.id = chatId
         self.text = text
-        self.fileType = fileType
-        self.fileSize = fileSize
-        self.previewWidth = previewWidth
-        self.previewHeight = previewHeight
         self.editedAt = nil
         self.isVisible = isVisible
     }
@@ -80,17 +63,13 @@ extension Message {
         var localId: UUID?
         var chatId: UUID?
         var authorId: UserID?
-        
         var text: String?
-        var fileType: String?
-        var fileSize: Int64?
-        var previewWidth: Int?
-        var previewHeight: Int?
         var createdAt: Date?
         var updatedAt: Date?
         var editedAt: Date?
         var isVisible: Bool?
         var readMarks: [ReadMark.Info]?
+        var attachments: [MediaInfo]?
         
         init(from message: Message) {
             self.id = message.id
@@ -98,16 +77,15 @@ extension Message {
             self.chatId = message.$chat.id
             self.authorId = message.$author.id
             self.text = message.text
-            self.fileType = message.fileType
-            self.fileSize = message.fileSize
-            self.previewWidth = message.previewWidth
-            self.previewHeight = message.previewHeight
             self.createdAt = message.createdAt
             self.updatedAt = message.updatedAt
             self.editedAt = message.editedAt
             self.isVisible = message.isVisible
             if message.$readMarks.value != nil {
                 self.readMarks = message.readMarks.map { $0.info() }
+            }
+            if message.$attachments.value != nil {
+                self.attachments = message.attachments.map { $0.info() }
             }
         }
     }

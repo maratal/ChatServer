@@ -17,6 +17,7 @@ protocol ChatsRepository {
     func findMessage(id: UUID) async throws -> Message?
     func messages(from chatId: UUID, before: Date?, count: Int) async throws -> [Message]
     func saveMessage(_ message: Message) async throws
+    func loadAttachments(for message: Message) async throws
     func deleteMessages(from chat: Chat) async throws
     
     func findReadMarks(for messageId: UUID) async throws -> [ReadMark]
@@ -151,6 +152,7 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
                     relation.with(\.$user)
                 }
             }
+            .with(\.$attachments)
             .first()
     }
     
@@ -173,6 +175,10 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     
     func saveMessage(_ message: Message) async throws {
         try await message.save(on: database)
+    }
+    
+    func loadAttachments(for message: Message) async throws {
+        _ = try await message.$attachments.get(reload: true, on: database)
     }
     
     func delete(_ chat: Chat) async throws {

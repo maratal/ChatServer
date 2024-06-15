@@ -323,15 +323,22 @@ final class ChatService: ChatServiceProtocol {
                               authorId: userId,
                               chatId: id,
                               text: info.text,
-                              fileType: info.fileType,
-                              fileSize: info.fileSize,
-                              previewWidth: info.previewWidth,
-                              previewHeight: info.previewHeight,
                               isVisible: info.isVisible ?? true)
         
         try await repo.saveMessage(message)
         
         chat.$lastMessage.id = message.id!
+        
+        var attachmentsToSave: [any RepositoryItem] = []
+        
+        if let fileType = info.fileType, let fileSize = info.fileSize {
+            let attachment = MediaResource(attachmentOf: message.id!,
+                                           fileType: fileType,
+                                           fileSize: fileSize,
+                                           previewWidth: info.previewWidth ?? 300,
+                                           previewHeight: info.previewHeight ?? 200)
+            attachmentsToSave.append(attachment)
+        }
         
         var itemsToSave: [any RepositoryItem] = [chat]
         
@@ -348,7 +355,11 @@ final class ChatService: ChatServiceProtocol {
             }
         }
         
-        try await Service.saveAll(itemsToSave)
+        try await Service.saveAll(itemsToSave + attachmentsToSave)
+        
+        if !attachmentsToSave.isEmpty {
+            try await repo.loadAttachments(for: message)
+        }
         
         let info = message.info()
         try await Service.notificator.notify(chat: chat, with: info, about: .message, from: authorRelation.user)
@@ -362,23 +373,22 @@ final class ChatService: ChatServiceProtocol {
         guard let authorRelation = message.chat.relations.ofUser(userId), !authorRelation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
+        var shouldSave = false
         if let text = update.text {
             guard message.text != "" else {
                 throw ServiceError(.badRequest, reason: "You can't edit deleted message.")
             }
             message.text = text
             message.editedAt = Date()
-        }
-        if let fileType = update.fileType {
-            message.fileType = fileType
-        }
-        if let fileSize = update.fileSize {
-            message.fileSize = fileSize
+            shouldSave = true
         }
         if let isVisible = update.isVisible {
             message.isVisible = isVisible
+            shouldSave = true
         }
-        try await repo.saveMessage(message)
+        if shouldSave {
+            try await repo.saveMessage(message)
+        }
         
         let info = message.info()
         try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: authorRelation.user)
@@ -390,9 +400,17 @@ final class ChatService: ChatServiceProtocol {
             throw ServiceError(.forbidden)
         }
         message.text = ""
-        message.fileSize = 0
         message.editedAt = Date()
-        try await repo.saveMessage(message)
+        
+        var itemsToSave = [message as any RepositoryItem]
+        
+        message.attachments.forEach { res in
+            try? res.removeFiles()
+            res.fileSize = 0
+            itemsToSave.append(res)
+        }
+        
+        try await Service.saveAll(itemsToSave)
         
         let info = message.info()
         try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: message.author)

@@ -39,6 +39,9 @@ final class User: RepositoryItem {
     @Children(for: \.$user)
     var deviceSessions: [DeviceSession]
     
+    @Children(for: \.$photoOf)
+    var photos: [MediaResource]
+    
     init() { }
 
     init(id: Int? = nil, name: String, username: String, passwordHash: String, accountKeyHash: String?) {
@@ -60,11 +63,15 @@ extension User {
         var username: String?
         var about: String?
         var lastAccess: Date?
+        var photos: [MediaInfo]?
         
         init(from user: User, fullInfo: Bool) {
             self.id = user.id
             self.name = user.name
             self.username = user.username
+            if user.$photos.value != nil {
+                self.photos = user.photos.map { $0.info() }
+            }
             if fullInfo {
                 self.about = user.about
                 self.lastAccess = user.lastAccess
