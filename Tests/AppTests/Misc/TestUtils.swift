@@ -21,6 +21,13 @@ extension HTTPHeaders {
     
     static var none = HTTPHeaders()
     
+    static func filename(_ filename: String, contentType: String) -> Self {
+        var headers = HTTPHeaders()
+        headers.add(name: "File-Name", value: filename)
+        headers.contentType = .fileExtension(contentType)
+        return headers
+    }
+    
     static func authWith(username: String, password: String) -> Self {
         var headers = HTTPHeaders()
         headers.basicAuthorization = .init(username: username, password: password)

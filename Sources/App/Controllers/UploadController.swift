@@ -82,7 +82,7 @@ extension Request {
     }
     
     var fileType: String? {
-        guard let contentType = headers.contentType else { return nil }
+        guard let contentType = headers.contentType else { return headers["Content-Type"].first }
         switch contentType {
         case .jpeg:
             return "jpg"
@@ -91,7 +91,7 @@ extension Request {
         case .init(type: "video", subType: "mp4"):
             return "mp4"
         default:
-            return "data"
+            return headers["Content-Type"].first
         }
     }
 }
