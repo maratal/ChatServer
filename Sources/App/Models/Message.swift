@@ -21,6 +21,9 @@ final class Message: RepositoryItem {
     @Field(key: "edited_at")
     var editedAt: Date?
     
+    @Field(key: "deleted_at")
+    var deletedAt: Date?
+    
     @Field(key: "is_visible")
     var isVisible: Bool
     
@@ -52,6 +55,7 @@ final class Message: RepositoryItem {
         self.$chat.id = chatId
         self.text = text
         self.editedAt = nil
+        self.deletedAt = nil
         self.isVisible = isVisible
     }
 }
@@ -67,6 +71,7 @@ extension Message {
         var createdAt: Date?
         var updatedAt: Date?
         var editedAt: Date?
+        var deletedAt: Date?
         var isVisible: Bool?
         var readMarks: [ReadMark.Info]?
         var attachments: [MediaInfo]?
@@ -80,6 +85,7 @@ extension Message {
             self.createdAt = message.createdAt
             self.updatedAt = message.updatedAt
             self.editedAt = message.editedAt
+            self.deletedAt = message.deletedAt
             self.isVisible = message.isVisible
             if message.$readMarks.value != nil {
                 self.readMarks = message.readMarks.map { $0.info() }

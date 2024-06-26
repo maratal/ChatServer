@@ -373,11 +373,11 @@ final class ChatService: ChatServiceProtocol {
         guard let authorRelation = message.chat.relations.ofUser(userId), !authorRelation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
+        guard message.deletedAt == nil else {
+            throw ServiceError(.badRequest, reason: "You can't edit deleted message.")
+        }
         var shouldSave = false
         if let text = update.text {
-            guard message.text != "" else {
-                throw ServiceError(.badRequest, reason: "You can't edit deleted message.")
-            }
             message.text = text
             message.editedAt = Date()
             shouldSave = true
@@ -401,6 +401,7 @@ final class ChatService: ChatServiceProtocol {
         }
         message.text = ""
         message.editedAt = Date()
+        message.deletedAt = Date()
         
         var itemsToSave = [message as any RepositoryItem]
         
