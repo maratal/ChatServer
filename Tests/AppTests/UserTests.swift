@@ -477,4 +477,35 @@ final class UserTests: XCTestCase {
             XCTAssertEqual(names.sorted(), ["Demo 1", "Demo 2"])
         })
     }
+    
+    func testAddAndDeletePhotoOfUser() async throws {
+        try await seedCurrentUser()
+        let fileId = UUID()
+        let fileName = fileId.uuidString
+        let fileType = "test"
+        
+        // "Upload" all files before adding photo
+        let uploadPath = try app.makeFakeUpload(fileName: fileName + "." + fileType, fileSize: 1)
+        let previewPath = try app.makeFakeUpload(fileName: fileName + "-preview." + fileType, fileSize: 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: uploadPath))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
+        
+        try app.test(.POST, "users/me/photos", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateUserRequest(photo: MediaInfo(id: fileId, fileType: fileType, fileSize: 1)))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let userInfo = try res.content.decode(UserInfo.self)
+            XCTAssertEqual(userInfo.photos?.count, 1)
+            XCTAssertEqual(userInfo.photos?[0].fileExists, true)
+            XCTAssertEqual(userInfo.photos?[0].previewExists, true)
+        })
+        
+        try app.test(.DELETE, "users/me/photos/\(fileId)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+
+        // Check if all files were removed
+        XCTAssertFalse(FileManager.default.fileExists(atPath: uploadPath))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: previewPath))
+    }
 }

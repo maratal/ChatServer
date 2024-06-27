@@ -130,6 +130,16 @@ extension DeviceInfo {
     static var testInfoDesktop = DeviceInfo(id: UUID(), name: "My Mac", model: "MBA", token: "\(UUID())", transport: .web)
 }
 
+extension Application {
+    
+    func makeFakeUpload(fileName: String, fileSize: Int) throws -> String {
+        let filePath = uploadPath(for: fileName)
+        let data = Data(repeating: 1, count: fileSize)
+        try (data as NSData).write(toFile: filePath)
+        return filePath
+    }
+}
+
 extension User.PrivateInfo {
     
     func sessionForAccessToken(_ token: String) -> DeviceSession.Info? {

@@ -23,6 +23,8 @@ struct UserController: RouteCollection {
             route.delete(use: deregister)
             route.put(use: update)
             route.put("online", use: online)
+            route.post("photo", use: addPhoto)
+            route.delete("photos", .id, use: deletePhoto)
         }
         
         protected.get(use: search)
@@ -78,6 +80,15 @@ struct UserController: RouteCollection {
     
     func update(_ req: Request) async throws -> UserInfo {
         try await Service.users.update(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
+    }
+    
+    func addPhoto(_ req: Request) async throws -> UserInfo {
+        try await Service.users.addPhoto(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
+    }
+    
+    func deletePhoto(_ req: Request) async throws -> HTTPStatus {
+        try await Service.users.deletePhoto(req.objectUUID(), of: req.currentUser())
+        return .ok
     }
     
     func user(_ req: Request) async throws -> UserInfo {

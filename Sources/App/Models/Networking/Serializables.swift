@@ -32,7 +32,7 @@ struct CreateChatRequest: Serializable {
 struct UpdateUserRequest: Serializable {
     var name: String?
     var about: String?
-    var imageUrl: String?
+    var photo: MediaInfo?
 }
 
 struct UpdateChatRequest: Serializable {

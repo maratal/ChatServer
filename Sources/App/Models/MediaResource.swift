@@ -36,7 +36,7 @@ final class MediaResource: RepositoryItem {
         id: UUID? = nil,
         photoOf: UserID? = nil,
         imageOf: UUID? = nil,
-        attachmentOf: MessageID?,
+        attachmentOf: MessageID? = nil,
         fileType: String,
         fileSize: Int64,
         previewWidth: Int,
@@ -57,12 +57,19 @@ extension MediaResource {
     
     struct Info: Serializable {
         var id: UUID?
-        var fileType: String?
-        var fileSize: Int64?
+        var fileType: String
+        var fileSize: Int64
         var previewWidth: Int?
         var previewHeight: Int?
-        var fileExists: Bool = false
-        var previewExists: Bool = false
+        var createdAt: Date?
+        var fileExists: Bool?
+        var previewExists: Bool?
+        
+        init(id: UUID, fileType: String, fileSize: Int64) {
+            self.id = id
+            self.fileType = fileType
+            self.fileSize = fileSize
+        }
         
         init(from media: MediaResource) {
             self.id = media.id
@@ -70,6 +77,7 @@ extension MediaResource {
             self.fileSize = media.fileSize
             self.previewWidth = media.previewWidth
             self.previewHeight = media.previewHeight
+            self.createdAt = media.createdAt
             self.fileExists = media.fileExists()
             self.previewExists = media.previewExists()
         }

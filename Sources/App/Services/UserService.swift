@@ -37,6 +37,12 @@ protocol UserServiceProtocol {
     /// Updates current user with the information from the request fields.
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
     
+    /// Adds photo to the current user.
+    func addPhoto(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
+    
+    /// Deletes photo from the current user.
+    func deletePhoto(_ id: UUID, of user: User) async throws
+    
     /// Finds user by `id`.
     /// This method works without authentication.
     func find(id: UserID) async throws -> UserInfo
@@ -150,6 +156,35 @@ final class UserService: UserServiceProtocol {
         user.lastAccess = Date()
         try await repo.save(user)
         return user.fullInfo()
+    }
+    
+    func addPhoto(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo {
+        guard let resource = info.photo, let resourceId = resource.id else {
+            throw ServiceError(.badRequest, reason: "Media resource id is missing.")
+        }
+        guard resource.fileType != "", resource.fileSize > 0 else {
+            throw ServiceError(.badRequest, reason: "Media fileType or fileSize are missing.")
+        }
+        let photo = MediaResource(id: resourceId,
+                                  photoOf: user.id!,
+                                  fileType: resource.fileType,
+                                  fileSize: resource.fileSize,
+                                  previewWidth: info.photo?.previewWidth ?? 100,
+                                  previewHeight: info.photo?.previewHeight ?? 100)
+        try await repo.savePhoto(photo)
+        try await repo.reloadPhotos(for: user)
+        return user.fullInfo()
+    }
+    
+    func deletePhoto(_ id: UUID, of user: User) async throws {
+        guard let resource = try await repo.findPhoto(id) else {
+            throw ServiceError(.notFound, reason: "Media resource is missing.")
+        }
+        guard user.id == resource.photoOf?.id else {
+            throw ServiceError(.forbidden)
+        }
+        try resource.removeFiles()
+        try await repo.deletePhoto(resource)
     }
     
     func find(id: UserID) async throws -> UserInfo {

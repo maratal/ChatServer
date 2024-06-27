@@ -7,6 +7,11 @@ protocol UsersRepository {
     func delete(_ user: User) async throws
     func search(_ s: String) async throws -> [User]
     
+    func findPhoto(_ id: UUID) async throws -> MediaResource?
+    func savePhoto(_ photo: MediaResource) async throws
+    func deletePhoto(_ photo: MediaResource) async throws
+    func reloadPhotos(for user: User) async throws
+    
     func saveSession(_ session: DeviceSession) async throws
     func deleteSession(of user: User) async throws
     func allSessions(of user: User) async throws -> [DeviceSession]
@@ -35,6 +40,25 @@ final class UsersDatabaseRepository: DatabaseRepository, UsersRepository {
             query.filter(\.$name ~~ s)
             query.filter(\.$username ~~ s)
         }.range(..<100).all()
+    }
+    
+    func findPhoto(_ id: UUID) async throws -> MediaResource? {
+        try await MediaResource.query(on: database)
+            .filter(\.$id == id)
+            .with(\.$photoOf)
+            .first()
+    }
+    
+    func savePhoto(_ photo: MediaResource) async throws {
+        try await photo.save(on: database)
+    }
+    
+    func deletePhoto(_ photo: MediaResource) async throws {
+        try await photo.delete(on: database)
+    }
+    
+    func reloadPhotos(for user: User) async throws {
+        _ = try await user.$photos.get(reload: true, on: database)
     }
     
     func saveSession(_ session: DeviceSession) async throws {

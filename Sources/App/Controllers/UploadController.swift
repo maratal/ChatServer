@@ -13,10 +13,8 @@ struct UploadController: RouteCollection {
     func upload(_ req: Request) async throws -> some AsyncResponseEncodable {
         let logger = Logger(label: "\(UploadController.self)")
         
-        guard var fileName = req.fileName else {
-            logger.critical("Could not upload without file name.")
-            throw Abort(.internalServerError, reason: "Could not upload without file name.")
-        }
+        var fileName = req.fileName ?? UUID().uuidString
+        
         guard let fileType = req.fileType else {
             logger.critical("Could not upload without file type.")
             throw Abort(.internalServerError, reason: "Could not upload without file type.")
