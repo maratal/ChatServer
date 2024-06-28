@@ -27,6 +27,9 @@ struct ChatController: RouteCollection {
             route.put("messages", .messageId, "read", use: readMessage)
             route.delete("messages", .messageId, use: deleteMessage)
             route.delete("messages", use: clearChat)
+            
+            route.post("images", use: addChatImage)
+            route.delete("images", .id, use: deleteChatImage)
         }
     }
     
@@ -53,6 +56,17 @@ struct ChatController: RouteCollection {
         try await Service.chats.updateChatSettings(req.objectUUID(),
                                                    with: req.content.decode(UpdateChatRequest.self),
                                                    by: req.currentUser().requireID())
+    }
+    
+    func addChatImage(_ req: Request) async throws -> ChatInfo {
+        try await Service.chats.addChatImage(req.objectUUID(),
+                                             with: req.content.decode(UpdateChatRequest.self),
+                                             by: req.currentUser().requireID())
+    }
+    
+    func deleteChatImage(_ req: Request) async throws -> HTTPStatus {
+        try await Service.chats.deleteChatImage(req.objectUUID(), by: req.currentUser().requireID())
+        return .ok
     }
     
     func deleteChat(_ req: Request) async throws -> HTTPStatus {

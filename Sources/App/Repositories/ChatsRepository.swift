@@ -21,6 +21,11 @@ protocol ChatsRepository {
     func deleteMessages(from chat: Chat) async throws
     
     func findReadMarks(for messageId: UUID) async throws -> [ReadMark]
+    
+    func findChatImage(_ id: UUID) async throws -> MediaResource?
+    func saveChatImage(_ image: MediaResource) async throws
+    func deleteChatImage(_ image: MediaResource) async throws
+    func reloadChatImages(for chat: Chat) async throws
 }
 
 final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
@@ -199,5 +204,26 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         try await ReadMark.query(on: database)
             .filter(\.$message.$id == messageId)
             .all()
+    }
+    
+    func findChatImage(_ id: UUID) async throws -> MediaResource? {
+        try await MediaResource.query(on: database)
+            .filter(\.$id == id)
+            .with(\.$imageOf) { chat in
+                chat.with(\.$owner)
+            }
+            .first()
+    }
+    
+    func saveChatImage(_ image: MediaResource) async throws {
+        try await image.save(on: database)
+    }
+    
+    func deleteChatImage(_ image: MediaResource) async throws {
+        try await image.delete(on: database)
+    }
+    
+    func reloadChatImages(for chat: Chat) async throws {
+        _ = try await chat.$images.get(reload: true, on: database)
     }
 }

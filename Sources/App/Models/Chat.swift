@@ -36,6 +36,9 @@ final class Chat: RepositoryItem {
     @Children(for: \.$chat)
     var relations: [ChatRelation]
     
+    @Children(for: \.$imageOf)
+    var images: [MediaResource]
+    
     init() {}
     
     init(id: UUID? = nil,
@@ -61,6 +64,7 @@ extension Chat {
         var addedUsers: [UserInfo]?
         var removedUsers: [UserInfo]?
         var lastMessage: MessageInfo?
+        var images: [MediaInfo]?
         
         var isMuted: Bool?
         var isArchived: Bool?
@@ -74,6 +78,9 @@ extension Chat {
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {
                 self.lastMessage = lastMessage.info()
+            }
+            if chat.$images.value != nil {
+                self.images = chat.images.map { $0.info() }
             }
             self.isMuted = relation.isMuted
             self.isArchived = relation.isArchived
@@ -91,6 +98,9 @@ extension Chat {
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {
                 self.lastMessage = lastMessage.info()
+            }
+            if chat.$images.value != nil {
+                self.images = chat.images.map { $0.info() }
             }
             self.isMuted = relation.isMuted
             self.isArchived = relation.isArchived

@@ -258,6 +258,40 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testAddAndDeleteChatImage() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
+        
+        let fileId = UUID()
+        let fileName = fileId.uuidString
+        let fileType = "test"
+        
+        // "Upload" all files before adding image
+        let uploadPath = try app.makeFakeUpload(fileName: fileName + "." + fileType, fileSize: 1)
+        let previewPath = try app.makeFakeUpload(fileName: fileName + "-preview." + fileType, fileSize: 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: uploadPath))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
+        
+        try app.test(.POST, "chats/\(chat.id!)/images", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatRequest(image: MediaInfo(id: fileId, fileType: fileType, fileSize: 1)))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chatInfo = try res.content.decode(ChatInfo.self)
+            XCTAssertEqual(chatInfo.images?.count, 1)
+            XCTAssertEqual(chatInfo.images?[0].fileExists, true)
+            XCTAssertEqual(chatInfo.images?[0].previewExists, true)
+        })
+        
+        try app.test(.DELETE, "chats/\(chat.id!)/images/\(fileId)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+
+        // Check if all files were removed
+        XCTAssertFalse(FileManager.default.fileExists(atPath: uploadPath))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: previewPath))
+    }
+    
     func testAddUsersToChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")

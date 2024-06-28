@@ -41,6 +41,7 @@ struct UpdateChatRequest: Serializable {
     var isArchived: Bool?
     var isBlocked: Bool?
     var isRemovedOnDevice: Bool?
+    var image: MediaInfo?
 }
 
 struct UpdateChatUsersRequest: Serializable {

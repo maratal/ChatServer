@@ -432,4 +432,43 @@ final class ChatService: ChatServiceProtocol {
             try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: readerRelation.user)
         }
     }
+    
+    func addChatImage(_ chatId: UUID, with info: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
+        guard let relation = try await repo.findRelation(of: chatId, userId: userId), !relation.isUserBlocked else {
+            throw ServiceError(.forbidden)
+        }
+        let chat = relation.chat
+        guard chat.owner.id == userId else {
+            throw ServiceError(.forbidden)
+        }
+        if relation.chat.isPersonal {
+            throw ServiceError(.badRequest, reason: "You can't update personal chat.")
+        }
+        guard let resource = info.image, let resourceId = resource.id else {
+            throw ServiceError(.badRequest, reason: "Media resource id is missing.")
+        }
+        guard resource.fileType != "", resource.fileSize > 0 else {
+            throw ServiceError(.badRequest, reason: "Media fileType or fileSize are missing.")
+        }
+        let image = MediaResource(id: resourceId,
+                                  imageOf: chat.id!,
+                                  fileType: resource.fileType,
+                                  fileSize: resource.fileSize,
+                                  previewWidth: resource.previewWidth ?? 100,
+                                  previewHeight: resource.previewHeight ?? 100)
+        try await repo.saveChatImage(image)
+        try await repo.reloadChatImages(for: chat)
+        return ChatInfo(from: relation, fullInfo: false)
+    }
+    
+    func deleteChatImage(_ resourceId: UUID, by userId: UserID) async throws {
+        guard let resource = try await repo.findChatImage(resourceId) else {
+            throw ServiceError(.notFound, reason: "Media resource is missing.")
+        }
+        guard resource.imageOf?.owner.id == userId else {
+            throw ServiceError(.forbidden)
+        }
+        try resource.removeFiles()
+        try await repo.deleteChatImage(resource)
+    }
 }
