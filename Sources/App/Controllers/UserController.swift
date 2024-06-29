@@ -23,7 +23,7 @@ struct UserController: RouteCollection {
             route.delete(use: deregister)
             route.put(use: update)
             route.put("online", use: online)
-            route.post("photo", use: addPhoto)
+            route.post("photos", use: addPhoto)
             route.delete("photos", .id, use: deletePhoto)
         }
         
