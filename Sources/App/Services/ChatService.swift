@@ -59,7 +59,7 @@ protocol ChatServiceProtocol {
     func postMessage(to id: UUID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo
     
     /// Edits message with `id` in a chat (if user with `userId` is not blocked).
-    func updateMessage(_ id: UUID, with update: PostMessageRequest, by userId: UserID) async throws -> MessageInfo
+    func updateMessage(_ id: UUID, with update: UpdateMessageRequest, by userId: UserID) async throws -> MessageInfo
     
     /// Deletes contents of a message with`id`.
     func deleteMessage(_ id: UUID, by userId: UserID) async throws -> MessageInfo
@@ -313,13 +313,24 @@ final class ChatService: ChatServiceProtocol {
                 throw ServiceError(.forbidden, reason: "This chat was blocked.")
             }
         }
-        guard info.localId != nil, info.text != nil || info.fileSize != nil else {
+        guard let localId = info.localId else {
             throw ServiceError(.badRequest, reason: "Malformed message data.")
         }
-        if let text = info.text, (text.count == 0 || text.count > 2048) {
-            throw ServiceError(.badRequest, reason: "Message text should be between 1 and 2048 characters long.")
+        if let attachment = info.attachment {
+            guard attachment.fileSize > 0 && !attachment.fileType.isEmpty else {
+                throw ServiceError(.badRequest, reason: "Malformed message data.")
+            }
         }
-        let message = Message(localId: info.localId!,
+        else if let text = info.text {
+            guard text.count > 0 && text.count <= 2048 else {
+                throw ServiceError(.badRequest, reason: "Message text should be between 1 and 2048 characters long.")
+            }
+        }
+        else {
+            throw ServiceError(.badRequest, reason: "Message is empty.")
+        }
+        
+        let message = Message(localId: localId,
                               authorId: userId,
                               chatId: id,
                               text: info.text,
@@ -331,13 +342,13 @@ final class ChatService: ChatServiceProtocol {
         
         var attachmentsToSave: [any RepositoryItem] = []
         
-        if let fileType = info.fileType, let fileSize = info.fileSize {
-            let attachment = MediaResource(attachmentOf: message.id!,
-                                           fileType: fileType,
-                                           fileSize: fileSize,
-                                           previewWidth: info.previewWidth ?? 300,
-                                           previewHeight: info.previewHeight ?? 200)
-            attachmentsToSave.append(attachment)
+        if let attachment = info.attachment {
+            let resource = MediaResource(attachmentOf: message.id!,
+                                         fileType: attachment.fileType,
+                                         fileSize: attachment.fileSize,
+                                         previewWidth: attachment.previewWidth ?? 300,
+                                         previewHeight: attachment.previewHeight ?? 200)
+            attachmentsToSave.append(resource)
         }
         
         var itemsToSave: [any RepositoryItem] = [chat]
@@ -366,7 +377,7 @@ final class ChatService: ChatServiceProtocol {
         return info
     }
     
-    func updateMessage(_ id: UUID, with update: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
+    func updateMessage(_ id: UUID, with update: UpdateMessageRequest, by userId: UserID) async throws -> MessageInfo {
         guard let message = try await repo.findMessage(id: id), message.author.id == userId else {
             throw ServiceError(.forbidden)
         }
@@ -382,12 +393,16 @@ final class ChatService: ChatServiceProtocol {
             message.editedAt = Date()
             shouldSave = true
         }
-        if let isVisible = update.isVisible {
+        if let isVisible = update.isVisible, !message.isVisible {
             message.isVisible = isVisible
             shouldSave = true
         }
         if shouldSave {
             try await repo.saveMessage(message)
+        }
+        
+        if update.fileExists || update.previewExists {
+            try await repo.loadAttachments(for: message)
         }
         
         let info = message.info()

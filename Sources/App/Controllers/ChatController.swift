@@ -142,7 +142,7 @@ struct ChatController: RouteCollection {
     
     func updateMessage(_ req: Request) async throws -> MessageInfo {
         try await Service.chats.updateMessage(req.messageUUID(),
-                                              with: req.content.decode(PostMessageRequest.self),
+                                              with: req.content.decode(UpdateMessageRequest.self),
                                               by: req.currentUser().requireID())
     }
     

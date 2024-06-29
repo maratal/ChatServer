@@ -412,6 +412,65 @@ final class ChatTests: XCTestCase {
         })
     }
     
+    func testPostAndDeleteChatMessageWithAttachment() async throws {
+        let current = try await seedCurrentUser()
+        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
+        
+        var message: MessageInfo!
+        var attachment: MediaInfo!
+        let fileType = "test"
+        
+        try app.test(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: UUID(), attachment: MediaInfo(fileType: fileType, fileSize: 1))
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            message = try res.content.decode(MessageInfo.self)
+            attachment = try XCTUnwrap(message.attachments?.first)
+            XCTAssertEqual(attachment.fileExists, false)
+            XCTAssertEqual(attachment.previewExists, false)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 2)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.filter { $0.event == .message }.count, 2)
+        })
+        
+        Service.testNotificator.sentNotifications.removeAll()
+        
+        let fileId = try XCTUnwrap(attachment.id?.uuidString)
+        
+        // "Upload" file and preview
+        try app.makeFakeUpload(fileName: fileId + "." + fileType, fileSize: 1)
+        try app.makeFakeUpload(fileName: fileId + "-preview." + fileType, fileSize: 1)
+        
+        // Inform chat users that upload is now completed and their clients can update the UI
+        try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                UpdateMessageRequest(fileExists: true, previewExists: true)
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            message = try res.content.decode(MessageInfo.self)
+            attachment = try XCTUnwrap(message.attachments?.first)
+            XCTAssertEqual(attachment.fileExists, true)
+            XCTAssertEqual(attachment.previewExists, true)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 2)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.filter { $0.event == .messageUpdate }.count, 2)
+        })
+        
+        Service.testNotificator.sentNotifications.removeAll()
+        
+        try app.test(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            message = try res.content.decode(MessageInfo.self)
+            attachment = try XCTUnwrap(message.attachments?.first)
+            XCTAssertEqual(attachment.fileExists, false)
+            XCTAssertEqual(attachment.previewExists, false)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.count, 2)
+            XCTAssertEqual(Service.testNotificator.sentNotifications.filter { $0.event == .messageUpdate }.count, 2)
+        })
+    }
+    
     func testPostMessageToBlockedChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
@@ -485,7 +544,7 @@ final class ChatTests: XCTestCase {
         
         try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(text: "Hi")
+                UpdateMessageRequest(text: "Hi")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -513,7 +572,7 @@ final class ChatTests: XCTestCase {
         
         try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(text: "Hi")
+                UpdateMessageRequest(text: "Hi")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
@@ -562,7 +621,7 @@ final class ChatTests: XCTestCase {
         // Try to edit deleted message
         try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(text: "Hi")
+                UpdateMessageRequest(text: "Hi")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .badRequest, res.body.string)

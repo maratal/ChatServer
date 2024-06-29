@@ -65,7 +65,7 @@ extension MediaResource {
         var fileExists: Bool?
         var previewExists: Bool?
         
-        init(id: UUID, fileType: String, fileSize: Int64) {
+        init(id: UUID? = nil, fileType: String, fileSize: Int64) {
             self.id = id
             self.fileType = fileType
             self.fileSize = fileSize

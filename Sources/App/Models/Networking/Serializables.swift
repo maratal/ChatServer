@@ -51,9 +51,13 @@ struct UpdateChatUsersRequest: Serializable {
 struct PostMessageRequest: Serializable {
     var localId: UUID?
     var text: String?
-    var fileType: String?
-    var fileSize: Int64?
-    var previewWidth: Int?
-    var previewHeight: Int?
     var isVisible: Bool?
+    var attachment: MediaInfo?
+}
+
+struct UpdateMessageRequest: Serializable {
+    var text: String?
+    var isVisible: Bool?
+    var fileExists = false
+    var previewExists = false
 }

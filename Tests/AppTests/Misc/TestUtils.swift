@@ -132,6 +132,7 @@ extension DeviceInfo {
 
 extension Application {
     
+    @discardableResult
     func makeFakeUpload(fileName: String, fileSize: Int) throws -> String {
         let filePath = uploadPath(for: fileName)
         let data = Data(repeating: 1, count: fileSize)
