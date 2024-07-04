@@ -34,18 +34,18 @@ final class MediaResource: RepositoryItem {
     
     init(
         id: UUID? = nil,
-        photoOf: UserID? = nil,
-        imageOf: UUID? = nil,
-        attachmentOf: MessageID? = nil,
+        photoOf userId: UserID? = nil,
+        imageOf chatId: UUID? = nil,
+        attachmentOf messageId: MessageID? = nil,
         fileType: String,
         fileSize: Int64,
         previewWidth: Int,
         previewHeight: Int
     ) {
         self.id = id
-        self.$photoOf.id = photoOf
-        self.$imageOf.id = imageOf
-        self.$attachmentOf.id = attachmentOf
+        self.$photoOf.id = userId
+        self.$imageOf.id = chatId
+        self.$attachmentOf.id = messageId
         self.fileType = fileType
         self.fileSize = fileSize
         self.previewWidth = previewWidth

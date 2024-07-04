@@ -61,7 +61,10 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)
-                chat.with(\.$users)
+                chat.with(\.$users) { user in
+                    user.with(\.$photos)
+                }
+                chat.with(\.$images)
             }
             .first()
     }
@@ -82,6 +85,7 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)
+                chat.with(\.$images)
                 if (fullInfo) {
                     chat.with(\.$users)
                 }
@@ -165,6 +169,7 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         if let date = before {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
+                .with(\.$attachments)
                 .sort(\.$createdAt, .descending)
                 .filter(\.$createdAt < date)
                 .range(..<count)
@@ -172,6 +177,7 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         } else {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
+                .with(\.$attachments)
                 .sort(\.$createdAt, .descending)
                 .range(..<count)
                 .all()

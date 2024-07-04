@@ -16,17 +16,38 @@ final class ChatTests: XCTestCase {
     func testGetUserChats() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
+        let chat1 = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
+        let (chat2, resource) = try await makeChatWithImage(ownerId: current.id!, users: [users[0].id!])
         
         try app.test(.GET, "chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try res.content.decode([ChatInfo].self)
-            XCTAssertEqual(chats.count, 1)
-            XCTAssertEqual(chat.id, chats[0].id)
+            XCTAssertEqual(chats.count, 2)
+            XCTAssertTrue(chats.contains(where: { $0.images?.count == 1 }))
+            XCTAssertEqual([chat1, chat2].map { $0.id!.uuidString }.sorted(), chats.map { $0.id!.uuidString }.sorted())
+            try resource.removeFiles()
         })
     }
     
-    func testGetUserChat() async throws {
+    func testGetChat() async throws {
+        let current = try await seedCurrentUser()
+        let (user, photoRes) = try await seedUserWithPhoto(name: "User", username: "user")
+        let (chat, imageRes) = try await makeChatWithImage(ownerId: current.id!, users: [user.id!])
+        
+        try app.test(.GET, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chatInfo = try res.content.decode(ChatInfo.self)
+            XCTAssertEqual(chat.id, chatInfo.id)
+            XCTAssertEqual(chatInfo.images?.count, 1)
+            let chatUsers = chatInfo.allUsers?.sorted(by: { $0.id! < $1.id! })
+            XCTAssertEqual(chatUsers?.compactMap { $0.id }, [1, 2])
+            XCTAssertEqual(chatUsers?.last?.photos?.count, 1)
+            try photoRes.removeFiles()
+            try imageRes.removeFiles()
+        })
+    }
+    
+    func testGetPersonalChat() async throws {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
@@ -268,8 +289,8 @@ final class ChatTests: XCTestCase {
         let fileType = "test"
         
         // "Upload" all files before adding image
-        let uploadPath = try app.makeFakeUpload(fileName: fileName + "." + fileType, fileSize: 1)
-        let previewPath = try app.makeFakeUpload(fileName: fileName + "-preview." + fileType, fileSize: 1)
+        let uploadPath = try makeFakeUpload(fileName: fileName + "." + fileType, fileSize: 1)
+        let previewPath = try makeFakeUpload(fileName: fileName + "-preview." + fileType, fileSize: 1)
         XCTAssertTrue(FileManager.default.fileExists(atPath: uploadPath))
         XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
         
@@ -362,7 +383,8 @@ final class ChatTests: XCTestCase {
         let current = try await seedCurrentUser()
         let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
-        try await makeMessages(for: chat.id!, authorId: current.id!, count: 9)
+        try await makeMessages(for: chat.id!, authorId: current.id!, count: 8)
+        let (_, messageRes) = try await makeMessageWithAttachment(for: chat.id!, authorId: current.id!, text: "pic")
         
         let count = 5
         var page1 = [MessageInfo]()
@@ -370,7 +392,8 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             page1 = try res.content.decode([MessageInfo].self)
             XCTAssertEqual(page1.count, 5)
-            XCTAssertEqual(page1.first!.text, "text 9")
+            XCTAssertEqual(page1.first!.text, "pic")
+            XCTAssertEqual(page1.first!.attachments?.count, 1)
             XCTAssertEqual(page1.last!.text, "text 5")
         })
         try app.test(.GET, "chats/\(chat.id!)/messages?count=\(count)&before=\(page1.last!.createdAt!.timeIntervalSinceReferenceDate)", headers: .none, afterResponse: { res in
@@ -380,6 +403,7 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(page2.first!.text, "text 4")
             XCTAssertEqual(page2.last!.text, "text 1")
         })
+        try messageRes.removeFiles()
     }
     
     func testTryGetChatMessagesPaginatedByBlockedUser() async throws {
@@ -440,8 +464,8 @@ final class ChatTests: XCTestCase {
         let fileId = try XCTUnwrap(attachment.id?.uuidString)
         
         // "Upload" file and preview
-        try app.makeFakeUpload(fileName: fileId + "." + fileType, fileSize: 1)
-        try app.makeFakeUpload(fileName: fileId + "-preview." + fileType, fileSize: 1)
+        try makeFakeUpload(fileName: fileId + "." + fileType, fileSize: 1)
+        try makeFakeUpload(fileName: fileId + "-preview." + fileType, fileSize: 1)
         
         // Inform chat users that upload is now completed and their clients can update the UI
         try app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in

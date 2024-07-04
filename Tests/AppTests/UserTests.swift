@@ -445,18 +445,21 @@ final class UserTests: XCTestCase {
     }
     
     func testGetUser() async throws {
-        try await seedUsers(count: 1, namePrefix: "Test", usernamePrefix: "test")
+        let (_, photo) = try await seedUserWithPhoto(name: "Test", username: "test")
         try app.test(.GET, "users/1", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.id, 1)
-            XCTAssertEqual(info.username, "test1")
+            let user = try res.content.decode(UserInfo.self)
+            XCTAssertEqual(user.id, 1)
+            XCTAssertEqual(user.username, "test")
+            XCTAssertEqual(user.photos?.count, 1)
+            try photo.removeFiles()
         })
     }
     
     func testSearchUsers() async throws {
         try await seedUsers(count: 2, namePrefix: "Name", usernamePrefix: "user")
-        try await seedUsers(count: 2, namePrefix: "Demo", usernamePrefix: "test")
+        try await seedUser(name: "Demo 1", username: "test1")
+        let (_, photo) = try await seedUserWithPhoto(name: "Demo 2", username: "test2")
         // Search by id=2
         try app.test(.GET, "users?s=2", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -473,8 +476,11 @@ final class UserTests: XCTestCase {
         // Search by name "D(em)o *"
         try app.test(.GET, "users?s=em", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
-            let names = try res.content.decode([UserInfo].self).compactMap { $0.name }
-            XCTAssertEqual(names.sorted(), ["Demo 1", "Demo 2"])
+            let users = try res.content.decode([UserInfo].self).sorted(by: { $0.id! < $1.id! })
+            XCTAssertEqual(users.compactMap { $0.name }, ["Demo 1", "Demo 2"])
+            XCTAssertEqual(users.first?.photos?.count, 0)
+            XCTAssertEqual(users.last?.photos?.count, 1)
+            try photo.removeFiles()
         })
     }
     
@@ -485,8 +491,8 @@ final class UserTests: XCTestCase {
         let fileType = "test"
         
         // "Upload" all files before adding photo
-        let uploadPath = try app.makeFakeUpload(fileName: fileName + "." + fileType, fileSize: 1)
-        let previewPath = try app.makeFakeUpload(fileName: fileName + "-preview." + fileType, fileSize: 1)
+        let uploadPath = try makeFakeUpload(fileName: fileName + "." + fileType, fileSize: 1)
+        let previewPath = try makeFakeUpload(fileName: fileName + "-preview." + fileType, fileSize: 1)
         XCTAssertTrue(FileManager.default.fileExists(atPath: uploadPath))
         XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
         

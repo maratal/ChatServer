@@ -56,10 +56,18 @@ struct CurrentUser {
 }
 
 @discardableResult
-func seedUser(name: String, username: String, password: String, accountKey: String? = nil) async throws -> User {
+func seedUser(name: String, username: String, password: String = "", accountKey: String? = nil) async throws -> User {
     let user = User(name: name, username: username, passwordHash: password.bcryptHash(), accountKeyHash: accountKey?.bcryptHash())
     try await Service.users.repo.save(user)
     return user
+}
+
+@discardableResult
+func seedUserWithPhoto(name: String, username: String, password: String = "", accountKey: String? = nil) async throws -> (User, MediaResource) {
+    let user = User(name: name, username: username, passwordHash: password.bcryptHash(), accountKeyHash: accountKey?.bcryptHash())
+    try await Service.users.repo.save(user)
+    let resource = try await makeMediaResource(photoOf: user.id!)
+    return (user, resource)
 }
 
 @discardableResult
@@ -74,7 +82,7 @@ func seedCurrentUser(name: String = CurrentUser.name,
 func seedUsers(count: Int, namePrefix: String, usernamePrefix: String) async throws -> [User] {
     var users = [User]()
     for i in 1...count {
-        try await users.append(seedUser(name: "\(namePrefix) \(i)", username: "\(usernamePrefix)\(i)", password: ""))
+        try await users.append(seedUser(name: "\(namePrefix) \(i)", username: "\(usernamePrefix)\(i)"))
     }
     return users
 }
@@ -107,11 +115,25 @@ func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: Use
     return chat
 }
 
+func makeChatWithImage(ownerId: UserID, users: [UserID]) async throws -> (Chat, MediaResource) {
+    let chat = try await makeChat(ownerId: ownerId, users: users, isPersonal: false)
+    let resource = try await makeMediaResource(imageOf: chat.id!)
+    return (chat, resource)
+}
+
 @discardableResult
 func makeMessage(for chatId: UUID, authorId: UserID, text: String) async throws -> Message {
     let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
     try await Service.chats.repo.saveMessage(message)
     return message
+}
+
+@discardableResult
+func makeMessageWithAttachment(for chatId: UUID, authorId: UserID, text: String = "") async throws -> (Message, MediaResource) {
+    let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
+    try await Service.chats.repo.saveMessage(message)
+    let resource = try await makeMediaResource(attachmentOf: message.id!)
+    return (message, resource)
 }
 
 @discardableResult
@@ -125,20 +147,30 @@ func makeMessages(for chatId: UUID, authorId: UserID, count: Int) async throws -
     return messages
 }
 
+@discardableResult
+func makeFakeUpload(fileName: String, fileSize: Int) throws -> String {
+    let filePath = Application.shared.uploadPath(for: fileName)
+    let data = Data(repeating: 1, count: fileSize)
+    try (data as NSData).write(toFile: filePath)
+    return filePath
+}
+
+@discardableResult
+func makeMediaResource(photoOf userId: UserID? = nil,
+                       imageOf chatId: UUID? = nil,
+                       attachmentOf messageId: MessageID? = nil,
+                       fileType: String = "test") async throws -> MediaResource {
+    precondition(userId != nil || chatId != nil || messageId != nil)
+    let resource = MediaResource(photoOf: userId, imageOf: chatId, attachmentOf: messageId, fileType: fileType, fileSize: 1, previewWidth: 100, previewHeight: 100)
+    try await Service.saveItem(resource)
+    try makeFakeUpload(fileName: "\(resource.id!).\(resource.fileType)", fileSize: 1)
+    try makeFakeUpload(fileName: "\(resource.id!)-preview.\(resource.fileType)", fileSize: 1)
+    return resource
+}
+
 extension DeviceInfo {
     static var testInfoMobile = DeviceInfo(id: UUID(), name: "My Phone", model: "iPhone", token: "\(UUID())", transport: .apns)
     static var testInfoDesktop = DeviceInfo(id: UUID(), name: "My Mac", model: "MBA", token: "\(UUID())", transport: .web)
-}
-
-extension Application {
-    
-    @discardableResult
-    func makeFakeUpload(fileName: String, fileSize: Int) throws -> String {
-        let filePath = uploadPath(for: fileName)
-        let data = Data(repeating: 1, count: fileSize)
-        try (data as NSData).write(toFile: filePath)
-        return filePath
-    }
 }
 
 extension User.PrivateInfo {

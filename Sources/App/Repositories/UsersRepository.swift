@@ -20,11 +20,14 @@ protocol UsersRepository {
 final class UsersDatabaseRepository: DatabaseRepository, UsersRepository {
 
     func fetch(id: UserID) async throws -> User {
-        try await User.find(id, on: database).get()!
+        try await find(id: id)!
     }
     
     func find(id: UserID) async throws -> User? {
-        try await User.find(id, on: database).get()
+        try await User.query(on: database)
+            .filter(\.$id == id)
+            .with(\.$photos)
+            .first()
     }
     
     func save(_ user: User) async throws {
@@ -39,7 +42,10 @@ final class UsersDatabaseRepository: DatabaseRepository, UsersRepository {
         try await User.query(on: database).group(.or) { query in
             query.filter(\.$name ~~ s)
             query.filter(\.$username ~~ s)
-        }.range(..<100).all()
+        }
+        .range(..<100)
+        .with(\.$photos)
+        .all()
     }
     
     func findPhoto(_ id: UUID) async throws -> MediaResource? {
@@ -73,6 +79,6 @@ final class UsersDatabaseRepository: DatabaseRepository, UsersRepository {
     }
     
     func allSessions(of user: User) async throws -> [DeviceSession] {
-        return try await user.$deviceSessions.get(on: database)
+        try await user.$deviceSessions.get(on: database)
     }
 }
