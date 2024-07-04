@@ -60,7 +60,7 @@ extension User {
     struct Info: Serializable {
         var id: Int?
         var name: String?
-        var username: String?
+        var username: String
         var about: String?
         var lastAccess: Date?
         var photos: [MediaInfo]?

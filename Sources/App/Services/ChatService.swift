@@ -181,7 +181,7 @@ final class ChatService: ChatServiceProtocol {
         if chat.isPersonal {
             throw ServiceError(.badRequest, reason: "You can't alter users in a personal chat.")
         }
-        let usersToNotRemove = relations.filter { $0.isChatBlocked }.map { $0.$user.id }
+        let usersToNotRemove = relations.filter { $0.isChatBlocked }.map { $0.user.id! }
         let usersToRemove = Array(Set(users).subtracting(Set(usersToNotRemove)))
         let usersCache = chat.users
         let usersBefore = chat.users.map { $0.id! }
@@ -338,7 +338,7 @@ final class ChatService: ChatServiceProtocol {
         
         try await repo.saveMessage(message)
         
-        chat.$lastMessage.id = message.id!
+        try chat.setLatestMessage(message)
         
         var attachmentsToSave: [any RepositoryItem] = []
         

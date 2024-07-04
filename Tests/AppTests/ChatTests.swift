@@ -464,6 +464,7 @@ final class ChatTests: XCTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             message = try res.content.decode(MessageInfo.self)
             attachment = try XCTUnwrap(message.attachments?.first)
+            XCTAssertNotNil(message.deletedAt)
             XCTAssertEqual(attachment.fileExists, false)
             XCTAssertEqual(attachment.previewExists, false)
             XCTAssertEqual(Service.testNotificator.sentNotifications.count, 2)

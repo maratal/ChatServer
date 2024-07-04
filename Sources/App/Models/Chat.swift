@@ -55,6 +55,10 @@ final class Chat: RepositoryItem {
 
 extension Chat {
     
+    func setLatestMessage(_ message: Message) throws {
+        self.$lastMessage.id = try message.requireID()
+    }
+    
     struct Info: Serializable {
         var id: UUID?
         var title: String?
