@@ -41,13 +41,6 @@ extension HTTPHeaders {
     }
 }
 
-extension MessageInfo {
-    
-    var readAt: Date? {
-        readMarks?.first(where: { $0.user?.id != authorId })?.createdAt
-    }
-}
-
 struct CurrentUser {
     static let name = "Admin"
     static let username = "admin"

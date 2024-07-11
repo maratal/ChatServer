@@ -1,3 +1,4 @@
+import Foundation
 import FluentKit
 
 struct Service {
@@ -43,6 +44,12 @@ extension Service {
 
 extension Service {
     
+    static let dateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        return df
+    }()
+    
     enum Event: String {
         /// Chat related events
         case message
@@ -56,13 +63,15 @@ extension Service {
         case chatDeleted
     }
     
-    struct Notification {
+    struct Notification: JSONSerializable {
         var event: Event
         var source: String
         var destination: String?
-        var payload: Encodable?
+        var payload: JSON?
         
-        func jsonString() -> String { "" }
+        func jsonObject() throws -> JSON {
+            [ "event": "\(event)", "source": source, "payload": payload ]
+        }
     }
     
     struct Constants {

@@ -22,3 +22,25 @@ extension Array where Element: Hashable {
         Self(Set(self))
     }
 }
+
+extension Serializable {
+    
+    func jsonData() throws -> Data {
+        try JSONEncoder().encode(self)
+    }
+    
+    func json() throws -> Any {
+        try JSONSerialization.jsonObject(with: jsonData(), options: .allowFragments)
+    }
+}
+
+extension JSON {
+    
+    func data() throws -> Data {
+        try JSONSerialization.data(withJSONObject: self)
+    }
+}
+
+protocol JSONSerializable {
+    func jsonObject() throws -> JSON
+}

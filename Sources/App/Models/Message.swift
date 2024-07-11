@@ -1,4 +1,5 @@
 import Fluent
+import Foundation
 
 final class Message: RepositoryItem {
     static let schema = "messages"
@@ -102,3 +103,24 @@ extension Message {
 }
 
 typealias MessageInfo = Message.Info
+
+extension MessageInfo: JSONSerializable {
+    
+    var readAt: Date? {
+        readMarks?.first(where: { $0.user?.id != authorId })?.createdAt
+    }
+    
+    func jsonObject() throws -> JSON {
+        var dict = try json() as! JSON
+        if let createdAt {
+            dict["createdAt"] = Service.dateFormatter.string(from: createdAt)
+        }
+        if let updatedAt {
+            dict["updatedAt"] = Service.dateFormatter.string(from: updatedAt)
+        }
+        if let readAt {
+            dict["readAt"] = Service.dateFormatter.string(from: readAt)
+        }
+        return dict
+    }
+}

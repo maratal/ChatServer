@@ -117,6 +117,13 @@ extension Chat {
 
 typealias ChatInfo = Chat.Info
 
+extension ChatInfo: JSONSerializable {
+    
+    func jsonObject() throws -> JSON {
+        try json() as! JSON
+    }
+}
+
 extension Set where Element == UserID {
     
     func participantsKey() -> String {

@@ -55,7 +55,7 @@ final class WebSocketServer: WebSocketListener, WebSocketSender {
             return false
         }
         do {
-            try await ws.send(notification.jsonString())
+            try await ws.send(raw: notification.jsonObject().data(), opcode: .binary)
             print("--- Message '\(notification.event)' sent to channel '\(channel)' with source '\(notification.source)' and data: \(String(describing: notification.payload))")
             return true
         } catch {

@@ -26,9 +26,9 @@ final class TestNotificationManager: Notificator {
     
     var sentNotifications = [Service.Notification]()
     
-    func notify(chat: Chat, with info: Encodable? = nil, about event: Service.Event, from user: User?) async throws {
+    func notify(chat: Chat, about event: Service.Event, from user: User?, with payload: JSON?) async throws {
         let source = user == nil ? "system" : "\(user!.id ?? 0)"
-        var notification = Service.Notification(event: event, source: source, payload: info)
+        var notification = Service.Notification(event: event, source: source, payload: payload)
         let relations = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: false)
         let allowed = relations.filter { !$0.isChatBlocked }
         for relation in allowed {

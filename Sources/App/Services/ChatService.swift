@@ -125,7 +125,7 @@ final class ChatService: ChatServiceProtocol {
         }
         try await repo.save(chat)
         let info = ChatInfo(from: relation, fullInfo: false)
-        try await Service.notificator.notify(chat: chat, with: info, about: .chatUpdate, from: relation.user)
+        try await Service.notificator.notify(chat: chat, about: .chatUpdate, from: relation.user, with: try info.jsonObject())
         return info
     }
     
@@ -165,7 +165,7 @@ final class ChatService: ChatServiceProtocol {
         try await repo.save(relation.chat, with: Array(newUsers))
         let addedUsers = chat.users.filter { newUsers.contains($0.id!) }.map { $0.info() }
         let info = ChatInfo(from: relation, addedUsers: addedUsers, removedUsers: nil)
-        try await Service.notificator.notify(chat: chat, with: info, about: .addedUsers, from: relation.user)
+        try await Service.notificator.notify(chat: chat, about: .addedUsers, from: relation.user, with: try info.jsonObject())
         return info
     }
     
@@ -190,7 +190,7 @@ final class ChatService: ChatServiceProtocol {
         let removedUsersSet = Set(usersBefore).subtracting(Set(usersAfter))
         let removedUsers = usersCache.filter { removedUsersSet.contains($0.id!) }.map { $0.info() }
         let info = ChatInfo(from: relation, addedUsers: nil, removedUsers: removedUsers)
-        try await Service.notificator.notify(chat: chat, with: info, about: .removedUsers, from: relation.user)
+        try await Service.notificator.notify(chat: chat, about: .removedUsers, from: relation.user, with: try info.jsonObject())
         return info
     }
     
@@ -215,7 +215,7 @@ final class ChatService: ChatServiceProtocol {
             }
         }
         try await Service.saveAll(itemsToSave)
-        try await Service.notificator.notify(chat: chat, with: nil, about: .chatDeleted, from: sourceRelation.user)
+        try await Service.notificator.notify(chat: chat, about: .chatDeleted, from: sourceRelation.user, with: nil)
     }
     
     private func setUser(_ targetId: UserID, in chatId: UUID, blocked: Bool, by userId: UserID) async throws {
@@ -284,7 +284,7 @@ final class ChatService: ChatServiceProtocol {
             throw ServiceError(.forbidden, reason: "You can't clear this chat.")
         }
         try await repo.deleteMessages(from: chat)
-        try await Service.notificator.notify(chat: chat, with: nil, about: .chatCleared, from: relation.user)
+        try await Service.notificator.notify(chat: chat, about: .chatCleared, from: relation.user, with: nil)
     }
     
     func messages(from id: UUID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo] {
@@ -373,7 +373,7 @@ final class ChatService: ChatServiceProtocol {
         }
         
         let info = message.info()
-        try await Service.notificator.notify(chat: chat, with: info, about: .message, from: authorRelation.user)
+        try await Service.notificator.notify(chat: chat, about: .message, from: authorRelation.user, with: try info.jsonObject())
         return info
     }
     
@@ -406,7 +406,7 @@ final class ChatService: ChatServiceProtocol {
         }
         
         let info = message.info()
-        try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: authorRelation.user)
+        try await Service.notificator.notify(chat: message.chat, about: .messageUpdate, from: authorRelation.user, with: try info.jsonObject())
         return info
     }
     
@@ -429,7 +429,7 @@ final class ChatService: ChatServiceProtocol {
         try await Service.saveAll(itemsToSave)
         
         let info = message.info()
-        try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: message.author)
+        try await Service.notificator.notify(chat: message.chat, about: .messageUpdate, from: message.author, with: try info.jsonObject())
         return info
     }
     
@@ -444,7 +444,7 @@ final class ChatService: ChatServiceProtocol {
             let readMark = ReadMark(messageId: id, userId: userId)
             try await Service.saveItem(readMark)
             let info = message.info()
-            try await Service.notificator.notify(chat: message.chat, with: info, about: .messageUpdate, from: readerRelation.user)
+            try await Service.notificator.notify(chat: message.chat, about: .messageUpdate, from: readerRelation.user, with: try info.jsonObject())
         }
     }
     
