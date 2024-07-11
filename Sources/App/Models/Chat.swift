@@ -1,4 +1,5 @@
 import Fluent
+import Foundation
 
 final class Chat: RepositoryItem {
     static let schema = "chats"

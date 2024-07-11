@@ -1,4 +1,5 @@
 import Fluent
+import Foundation
 
 final class ReadMark: RepositoryItem {
     static let schema = "read_marks"

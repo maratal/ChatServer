@@ -1,4 +1,5 @@
 import FluentKit
+import Foundation
 
 protocol ChatsRepository {
     func fetch(id: UUID) async throws -> Chat

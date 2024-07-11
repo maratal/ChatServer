@@ -1,4 +1,5 @@
 import Fluent
+import Foundation
 
 final class User: RepositoryItem {
     static let schema = "users"

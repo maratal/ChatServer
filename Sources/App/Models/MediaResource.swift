@@ -1,4 +1,5 @@
 import Fluent
+import Foundation
 
 final class MediaResource: RepositoryItem {
     static let schema = "media_resources"

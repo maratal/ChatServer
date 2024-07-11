@@ -1,4 +1,5 @@
 import Fluent
+import Foundation
 
 final class DeviceSession: RepositoryItem {
     static let schema = "device_sessions"
