@@ -15,12 +15,13 @@ enum Entrypoint {
         defer { app.shutdown() }
         
         do {
-            try configure(app)            
+            try configure(app)
         }
         catch {
             app.logger.report(error: error)
             throw error
         }
+        Service.shared = .live
         try await app.execute()
     }
 }

@@ -1,40 +1,58 @@
-import Foundation
+import Vapor
 import FluentKit
 
-struct Service {
+final class Service {
     
-    static var database: Database!
+    enum Environment {
+        case test, live
+    }
     
-    static var users: UserService!
-    static var chats: ChatService!
-    static var contacts: ContactsService!
+    var database: Database!
     
-    static var listener: WebSocketListener!
-    static var notificator: Notificator!
+    var users: UserService!
+    var chats: ChatService!
+    var contacts: ContactsService!
     
-    static func configure(database: Database,
-                          listener: WebSocketListener,
-                          notificator: Notificator) {
+    var listener: WebSocketListener!
+    var notificator: Notificator!
+    
+    init(database: Database,
+         listener: WebSocketListener,
+         notificator: Notificator) {
         self.database = database
+        self.listener = listener
+        self.notificator = notificator
         self.users = UserService(repo: UsersDatabaseRepository(database: database))
         self.chats = ChatService(repo: ChatsDatabaseRepository(database: database))
         self.contacts = ContactsService(repo: ContactsDatabaseRepository(database: database))
-        self.listener = listener
-        self.notificator = notificator
     }
 }
 
 extension Service {
     
-    static func saveItem(_ item: any RepositoryItem) async throws {
+    static var shared: Service!
+    
+    static var live: Service {
+        let wsServer = WebSocketServer()
+        let pushes = PushManager(apnsKeyPath: "", fcmKeyPath: "")
+        
+        return Service(database: Application.shared.db,
+                       listener: wsServer,
+                       notificator: NotificationManager(wsSender: wsServer, pushSender: pushes))
+    }
+}
+
+extension Service {
+    
+    func saveItem(_ item: any RepositoryItem) async throws {
         try await item.save(on: database)
     }
     
-    static func saveAll(_ items: [any RepositoryItem]) async throws {
+    func saveAll(_ items: [any RepositoryItem]) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for item in items {
                 group.addTask {
-                    try await item.save(on: database)
+                    try await item.save(on: self.database)
                 }
             }
             try await group.waitForAll()

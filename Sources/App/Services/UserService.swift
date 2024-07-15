@@ -140,8 +140,8 @@ final class UserService: UserServiceProtocol {
         session.deviceToken = deviceInfo.token
         let user = session.user
         user.lastAccess = Date()
-        try await Service.saveAll([session, user])
-        try Service.listener.listenForDeviceWithSession(session)
+        try await Service.shared.saveAll([session, user])
+        try Service.shared.listener.listenForDeviceWithSession(session)
         _ = try await repo.allSessions(of: user)
         return user.privateInfo()
     }

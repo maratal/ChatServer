@@ -15,7 +15,7 @@ public final class NotificationManager: Notificator {
     }
     
     func notify(chat: Chat, about event: Service.Event, from user: User?, with payload: JSON?) async throws {
-        let relations = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: false)
+        let relations = try await Service.shared.chats.repo.findRelations(of: chat.id!, isUserBlocked: false)
         let allowed = relations.filter { !$0.isChatBlocked }
         for relation in allowed {
             for session in relation.user.deviceSessions {

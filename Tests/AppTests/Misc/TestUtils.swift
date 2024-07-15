@@ -1,18 +1,30 @@
 @testable import App
 import XCTVapor
 
+extension Service {
+    
+    static var test: Service {
+        Service(database: Application.shared.db,
+                listener: TestWebSocketServer(),
+                notificator: TestNotificationManager())
+    }
+}
+
 extension Application {
     
-    static func testable() throws -> Application {
+    static func testable(with service: Service.Environment = .test) throws -> Application {
         let app = Application(.testing)
         try configure(app)
         
         try app.autoRevert().wait()
         try app.autoMigrate().wait()
         
-        Service.configure(database: app.db,
-                          listener: TestWebSocketServer(),
-                          notificator: TestNotificationManager())
+        switch service {
+        case .test:
+            Service.shared = .test
+        case .live:
+            Service.shared = .live
+        }
         return app
     }
 }
@@ -51,14 +63,14 @@ struct CurrentUser {
 @discardableResult
 func seedUser(name: String, username: String, password: String = "", accountKey: String? = nil) async throws -> User {
     let user = User(name: name, username: username, passwordHash: password.bcryptHash(), accountKeyHash: accountKey?.bcryptHash())
-    try await Service.users.repo.save(user)
+    try await Service.shared.users.repo.save(user)
     return user
 }
 
 @discardableResult
 func seedUserWithPhoto(name: String, username: String, password: String = "", accountKey: String? = nil) async throws -> (User, MediaResource) {
     let user = User(name: name, username: username, passwordHash: password.bcryptHash(), accountKeyHash: accountKey?.bcryptHash())
-    try await Service.users.repo.save(user)
+    try await Service.shared.users.repo.save(user)
     let resource = try await makeMediaResource(photoOf: user.id!)
     return (user, resource)
 }
@@ -83,27 +95,27 @@ func seedUsers(count: Int, namePrefix: String, usernamePrefix: String) async thr
 @discardableResult
 func makeContact(_ user: User, of owner: User) async throws -> Contact {
     let contact = try Contact(ownerId: owner.requireID(), userId: user.requireID())
-    try await Service.contacts.repo.saveContact(contact)
+    try await Service.shared.contacts.repo.saveContact(contact)
     return contact
 }
 
 @discardableResult
 func makeChat(ownerId: UserID, users: [UserID], isPersonal: Bool, blockedId: UserID? = nil, blockedById: UserID? = nil) async throws -> Chat {
     let chat = Chat(ownerId: ownerId, isPersonal: isPersonal)
-    try await Service.chats.repo.save(chat, with: users)
+    try await Service.shared.chats.repo.save(chat, with: users)
     if let blockedId = blockedId {
-        guard let relation = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: nil).ofUser(blockedId) else {
+        guard let relation = try await Service.shared.chats.repo.findRelations(of: chat.id!, isUserBlocked: nil).ofUser(blockedId) else {
             preconditionFailure("Invalid blocked user.")
         }
         relation.isUserBlocked = true
-        try await Service.chats.repo.saveRelation(relation)
+        try await Service.shared.chats.repo.saveRelation(relation)
     }
     if let blockedById = blockedById {
-        guard let relation = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: nil).ofUser(blockedById) else {
+        guard let relation = try await Service.shared.chats.repo.findRelations(of: chat.id!, isUserBlocked: nil).ofUser(blockedById) else {
             preconditionFailure("Invalid blocked user.")
         }
         relation.isChatBlocked = true
-        try await Service.chats.repo.saveRelation(relation)
+        try await Service.shared.chats.repo.saveRelation(relation)
     }
     return chat
 }
@@ -117,14 +129,14 @@ func makeChatWithImage(ownerId: UserID, users: [UserID]) async throws -> (Chat, 
 @discardableResult
 func makeMessage(for chatId: UUID, authorId: UserID, text: String) async throws -> Message {
     let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
-    try await Service.chats.repo.saveMessage(message)
+    try await Service.shared.chats.repo.saveMessage(message)
     return message
 }
 
 @discardableResult
 func makeMessageWithAttachment(for chatId: UUID, authorId: UserID, text: String = "") async throws -> (Message, MediaResource) {
     let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
-    try await Service.chats.repo.saveMessage(message)
+    try await Service.shared.chats.repo.saveMessage(message)
     let resource = try await makeMediaResource(attachmentOf: message.id!)
     return (message, resource)
 }
@@ -155,7 +167,7 @@ func makeMediaResource(photoOf userId: UserID? = nil,
                        fileType: String = "test") async throws -> MediaResource {
     precondition(userId != nil || chatId != nil || messageId != nil)
     let resource = MediaResource(photoOf: userId, imageOf: chatId, attachmentOf: messageId, fileType: fileType, fileSize: 1, previewWidth: 100, previewHeight: 100)
-    try await Service.saveItem(resource)
+    try await Service.shared.saveItem(resource)
     try makeFakeUpload(fileName: "\(resource.id!).\(resource.fileType)", fileSize: 1)
     try makeFakeUpload(fileName: "\(resource.id!)-preview.\(resource.fileType)", fileSize: 1)
     return resource

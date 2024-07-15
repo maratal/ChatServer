@@ -29,7 +29,7 @@ final class TestNotificationManager: Notificator {
     func notify(chat: Chat, about event: Service.Event, from user: User?, with payload: JSON?) async throws {
         let source = user == nil ? "system" : "\(user!.id ?? 0)"
         var notification = Service.Notification(event: event, source: source, payload: payload)
-        let relations = try await Service.chats.repo.findRelations(of: chat.id!, isUserBlocked: false)
+        let relations = try await Service.shared.chats.repo.findRelations(of: chat.id!, isUserBlocked: false)
         let allowed = relations.filter { !$0.isChatBlocked }
         for relation in allowed {
             notification.destination = "\(relation.user.id!)"
@@ -41,7 +41,7 @@ final class TestNotificationManager: Notificator {
 
 extension Service {
     
-    static var testNotificator: TestNotificationManager {
+    var testNotificator: TestNotificationManager {
         notificator as! TestNotificationManager
     }
 }

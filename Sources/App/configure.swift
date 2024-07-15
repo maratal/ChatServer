@@ -31,13 +31,6 @@ public func configure(_ app: Application) throws {
     
     try app.createUploadsDirectory()
     
-    let wsServer = WebSocketServer()
-    let pushes = PushManager(apnsKeyPath: "", fcmKeyPath: "")
-    
-    Service.configure(database: app.db,
-                      listener: wsServer,
-                      notificator: NotificationManager(wsSender: wsServer, pushSender: pushes))
-    
     // register routes
     try routes(app)
 }

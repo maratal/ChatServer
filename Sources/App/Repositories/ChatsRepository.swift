@@ -117,7 +117,7 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         if newUsers.count > 0 {
             chat.participantsKey = allUsers.participantsKey()
             try await chat.save(on: database)
-            try await Service.saveAll(
+            try await Service.shared.saveAll(
                 newUsers.map { ChatRelation(chatId: try chat.requireID(), userId: $0) }
             )
             _ = try await chat.$users.get(reload: true, on: database)
