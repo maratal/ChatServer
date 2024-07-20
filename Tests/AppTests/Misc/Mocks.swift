@@ -9,10 +9,10 @@ final class TestPushManager: PushSender {
     }
 }
 
-final class TestWebSocketServer: WebSocketListener, WebSocketSender {
+final class TestWebSocketManager: WebSocketServer, WebSocketSender {
     
-    func listenForDeviceWithSession(_ session: DeviceSession) throws {
-        //
+    func accept(_ ws: App.WebSocketProtocol, clientAddress: String, for session: App.DeviceSession) async throws {
+        print("Accepted client at address \(clientAddress)")
     }
     
     func send(_ notification: Service.Notification, to session: DeviceSession) async throws -> Bool {

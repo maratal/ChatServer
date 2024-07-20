@@ -10,4 +10,5 @@ func routes(_ app: Application) throws {
     try app.register(collection: ChatController())
     try app.register(collection: ContactsController())
     try app.register(collection: UploadController())
+    try app.register(collection: WebSocketController())
 }

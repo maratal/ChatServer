@@ -112,15 +112,15 @@ extension MessageInfo: JSONSerializable {
     
     func jsonObject() throws -> JSON {
         var dict = try json() as! JSON
-        if let createdAt {
-            dict["createdAt"] = Service.dateFormatter.string(from: createdAt)
-        }
-        if let updatedAt {
-            dict["updatedAt"] = Service.dateFormatter.string(from: updatedAt)
-        }
-        if let readAt {
-            dict["readAt"] = Service.dateFormatter.string(from: readAt)
-        }
+//        if let createdAt {
+//            dict["createdAt"] = Service.dateFormatter.string(from: createdAt)
+//        }
+//        if let updatedAt {
+//            dict["updatedAt"] = Service.dateFormatter.string(from: updatedAt)
+//        }
+//        if let readAt {
+//            dict["readAt"] = Service.dateFormatter.string(from: readAt)
+//        }
         return dict
     }
 }

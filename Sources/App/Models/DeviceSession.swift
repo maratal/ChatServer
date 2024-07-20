@@ -25,6 +25,9 @@ final class DeviceSession: RepositoryItem {
     @Field(key: "push_transport")
     var pushTransport: String
     
+    @Field(key: "ip_address")
+    var ipAddress: String?
+    
     @Parent(key: "user_id")
     var user: User
     
@@ -54,6 +57,7 @@ extension DeviceSession {
         var id: UUID
         var accessToken: String
         var deviceInfo: DeviceInfo
+        var ipAddress: String?
         var createdAt: Date?
         var updatedAt: Date?
 
@@ -62,6 +66,7 @@ extension DeviceSession {
             self.accessToken = session.accessToken
             self.createdAt = session.createdAt
             self.updatedAt = session.updatedAt
+            self.ipAddress = session.ipAddress
             self.deviceInfo = DeviceInfo(id: session.deviceId,
                                          name: session.deviceName,
                                          model: session.deviceModel,

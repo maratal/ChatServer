@@ -31,11 +31,11 @@ protocol UserServiceProtocol {
     /// Sets an account key by providing user's current password.
     func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws
     
-    /// Creates web socket for user and updates his device information.
-    func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo
-    
     /// Updates current user with the information from the request fields.
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
+    
+    /// Updates current user's device session. The name and the push token of the device can be changed.
+    func updateDevice(_ session: DeviceSession, with info: UpdateDeviceSessionRequest) async throws -> User.PrivateInfo
     
     /// Adds photo to the current user.
     func addPhoto(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
@@ -83,7 +83,7 @@ final class UserService: UserServiceProtocol {
                                           deviceToken: deviceInfo.token,
                                           pushTransport: deviceInfo.transport.rawValue)
         try await repo.saveSession(deviceSession)
-        _ = try await repo.allSessions(of: user)
+        try await repo.loadSessions(of: user)
         return user.privateInfo()
     }
     
@@ -92,7 +92,7 @@ final class UserService: UserServiceProtocol {
     }
     
     func current(_ user: User) async throws -> User.PrivateInfo {
-        _ = try await repo.allSessions(of: user)
+        try await repo.loadSessions(of: user)
         return user.privateInfo()
     }
     
@@ -132,20 +132,6 @@ final class UserService: UserServiceProtocol {
         try await repo.save(user)
     }
     
-    func online(_ session: DeviceSession, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
-        guard session.deviceId == deviceInfo.id, session.deviceModel == deviceInfo.model else {
-            throw ServiceError(.badRequest, reason: "You can only change device's name and token.")
-        }
-        session.deviceName = deviceInfo.name
-        session.deviceToken = deviceInfo.token
-        let user = session.user
-        user.lastAccess = Date()
-        try await Service.shared.saveAll([session, user])
-        try Service.shared.listener.listenForDeviceWithSession(session)
-        _ = try await repo.allSessions(of: user)
-        return user.privateInfo()
-    }
-    
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo {
         if let name = info.name {
             user.name = name
@@ -156,6 +142,16 @@ final class UserService: UserServiceProtocol {
         user.lastAccess = Date()
         try await repo.save(user)
         return user.fullInfo()
+    }
+    
+    func updateDevice(_ session: DeviceSession, with info: UpdateDeviceSessionRequest) async throws -> User.PrivateInfo {
+        session.deviceName = info.deviceName
+        if let deviceToken = info.deviceToken {
+            session.deviceToken = deviceToken
+        }
+        try await repo.saveSession(session)
+        try await repo.loadSessions(of: session.user)
+        return session.user.privateInfo()
     }
     
     func addPhoto(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo {

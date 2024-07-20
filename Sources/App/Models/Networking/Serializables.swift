@@ -35,6 +35,11 @@ struct UpdateUserRequest: Serializable {
     var photo: MediaInfo?
 }
 
+struct UpdateDeviceSessionRequest: Serializable {
+    var deviceName: String
+    var deviceToken: String?
+}
+
 struct UpdateChatRequest: Serializable {
     var title: String?
     var isMuted: Bool?

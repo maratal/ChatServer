@@ -14,7 +14,9 @@ protocol UsersRepository {
     
     func saveSession(_ session: DeviceSession) async throws
     func deleteSession(of user: User) async throws
-    func allSessions(of user: User) async throws -> [DeviceSession]
+    
+    @discardableResult
+    func loadSessions(of user: User) async throws -> [DeviceSession]
 }
 
 final class UsersDatabaseRepository: DatabaseRepository, UsersRepository {
@@ -78,7 +80,8 @@ final class UsersDatabaseRepository: DatabaseRepository, UsersRepository {
             .delete()
     }
     
-    func allSessions(of user: User) async throws -> [DeviceSession] {
+    @discardableResult
+    func loadSessions(of user: User) async throws -> [DeviceSession] {
         try await user.$deviceSessions.get(on: database)
     }
 }

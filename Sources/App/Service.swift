@@ -7,20 +7,20 @@ final class Service {
         case test, live
     }
     
-    var database: Database!
+    var database: Database
     
-    var users: UserService!
-    var chats: ChatService!
-    var contacts: ContactsService!
+    var users: UserService
+    var chats: ChatService
+    var contacts: ContactsService
     
-    var listener: WebSocketListener!
-    var notificator: Notificator!
+    var wsServer: WebSocketServer
+    var notificator: Notificator
     
     init(database: Database,
-         listener: WebSocketListener,
+         wsServer: WebSocketServer,
          notificator: Notificator) {
         self.database = database
-        self.listener = listener
+        self.wsServer = wsServer
         self.notificator = notificator
         self.users = UserService(repo: UsersDatabaseRepository(database: database))
         self.chats = ChatService(repo: ChatsDatabaseRepository(database: database))
@@ -33,12 +33,12 @@ extension Service {
     static var shared: Service!
     
     static var live: Service {
-        let wsServer = WebSocketServer()
+        let wsManager = WebSocketManager()
         let pushes = PushManager(apnsKeyPath: "", fcmKeyPath: "")
         
         return Service(database: Application.shared.db,
-                       listener: wsServer,
-                       notificator: NotificationManager(wsSender: wsServer, pushSender: pushes))
+                       wsServer: wsManager,
+                       notificator: NotificationManager(wsSender: wsManager, pushSender: pushes))
     }
 }
 
@@ -87,7 +87,7 @@ extension Service {
         var destination: String?
         var payload: JSON?
         
-        func jsonObject() throws -> JSON {
+        func jsonObject() -> JSON {
             [ "event": "\(event)", "source": source, "payload": payload ]
         }
     }
@@ -121,4 +121,12 @@ extension Service {
 extension Service.Errors {
     /// Indicates some failure in the database or an attempt to use unsaved object.
     static var idRequired = ServiceError(.internalServerError, reason: "ID Required.")
+}
+
+protocol WebSocketProtocol {
+    func send(data: Data) async throws
+    func sendPing() async throws
+    func close()
+    func onClose(_ closure: @escaping (Result<Void, Error>) -> Void)
+    var isClosed: Bool { get }
 }

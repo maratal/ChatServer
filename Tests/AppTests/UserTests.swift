@@ -331,7 +331,25 @@ final class UserTests: XCTestCase {
         })
     }
     
-    func testGoOnline() async throws {
+    func testUpdateUser() async throws {
+        try await seedCurrentUser()
+        let about = UUID().uuidString
+        try app.test(.PUT, "users/me", headers: .none, beforeRequest: { req in
+            try req.content.encode([
+                "name": "Test Test",
+                "about": about
+            ])
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let info = try res.content.decode(UserInfo.self)
+            XCTAssertEqual(info.id, 1)
+            XCTAssertEqual(info.username, "admin")
+            XCTAssertEqual(info.name, "Test Test")
+            XCTAssertEqual(info.about, about)
+        })
+    }
+    
+    func testUpdateDeviceSession() async throws {
         try await seedCurrentUser()
         var tokenString = ""
         try app.test(.POST, "users/login",
@@ -358,12 +376,10 @@ final class UserTests: XCTestCase {
             XCTAssertEqual(privateInfo.deviceSessions.count, 2)
             tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoDesktop.id)).accessToken
         })
-        try app.test(.PUT, "users/me/online",
+        try app.test(.PUT, "users/me/device",
                      headers: .authWith(token: tokenString),
                      beforeRequest: { req in
-            var info = DeviceInfo.testInfoDesktop
-            info.name = "My computer"
-            try req.content.encode(info)
+            try req.content.encode(UpdateDeviceSessionRequest(deviceName: "My computer"))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let privateInfo = try res.content.decode(User.PrivateInfo.self)
@@ -371,76 +387,6 @@ final class UserTests: XCTestCase {
             let deviceInfo = try XCTUnwrap(privateInfo.sessionForAccessToken(tokenString)?.deviceInfo)
             XCTAssertEqual(deviceInfo.id, DeviceInfo.testInfoDesktop.id)
             XCTAssertEqual(deviceInfo.name, "My computer")
-        })
-    }
-    
-    func testTryGoOnlineWithDifferentDeviceId() async throws {
-        try await seedCurrentUser()
-        var tokenString = ""
-        try app.test(.POST, "users/login",
-                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     beforeRequest: { req in
-            try req.content.encode(
-                DeviceInfo.testInfoMobile
-            )
-        }, afterResponse: { res in
-            XCTAssertEqual(res.status, .ok, res.body.string)
-            let privateInfo = try res.content.decode(User.PrivateInfo.self)
-            XCTAssertEqual(privateInfo.deviceSessions.count, 1)
-            tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoMobile.id)).accessToken
-        })
-        try app.test(.PUT, "users/me/online",
-                     headers: .authWith(token: tokenString),
-                     beforeRequest: { req in
-            var info = DeviceInfo.testInfoMobile
-            info.id = UUID()
-            try req.content.encode(info)
-        }, afterResponse: { res in
-            XCTAssertEqual(res.status, .badRequest, res.body.string)
-        })
-    }
-    
-    func testTryGoOnlineWithDifferentModel() async throws {
-        try await seedCurrentUser()
-        var tokenString = ""
-        try app.test(.POST, "users/login",
-                     headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
-                     beforeRequest: { req in
-            try req.content.encode(
-                DeviceInfo.testInfoMobile
-            )
-        }, afterResponse: { res in
-            XCTAssertEqual(res.status, .ok, res.body.string)
-            let privateInfo = try res.content.decode(User.PrivateInfo.self)
-            XCTAssertEqual(privateInfo.deviceSessions.count, 1)
-            tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoMobile.id)).accessToken
-        })
-        try app.test(.PUT, "users/me/online",
-                     headers: .authWith(token: tokenString),
-                     beforeRequest: { req in
-            var info = DeviceInfo.testInfoMobile
-            info.model = "iPad"
-            try req.content.encode(info)
-        }, afterResponse: { res in
-            XCTAssertEqual(res.status, .badRequest, res.body.string)
-        })
-    }
-    
-    func testUpdateUser() async throws {
-        try await seedCurrentUser()
-        let about = UUID().uuidString
-        try app.test(.PUT, "users/me", headers: .none, beforeRequest: { req in
-            try req.content.encode([
-                "name": "Test Test",
-                "about": about
-            ])
-        }, afterResponse: { res in
-            XCTAssertEqual(res.status, .ok, res.body.string)
-            let info = try res.content.decode(UserInfo.self)
-            XCTAssertEqual(info.id, 1)
-            XCTAssertEqual(info.username, "admin")
-            XCTAssertEqual(info.name, "Test Test")
-            XCTAssertEqual(info.about, about)
         })
     }
     

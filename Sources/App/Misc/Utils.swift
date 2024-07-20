@@ -32,6 +32,10 @@ extension Serializable {
     func json() throws -> Any {
         try JSONSerialization.jsonObject(with: jsonData(), options: .allowFragments)
     }
+    
+    static func fromData(_ data: Data) throws -> Self {
+        try JSONDecoder().decode(Self.self, from: data)
+    }
 }
 
 extension JSON {
@@ -43,4 +47,11 @@ extension JSON {
 
 protocol JSONSerializable {
     func jsonObject() throws -> JSON
+}
+
+extension Data {
+    
+    func json() throws -> Any {
+        try JSONSerialization.jsonObject(with: self, options: .allowFragments)
+    }
 }

@@ -5,7 +5,7 @@ extension Service {
     
     static var test: Service {
         Service(database: Application.shared.db,
-                listener: TestWebSocketServer(),
+                wsServer: TestWebSocketManager(),
                 notificator: TestNotificationManager())
     }
 }

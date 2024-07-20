@@ -24,7 +24,7 @@ struct UserController: RouteCollection {
             route.post("logout", use: logout)
             route.delete(use: deregister)
             route.put(use: update)
-            route.put("online", use: online)
+            route.put("device", use: updateDevice)
             route.post("photos", use: addPhoto)
             route.delete("photos", .id, use: deletePhoto)
         }
@@ -75,13 +75,12 @@ struct UserController: RouteCollection {
         return .ok
     }
     
-    func online(_ req: Request) async throws -> User.PrivateInfo {
-        let deviceInfo = try req.content.decode(DeviceInfo.self)
-        return try await Service.shared.users.online(req.deviceSession(), deviceInfo: deviceInfo)
-    }
-    
     func update(_ req: Request) async throws -> UserInfo {
         try await service.update(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
+    }
+    
+    func updateDevice(_ req: Request) async throws -> User.PrivateInfo {
+        try await service.updateDevice(req.deviceSession(), with: req.content.decode(UpdateDeviceSessionRequest.self))
     }
     
     func addPhoto(_ req: Request) async throws -> UserInfo {
