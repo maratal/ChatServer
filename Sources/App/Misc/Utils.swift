@@ -23,35 +23,41 @@ extension Array where Element: Hashable {
     }
 }
 
-extension Serializable {
+extension Data {
     
-    func jsonData() throws -> Data {
-        try JSONEncoder().encode(self)
-    }
-    
+    /// Converts a raw data to a JSON object or a [JSON] array.
     func json() throws -> Any {
-        try JSONSerialization.jsonObject(with: jsonData(), options: .allowFragments)
-    }
-    
-    static func fromData(_ data: Data) throws -> Self {
-        try JSONDecoder().decode(Self.self, from: data)
+        try JSONSerialization.jsonObject(with: self, options: .allowFragments)
     }
 }
 
 extension JSON {
     
+    /// Converts a `JSON` object to a raw data.
     func data() throws -> Data {
         try JSONSerialization.data(withJSONObject: self)
     }
 }
 
-protocol JSONSerializable {
-    func jsonObject() throws -> JSON
+extension Serializable {
+    
+    /// Converts an `Encodable` object to a raw data.
+    func jsonData() throws -> Data {
+        try JSONEncoder().encode(self)
+    }
+    
+    /// Converts an `Encodable` object to a JSON object or a [JSON] array.
+    func json() throws -> Any {
+        try jsonData().json()
+    }
+    
+    /// Converts a raw data to a `Encodable` object.
+    static func fromData(_ data: Data) throws -> Self {
+        try JSONDecoder().decode(Self.self, from: data)
+    }
 }
 
-extension Data {
-    
-    func json() throws -> Any {
-        try JSONSerialization.jsonObject(with: self, options: .allowFragments)
-    }
+/// Interface for any type to conform for getting a JSON object from it.
+protocol JSONSerializable {
+    func jsonObject() throws -> JSON
 }
