@@ -296,6 +296,9 @@ final class ChatService: ChatServiceProtocol {
     }
     
     func postMessage(to id: UUID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
+        if info.isEmpty {
+            throw ServiceError(.badRequest, reason: "Message is empty.")
+        }
         let relations = try await repo.findRelations(of: id, isUserBlocked: false)
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
@@ -321,13 +324,10 @@ final class ChatService: ChatServiceProtocol {
                 throw ServiceError(.badRequest, reason: "Malformed message data.")
             }
         }
-        else if let text = info.text {
+        if let text = info.text {
             guard text.count > 0 && text.count <= 2048 else {
                 throw ServiceError(.badRequest, reason: "Message text should be between 1 and 2048 characters long.")
             }
-        }
-        else {
-            throw ServiceError(.badRequest, reason: "Message is empty.")
         }
         
         let message = Message(localId: localId,
@@ -485,5 +485,11 @@ final class ChatService: ChatServiceProtocol {
         }
         try resource.removeFiles()
         try await repo.deleteChatImage(resource)
+    }
+}
+
+extension PostMessageRequest {
+    var isEmpty: Bool {
+        attachment == nil && text == nil
     }
 }
