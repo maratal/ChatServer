@@ -1,10 +1,10 @@
 import Foundation
 
-protocol Notificator {
-    func notify(chat: Chat, about event: Service.Event, from user: User?, with payload: JSON?) async throws
+protocol Notificator: Sendable {
+    func notify(chat: Chat, in repo: ChatsRepository, about event: CoreService.Event, from user: User?, with payload: JSON?) async throws
 }
 
-public final class NotificationManager: Notificator {
+actor NotificationManager: Notificator {
     
     private let wsSender: WebSocketSender
     private let pushSender: PushSender
@@ -14,13 +14,13 @@ public final class NotificationManager: Notificator {
         self.pushSender = pushSender
     }
     
-    func notify(chat: Chat, about event: Service.Event, from user: User?, with payload: JSON?) async throws {
-        let relations = try await Service.shared.chats.repo.findRelations(of: chat.id!, isUserBlocked: false)
+    func notify(chat: Chat, in repo: ChatsRepository, about event: CoreService.Event, from user: User?, with payload: JSON?) async throws {
+        let relations = try await repo.findRelations(of: chat.id!, isUserBlocked: false)
         let allowed = relations.filter { !$0.isChatBlocked }
         for relation in allowed {
             for session in relation.user.deviceSessions {
                 let source = user == nil ? "system" : "\(user!.id ?? 0)"
-                let notification = Service.Notification(event: event, source: source, payload: payload)
+                let notification = CoreService.Notification(event: event, source: source, payload: payload)
                 let sent = try await wsSender.send(notification, to: session)
                 if !sent {
                     if let device = session.deviceInfo, event == .message && !relation.isMuted {

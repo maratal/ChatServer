@@ -1,10 +1,10 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 import PackageDescription
 
 let package = Package(
     name: "DemoServer",
     platforms: [
-       .macOS(.v13)
+       .macOS(.v15)
     ],
     dependencies: [
         // 💧 A server-side Swift web framework.

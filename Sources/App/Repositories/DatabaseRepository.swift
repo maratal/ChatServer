@@ -1,15 +1,7 @@
 import FluentKit
 
-protocol DatabaseRepositoryProtocol {
+protocol DatabaseRepository {
     var database: Database { get }
-    init(database: Database)
-}
-
-class DatabaseRepository: DatabaseRepositoryProtocol {
-    var database: Database
-    required init(database: Database) {
-        self.database = database
-    }
 }
 
 protocol RepositoryItem: Model { }

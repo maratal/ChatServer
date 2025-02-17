@@ -1,10 +1,7 @@
 import Foundation
 
 protocol UserServiceProtocol {
-    
-    /// Repository for storing and fetching users data.
-    var repo: UsersRepository { get }
-    
+
     /// Registers a new user account and authenticates it.
     func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo
     
@@ -52,11 +49,13 @@ protocol UserServiceProtocol {
     func search(_ s: String) async throws -> [UserInfo]
 }
 
-final class UserService: UserServiceProtocol {
+actor UserService: UserServiceProtocol {
+
+    private let core: CoreService
+    let repo: UsersRepository
     
-    var repo: UsersRepository
-    
-    init(repo: UsersRepository) {
+    init(core: CoreService, repo: UsersRepository) {
+        self.core = core
         self.repo = repo
     }
     
@@ -98,10 +97,10 @@ final class UserService: UserServiceProtocol {
     
     func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws {
         guard try user.verify(password: currentPassword) else {
-            throw Service.Errors.invalidPassword
+            throw CoreService.Errors.invalidPassword
         }
         guard validatePassword(newPassword) else {
-            throw Service.Errors.badPassword
+            throw CoreService.Errors.badPassword
         }
         user.passwordHash = newPassword.bcryptHash()
         try await repo.save(user)
@@ -109,13 +108,13 @@ final class UserService: UserServiceProtocol {
     
     func resetPassword(userId: UserID, newPassword: String, accountKey: String) async throws {
         guard let user = try await repo.find(id: userId) else {
-            throw Service.Errors.invalidUser
+            throw CoreService.Errors.invalidUser
         }
         guard try user.verify(accountKey: accountKey) else {
-            throw Service.Errors.invalidAccountKey
+            throw CoreService.Errors.invalidAccountKey
         }
         guard validatePassword(newPassword) else {
-            throw Service.Errors.badPassword
+            throw CoreService.Errors.badPassword
         }
         user.passwordHash = newPassword.bcryptHash()
         try await repo.save(user)
@@ -123,10 +122,10 @@ final class UserService: UserServiceProtocol {
     
     func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws {
         guard try user.verify(password: currentPassword) else {
-            throw Service.Errors.invalidPassword
+            throw CoreService.Errors.invalidPassword
         }
         guard validateAccountKey(newAccountKey) else {
-            throw Service.Errors.badAccountKey
+            throw CoreService.Errors.badAccountKey
         }
         user.accountKeyHash = newAccountKey.bcryptHash()
         try await repo.save(user)
@@ -179,7 +178,7 @@ final class UserService: UserServiceProtocol {
         guard user.id == resource.photoOf?.id else {
             throw ServiceError(.forbidden)
         }
-        try resource.removeFiles()
+        try core.removeFiles(for: resource)
         try await repo.deletePhoto(resource)
     }
     
@@ -205,11 +204,11 @@ final class UserService: UserServiceProtocol {
 private extension UserService {
     
     func validatePassword(_ password: String) -> Bool {
-        return password.count >= Service.Constants.minPasswordLength && password.count <= Service.Constants.maxPasswordLength
+        return password.count >= CoreService.Constants.minPasswordLength && password.count <= CoreService.Constants.maxPasswordLength
     }
     
     func validateAccountKey(_ key: String) -> Bool {
-        return key.count >= Service.Constants.minAccountKeyLength && key.count <= Service.Constants.maxAccountKeyLength
+        return key.count >= CoreService.Constants.minAccountKeyLength && key.count <= CoreService.Constants.maxAccountKeyLength
     }
     
     func validate(registration: RegistrationRequest) throws -> RegistrationRequest {
@@ -218,16 +217,16 @@ private extension UserService {
                                                password: registration.password,
                                                deviceInfo: registration.deviceInfo)
         guard registration.name.isName else {
-            throw Service.Errors.badName
+            throw CoreService.Errors.badName
         }
-        guard registration.username.count >= Service.Constants.minUsernameLength &&
-              registration.username.count <= Service.Constants.maxUsernameLength &&
+        guard registration.username.count >= CoreService.Constants.minUsernameLength &&
+              registration.username.count <= CoreService.Constants.maxUsernameLength &&
               registration.username.isAlphanumeric &&
               registration.username.first!.isLetter else {
-            throw Service.Errors.badUsername
+            throw CoreService.Errors.badUsername
         }
         guard validatePassword(registration.password) else {
-            throw Service.Errors.badPassword
+            throw CoreService.Errors.badPassword
         }
         return registration
     }

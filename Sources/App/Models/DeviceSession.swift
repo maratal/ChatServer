@@ -1,7 +1,7 @@
 import Fluent
 import Foundation
 
-final class DeviceSession: RepositoryItem {
+final class DeviceSession: RepositoryItem, @unchecked Sendable /* https://blog.vapor.codes/posts/fluent-models-and-sendable */ {
     static let schema = "device_sessions"
 
     @ID(key: .id)

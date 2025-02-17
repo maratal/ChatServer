@@ -82,7 +82,7 @@ extension Request {
 #if DEBUG
     func currentUser() async throws -> User {
         if NSClassFromString("XCTest") != nil {
-            guard let user = try await Service.shared.users.repo.find(id: 1) else {
+            guard let user = try await User.find(1, on: db) else {
                 throw Abort(.notFound, reason: "Test current user not found.")
             }
             return user

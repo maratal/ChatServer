@@ -58,7 +58,7 @@ struct UploadController: RouteCollection {
                 }
             }
             guard offset < Self.maxBytes else {
-                throw Service.Errors.uploadTooLarge
+                throw CoreService.Errors.uploadTooLarge
             }
             // Rename temporary upload file 
             try FileManager.default.moveItem(atPath: tmpFilePath, toPath: filePath)
@@ -91,68 +91,5 @@ extension Request {
         default:
             return headers["Content-Type"].first
         }
-    }
-}
-
-extension Application {
-    
-    var uploadsDirectory: String {
-        directory.publicDirectory
-    }
-    
-    func uploadPath(for fileName: String) -> String {
-        uploadsDirectory + fileName
-    }
-    
-    func createUploadsDirectory() throws {
-        try FileManager.default.createDirectory(atPath: uploadsDirectory, withIntermediateDirectories: true, attributes: nil)
-    }
-}
-
-extension MediaResource {
-    
-    var fileName: String? {
-        guard let fileName = self.id else { return nil }
-        return "\(fileName).\(fileType)"
-    }
-    
-    var previewFileName: String? {
-        guard let fileName = self.id else { return nil }
-        return "\(fileName)-preview.\(fileType)"
-    }
-    
-    var filePath: String? {
-        guard let fileName = self.fileName else { return nil }
-        return Application.shared.uploadPath(for: fileName)
-    }
-    
-    var previewFilePath: String? {
-        guard let fileName = self.previewFileName else { return nil }
-        return Application.shared.uploadPath(for: fileName)
-    }
-    
-    func fileExists() -> Bool {
-        guard let filePath = self.filePath else { return false }
-        return FileManager.default.fileExists(atPath: filePath)
-    }
-    
-    func previewExists() -> Bool {
-        guard let filePath = self.previewFilePath else { return false }
-        return FileManager.default.fileExists(atPath: filePath)
-    }
-    
-    func removeFile() throws {
-        guard let filePath = self.filePath else { return }
-        try FileManager.default.removeItem(atPath: filePath)
-    }
-    
-    func removePreview() throws {
-        guard let filePath = self.previewFilePath else { return }
-        try FileManager.default.removeItem(atPath: filePath)
-    }
-    
-    func removeFiles() throws {
-        try removeFile()
-        try removePreview()
     }
 }

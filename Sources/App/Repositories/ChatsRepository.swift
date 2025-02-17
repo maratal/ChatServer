@@ -1,7 +1,7 @@
 import FluentKit
 import Foundation
 
-protocol ChatsRepository {
+protocol ChatsRepository: Sendable {
     func fetch(id: UUID) async throws -> Chat
     func find(participantsKey: String, for userId: UserID, isPersonal: Bool) async throws -> Chat?
     func findRelations(of chatId: UUID, isUserBlocked: Bool?) async throws -> [ChatRelation]
@@ -29,7 +29,15 @@ protocol ChatsRepository {
     func reloadChatImages(for chat: Chat) async throws
 }
 
-final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
+actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
+
+    private let core: CoreService
+    let database: any Database
+    
+    init(core: CoreService) {
+        self.core = core
+        self.database = core.database
+    }
     
     func fetch(id: UUID) async throws -> Chat {
         try await Chat.find(id, on: database)!
@@ -117,7 +125,7 @@ final class ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         if newUsers.count > 0 {
             chat.participantsKey = allUsers.participantsKey()
             try await chat.save(on: database)
-            try await Service.shared.saveAll(
+            try await core.saveAll(
                 newUsers.map { ChatRelation(chatId: try chat.requireID(), userId: $0) }
             )
             _ = try await chat.$users.get(reload: true, on: database)

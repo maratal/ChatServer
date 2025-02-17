@@ -1,0 +1,32 @@
+{
+  "configurations" : [
+    {
+      "id" : "D6AE64CC-27FA-4F57-9BC8-28335FF100C9",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:",
+      "identifier" : "App",
+      "name" : "App"
+    }
+  },
+  "testTargets" : [
+    {
+      "skippedTests" : [
+        "AppLiveTestCase",
+        "AppTestCase"
+      ],
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "AppTests",
+        "name" : "AppTests"
+      }
+    }
+  ],
+  "version" : 1
+}

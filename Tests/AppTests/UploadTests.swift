@@ -1,18 +1,8 @@
 @testable import App
 import XCTVapor
 
-final class UploadTests: XCTestCase {
-    
-    var app: Application!
-    
-    override func setUp() {
-        app = try! Application.testable()
-    }
-    
-    override func tearDown() {
-        app.shutdown()
-    }
-    
+final class UploadTests: AppTestCase {
+
     func testUploadVideo() async throws {
         // app.test(...) doesn't support streaming uploads, that's why this custom setup is used together with `UploadClient`
         app.http.server.configuration.hostname = "127.0.0.1"

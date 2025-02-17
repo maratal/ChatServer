@@ -1,7 +1,7 @@
 import Fluent
 import Foundation
 
-final class ReadMark: RepositoryItem {
+final class ReadMark: RepositoryItem, @unchecked Sendable /* https://blog.vapor.codes/posts/fluent-models-and-sendable */ {
     static let schema = "read_marks"
     
     @ID(key: .id)

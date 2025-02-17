@@ -1,10 +1,7 @@
 import Foundation
 
 protocol ContactsServiceProtocol {
-    
-    /// Repository for storing and fetching contacts data.
-    var repo: ContactsRepository { get }
-    
+
     /// Returns all contacts for the current user.
     func contacts(of user: User) async throws -> [ContactInfo]
     
@@ -15,9 +12,9 @@ protocol ContactsServiceProtocol {
     func deleteContact(_ contactId: UUID, from user: User) async throws
 }
 
-final class ContactsService: ContactsServiceProtocol {
+actor ContactsService: ContactsServiceProtocol {
     
-    var repo: ContactsRepository
+    let repo: ContactsRepository
     
     init(repo: ContactsRepository) {
         self.repo = repo

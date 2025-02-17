@@ -1,6 +1,7 @@
 import FluentKit
+import Foundation
 
-protocol UsersRepository {
+protocol UsersRepository: Sendable {
     func fetch(id: UserID) async throws -> User
     func find(id: UserID) async throws -> User?
     func save(_ user: User) async throws
@@ -19,8 +20,14 @@ protocol UsersRepository {
     func loadSessions(of user: User) async throws -> [DeviceSession]
 }
 
-final class UsersDatabaseRepository: DatabaseRepository, UsersRepository {
-
+actor UsersDatabaseRepository: DatabaseRepository, UsersRepository {
+    
+    let database: any Database
+    
+    init(database: any Database) {
+        self.database = database
+    }
+    
     func fetch(id: UserID) async throws -> User {
         try await find(id: id)!
     }

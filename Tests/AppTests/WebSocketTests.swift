@@ -1,24 +1,22 @@
 @testable import App
 import XCTVapor
 
-final class WebSocketTests: XCTestCase {
-    
-    var app: Application!
+final class WebSocketTests: AppLiveTestCase {
     
     override func setUp() {
-        app = try! Application.testable(with: .live)
+        super.setUp()
         try! app.startServer()
     }
     
     override func tearDown() {
         app.stopServer()
-        app.shutdown()
+        super.tearDown()
     }
-    
+
     func testSendingMessageOverWebSocket() async throws {
-        let current = try await seedCurrentUser()
-        let users = try await seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
-        let chat = try await makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         
         // Login both users:
         
@@ -36,6 +34,7 @@ final class WebSocketTests: XCTestCase {
             let privateInfo = try res.content.decode(User.PrivateInfo.self)
             deviceSession1 = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoDesktop.id))
         })
+        
         try app.sendRequest(.POST, "users/login",
                             headers: .authWith(username: users[0].username, password: ""),
                             beforeRequest: { req in
@@ -50,12 +49,12 @@ final class WebSocketTests: XCTestCase {
         
         // Subroutine to check the validity of the incoming message:
         
-        let assertMessageFromBuffer: (ByteBuffer) -> () = { buffer in
+        let assertMessageFromBuffer: @Sendable (ByteBuffer) -> () = { buffer in
             let data = Data(buffer: buffer)
             let json = try! data.json() as! JSON
             let payload = json["payload"] as! JSON
             
-            // Received message! 🎉
+            // Received message! 🎉🎉 // add emoji here each time this breaks after swift/vapor update
             let message = try! MessageInfo.fromData(payload.data())
             
             XCTAssertEqual(message.text, "Hey")
@@ -74,36 +73,32 @@ final class WebSocketTests: XCTestCase {
         try await WebSocket.connect(to: "ws://localhost:8080/\(deviceSession1.id)",
                                     headers: .authWith(token: deviceSession1.accessToken),
                                     on: app.eventLoopGroup) { ws in
-            self.addTeardownBlock {
-                ws.close()
-            }
             ws.onPing { ws, buf in
                 expectation1.fulfill()
             }
             ws.onBinary { ws, buf in
                 assertMessageFromBuffer(buf)
                 expectation3.fulfill()
+                ws.close()
             }
         }
         try await WebSocket.connect(to: "ws://localhost:8080/\(deviceSession2.id)",
                                     headers: .authWith(token: deviceSession2.accessToken),
                                     on: app.eventLoopGroup) { ws in
-            self.addTeardownBlock {
-                ws.close()
-            }
             ws.onPing { ws, buf in
                 expectation2.fulfill()
             }
             ws.onBinary { ws, buf in
                 assertMessageFromBuffer(buf)
                 expectation3.fulfill()
+                ws.close()
             }
         }
         await fulfillment(of: [expectation1, expectation2], timeout: 10)
         
         // Sending message from user1 to user2:
         
-        try app.test(.POST, "chats/\(chat.id!)/messages", headers: .authWith(token: deviceSession1.accessToken), beforeRequest: { req in
+        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .authWith(token: deviceSession1.accessToken), beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID(), text: "Hey")
             )

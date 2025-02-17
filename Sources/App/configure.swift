@@ -1,12 +1,8 @@
-import NIOSSL
 import Fluent
 import FluentPostgresDriver
 import Vapor
 
-// configures your application
-public func configure(_ app: Application) throws {
-    Application.shared = app
-    
+func configure(_ app: Application, service: inout CoreService) throws {
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
     app.databases.use(DatabaseConfigurationFactory.postgres(configuration: .init(
@@ -27,10 +23,13 @@ public func configure(_ app: Application) throws {
     app.migrations.add(CreateReaction())
     app.migrations.add(CreateMediaResource())
     
-    try app.autoMigrate().wait()
-    
     try app.createUploadsDirectory()
     
-    // register routes
+    try app.register(collection: UserController(service: service.users))
+    try app.register(collection: ChatController(service: service.chats))
+    try app.register(collection: ContactsController(service: service.contacts))
+    try app.register(collection: WebSocketController(server: service.wsServer))
+    try app.register(collection: UploadController())
+    
     try routes(app)
 }

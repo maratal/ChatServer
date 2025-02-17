@@ -1,7 +1,7 @@
 import Fluent
 import Foundation
 
-final class Chat: RepositoryItem {
+final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.codes/posts/fluent-models-and-sendable */ {
     static let schema = "chats"
     
     @ID(key: .id)

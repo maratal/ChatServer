@@ -1,8 +1,8 @@
 import Vapor
 
 struct ContactsController: RouteCollection {
-    
-    var service: ContactsService { Service.shared.contacts }
+
+    let service: ContactsService
     
     func boot(routes: RoutesBuilder) throws {
         let users = routes.grouped("users")

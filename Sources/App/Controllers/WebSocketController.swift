@@ -1,8 +1,8 @@
 import Vapor
 
 struct WebSocketController: RouteCollection {
-    
-    var server: WebSocketServer { Service.shared.wsServer }
+
+    let server: WebSocketServer
     
     func boot(routes: RoutesBuilder) throws {
         let protected = routes.grouped(DeviceSession.authenticator())

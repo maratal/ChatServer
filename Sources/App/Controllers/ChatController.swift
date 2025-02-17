@@ -1,8 +1,8 @@
 import Vapor
 
 struct ChatController: RouteCollection {
-    
-    var service: ChatService { Service.shared.chats }
+
+    let service: ChatService
     
     func boot(routes: RoutesBuilder) throws {
         let protected = routes.grouped("chats").grouped(DeviceSession.authenticator())

@@ -1,6 +1,7 @@
 import Fluent
+import Foundation
 
-final class Contact: RepositoryItem {
+final class Contact: RepositoryItem, @unchecked Sendable /* https://blog.vapor.codes/posts/fluent-models-and-sendable */ {
     static let schema = "user_contacts"
     
     @ID(key: .id)

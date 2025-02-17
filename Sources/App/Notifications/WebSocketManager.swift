@@ -1,19 +1,31 @@
 import Vapor
 import WebSocketKit
 
-protocol WebSocketServer {
+protocol WebSocketProtocol: Sendable {
+    func send(data: Data) async throws
+    func sendPing() async throws
+    func close()
+    func onClose(_ closure: @Sendable @escaping (Error?) -> Void)
+    var isClosed: Bool { get }
+}
+
+protocol WebSocketServer: Sendable {
     func accept(_ ws: WebSocketProtocol, clientAddress: String, for session: DeviceSession) async throws
 }
 
-protocol WebSocketSender {
-    func send(_ notification: Service.Notification, to session: DeviceSession) async throws -> Bool
+protocol WebSocketSender: Sendable {
+    func send(_ notification: CoreService.Notification, to session: DeviceSession) async throws -> Bool
 }
 
-final class WebSocketManager: WebSocketServer, WebSocketSender {
+actor WebSocketManager: WebSocketServer, WebSocketSender {
     
+    private let core: CoreService
     private var clients = [String: WebSocketProtocol]()
-    
     private let clientsQueue = DispatchQueue(label: "\(WebSocketManager.self).clientsQueue", attributes: .concurrent)
+    
+    init(core: CoreService) {
+        self.core = core
+    }
     
     private func setClient(_ ws: WebSocketProtocol?, for channel: String) {
         clientsQueue.sync(flags: .barrier) {
@@ -33,18 +45,21 @@ final class WebSocketManager: WebSocketServer, WebSocketSender {
     }
     
     func accept(_ ws: WebSocketProtocol, clientAddress: String, for session: DeviceSession) async throws {
-        guard let channel = session.id?.uuidString else { throw Service.Errors.idRequired }
+        guard let channel = session.id?.uuidString else { throw CoreService.Errors.idRequired }
         session.ipAddress = clientAddress
-        try await Service.shared.saveItem(session)
+        try await core.saveItem(session)
         setClient(ws, for: channel)
         ws.onClose { [weak self] _ in
-            self?.setClient(nil, for: channel)
+            guard let self else { return }
+            Task { @Sendable in
+                await self.setClient(nil, for: channel)
+            }
         }
         try await ws.sendPing()
     }
     
-    func send(_ notification: Service.Notification, to session: DeviceSession) async throws -> Bool {
-        guard let channel = session.id?.uuidString else { throw Service.Errors.idRequired }
+    func send(_ notification: CoreService.Notification, to session: DeviceSession) async throws -> Bool {
+        guard let channel = session.id?.uuidString else { throw CoreService.Errors.idRequired }
         guard let ws = getClient(channel) else {
             print("Client at channel '\(channel)' was not connected.")
             return false
@@ -79,9 +94,14 @@ extension WebSocket: WebSocketProtocol {
         _ = close(code: .normalClosure)
     }
     
-    func onClose(_ closure: @escaping (Result<Void, Error>) -> Void) {
+    func onClose(_ closure: @Sendable @escaping (Error?) -> Void) {
         onClose.whenComplete { result in
-            closure(result)
+            switch result {
+            case .failure(let error):
+                closure(error)
+            case .success:
+                closure(nil)
+            }
         }
     }
 }

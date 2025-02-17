@@ -1,7 +1,7 @@
 import Fluent
 import Foundation
 
-final class MediaResource: RepositoryItem {
+final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.vapor.codes/posts/fluent-models-and-sendable */ {
     static let schema = "media_resources"
     
     @ID(key: .id)
@@ -63,8 +63,6 @@ extension MediaResource {
         var previewWidth: Int?
         var previewHeight: Int?
         var createdAt: Date?
-        var fileExists: Bool?
-        var previewExists: Bool?
         
         init(id: UUID? = nil, fileType: String, fileSize: Int64) {
             self.id = id
@@ -79,8 +77,6 @@ extension MediaResource {
             self.previewWidth = media.previewWidth
             self.previewHeight = media.previewHeight
             self.createdAt = media.createdAt
-            self.fileExists = media.fileExists()
-            self.previewExists = media.previewExists()
         }
     }
     

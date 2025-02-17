@@ -1,27 +1,25 @@
 import Vapor
 import Logging
 
-extension Application {
-    static var shared: Application!
-}
-
 @main
 enum Entrypoint {
-    static func main() async throws {
+    static func main() throws {
         var env = try Environment.detect()
         try LoggingSystem.bootstrap(from: &env)
         
-        let app = Application(env)        
+        let app = Application(env)
         defer { app.shutdown() }
         
+        var service: CoreService = .live(app)
+        
         do {
-            try configure(app)
+            try configure(app, service: &service)
+            try app.autoMigrate().wait()
         }
         catch {
             app.logger.report(error: error)
             throw error
         }
-        Service.shared = .live
-        try await app.execute()
+        try app.run()
     }
 }

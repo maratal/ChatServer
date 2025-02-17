@@ -1,14 +1,16 @@
 import Foundation
 
-class UploadClient: NSObject, URLSessionTaskDelegate {
+typealias UploadCompletionHandler = @Sendable (Error?)->()
+
+final class UploadClient: NSObject, URLSessionTaskDelegate {
     
     let urlAddress: String
     let filePath: String
     let fileName: String
     
-    var onComplete: (Error?)->()
+    let onComplete: UploadCompletionHandler
     
-    init(_ urlAddress: String, filePath: String, fileName: String, onComplete: @escaping (Error?)->()) {
+    init(_ urlAddress: String, filePath: String, fileName: String, onComplete: @escaping UploadCompletionHandler) {
         self.urlAddress = urlAddress
         self.filePath = filePath
         self.fileName = fileName
