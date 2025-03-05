@@ -5,7 +5,7 @@ final class User: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     static let schema = "users"
     
     @ID(custom: .id)
-    var id: Int?
+    var id: UserID?
 
     @Field(key: "name")
     var name: String

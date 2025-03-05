@@ -211,7 +211,7 @@ extension CoreService {
 
     @discardableResult
     mutating func makeMediaResource(photoOf userId: UserID? = nil,
-                                    imageOf chatId: UUID? = nil,
+                                    imageOf chatId: ChatID? = nil,
                                     attachmentOf messageId: MessageID? = nil,
                                     fileType: String = "test") async throws -> MediaResource {
         precondition(userId != nil || chatId != nil || messageId != nil)

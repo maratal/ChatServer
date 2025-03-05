@@ -2,7 +2,7 @@ import FluentKit
 import Foundation
 
 protocol ContactsRepository: Sendable {
-    func findContact(_ id: UUID) async throws -> Contact?
+    func findContact(_ id: ContactID) async throws -> Contact?
     func findContact(userId: UserID, ownerId: UserID) async throws -> Contact?
     func contacts(of user: User) async throws -> [Contact]
     func saveContact(_ contact: Contact) async throws
@@ -17,7 +17,7 @@ actor ContactsDatabaseRepository: DatabaseRepository, ContactsRepository {
         self.database = database
     }
     
-    func findContact(_ id: UUID) async throws -> Contact? {
+    func findContact(_ id: ContactID) async throws -> Contact? {
         try await Contact.find(id, on: database)
     }
     

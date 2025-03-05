@@ -8,61 +8,61 @@ protocol ChatServiceProtocol {
     
     /// Returns extended information about particular chat, where `userId` is participant.
     /// Includes a full list of other participants and their short info.
-    func chat(_ id: UUID, with userId: UserID) async throws -> ChatInfo
+    func chat(_ id: ChatID, with userId: UserID) async throws -> ChatInfo
     
     /// Creates chat from requested parameters.
     /// If chat with provided users (including `ownerId`) already exists, it will be returned.
     func createChat(with info: CreateChatRequest, by ownerId: UserID) async throws -> ChatInfo
     
     /// Updates properties of a multiuser chat (such as `title`) by a participant with `userId`. For personal chats returns an error.
-    func updateChat(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo
+    func updateChat(_ id: ChatID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo
     
     /// Updates personal settings of a chat (such as `isMuted`) by a participant with `userId`.
-    func updateChatSettings(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo
+    func updateChatSettings(_ id: ChatID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo
     
     /// Adds users to a chat by a participant with `userId`.
-    func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo
+    func addUsers(to id: ChatID, users: [UserID], by userId: UserID) async throws -> ChatInfo
     
     /// Removes users from a chat by a participant with `userId`.
-    func removeUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo
+    func removeUsers(_ users: [UserID], from id: ChatID, by userId: UserID) async throws -> ChatInfo
     
     /// Deletes chat locally and all of its messages from the server.
-    func deleteChat(_ id: UUID, by userId: UserID) async throws
+    func deleteChat(_ id: ChatID, by userId: UserID) async throws
     
     /// Blocks a participant with `targetId` from a chat by another participant with `userId`.
-    func blockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws
+    func blockUser(_ targetId: UserID, in chatId: ChatID, by userId: UserID) async throws
     
     /// Unblocks a participant with `targetId` from a chat by another participant with `userId`.
-    func unblockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws
+    func unblockUser(_ targetId: UserID, in chatId: ChatID, by userId: UserID) async throws
     
     /// Blocks a chat with `id` by a participant with `userId` to avoid re-appearing of the chat on the user's device or being removed from and then re-added.
     /// In personal chats this setting doesn't matter, because sender's `isUserBlocked` is checked first, preventing posting messages to the chat.
-    func blockChat(_ id: UUID, by userId: UserID) async throws
+    func blockChat(_ id: ChatID, by userId: UserID) async throws
     
     /// Unblocks a chat with `id` by a participant with `userId`.
-    func unblockChat(_ id: UUID, by userId: UserID) async throws
+    func unblockChat(_ id: ChatID, by userId: UserID) async throws
     
     /// A participant of a multiuser chat uses this method to leave the chat. One can't exit personal chat (results in an error).
-    func exitChat(_ id: UUID, by userId: UserID) async throws
+    func exitChat(_ id: ChatID, by userId: UserID) async throws
     
     /// Deletes all messages in a chat.
-    func clearChat(_ id: UUID, by userId: UserID) async throws
+    func clearChat(_ id: ChatID, by userId: UserID) async throws
     
     /// Returns `count` messages from a chat before cirtain timestamp (limited to 50 by default).
     /// In case if `before` is omitted, returns `count` latest messages.
-    func messages(from id: UUID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo]
+    func messages(from id: ChatID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo]
     
     /// Creates new message in a chat with `id` (if user with `userId` is not blocked).
-    func postMessage(to id: UUID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo
+    func postMessage(to id: ChatID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo
     
     /// Edits message with `id` in a chat (if user with `userId` is not blocked).
-    func updateMessage(_ id: UUID, with update: UpdateMessageRequest, by userId: UserID) async throws -> MessageInfo
+    func updateMessage(_ id: MessageID, with update: UpdateMessageRequest, by userId: UserID) async throws -> MessageInfo
     
     /// Deletes contents of a message with`id`.
-    func deleteMessage(_ id: UUID, by userId: UserID) async throws -> MessageInfo
+    func deleteMessage(_ id: MessageID, by userId: UserID) async throws -> MessageInfo
     
     /// Marks message with`id` as seen by the user with `userId`.
-    func readMessage(_ id: UUID, by userId: UserID) async throws
+    func readMessage(_ id: MessageID, by userId: UserID) async throws
 }
 
 actor ChatService: ChatServiceProtocol {
@@ -81,7 +81,7 @@ actor ChatService: ChatServiceProtocol {
         }
     }
     
-    func chat(_ id: UUID, with userId: UserID) async throws -> ChatInfo {
+    func chat(_ id: ChatID, with userId: UserID) async throws -> ChatInfo {
         guard let relation = try await repo.findRelation(of: id, userId: userId) else {
             throw ServiceError(.notFound)
         }
@@ -111,7 +111,7 @@ actor ChatService: ChatServiceProtocol {
         }
     }
     
-    func updateChat(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
+    func updateChat(_ id: ChatID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
         guard let relation = try await repo.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
@@ -128,7 +128,7 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
-    func updateChatSettings(_ id: UUID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
+    func updateChatSettings(_ id: ChatID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
         guard let relation = try await repo.findRelation(of: id, userId: userId) else {
             throw ServiceError(.forbidden)
         }
@@ -145,7 +145,7 @@ actor ChatService: ChatServiceProtocol {
         return ChatInfo(from: relation, fullInfo: false)
     }
     
-    func addUsers(to id: UUID, users: [UserID], by userId: UserID) async throws -> ChatInfo {
+    func addUsers(to id: ChatID, users: [UserID], by userId: UserID) async throws -> ChatInfo {
         guard let relation = try await repo.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
@@ -168,7 +168,7 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
-    func removeUsers(_ users: [UserID], from id: UUID, by userId: UserID) async throws -> ChatInfo {
+    func removeUsers(_ users: [UserID], from id: ChatID, by userId: UserID) async throws -> ChatInfo {
         guard users.count > 0 else {
             throw ServiceError(.badRequest, reason: "No users to remove found.")
         }
@@ -193,7 +193,7 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
-    func deleteChat(_ id: UUID, by userId: UserID) async throws {
+    func deleteChat(_ id: ChatID, by userId: UserID) async throws {
         let relations = try await repo.findRelations(of: id, isUserBlocked: nil)
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
@@ -217,7 +217,7 @@ actor ChatService: ChatServiceProtocol {
         try await core.notificator.notify(chat: chat, in: repo, about: .chatDeleted, from: sourceRelation.user, with: nil)
     }
     
-    private func setUser(_ targetId: UserID, in chatId: UUID, blocked: Bool, by userId: UserID) async throws {
+    private func setUser(_ targetId: UserID, in chatId: ChatID, blocked: Bool, by userId: UserID) async throws {
         let relations = try await repo.findRelations(of: chatId, isUserBlocked: nil)
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
@@ -232,15 +232,15 @@ actor ChatService: ChatServiceProtocol {
         try await repo.saveRelation(targetRelation)
     }
     
-    func blockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws {
+    func blockUser(_ targetId: UserID, in chatId: ChatID, by userId: UserID) async throws {
         try await setUser(targetId, in: chatId, blocked: true, by: userId)
     }
     
-    func unblockUser(_ targetId: UserID, in chatId: UUID, by userId: UserID) async throws {
+    func unblockUser(_ targetId: UserID, in chatId: ChatID, by userId: UserID) async throws {
         try await setUser(targetId, in: chatId, blocked: false, by: userId)
     }
     
-    func blockChat(_ id: UUID, by userId: UserID) async throws {
+    func blockChat(_ id: ChatID, by userId: UserID) async throws {
         guard let relation = try await repo.findRelation(of: id, userId: userId) else {
             throw ServiceError(.forbidden)
         }
@@ -248,7 +248,7 @@ actor ChatService: ChatServiceProtocol {
         try await repo.saveRelation(relation)
     }
     
-    func unblockChat(_ id: UUID, by userId: UserID) async throws {
+    func unblockChat(_ id: ChatID, by userId: UserID) async throws {
         guard let relation = try await repo.findRelation(of: id, userId: userId) else {
             throw ServiceError(.forbidden)
         }
@@ -256,7 +256,7 @@ actor ChatService: ChatServiceProtocol {
         try await repo.saveRelation(relation)
     }
     
-    func blockedUsersInChat(_ id: UUID, with userId: UserID) async throws -> [UserInfo] {
+    func blockedUsersInChat(_ id: ChatID, with userId: UserID) async throws -> [UserInfo] {
         guard let relation = try await repo.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
@@ -264,7 +264,7 @@ actor ChatService: ChatServiceProtocol {
         return relations.map { $0.user.info() }
     }
     
-    func exitChat(_ id: UUID, by userId: UserID) async throws {
+    func exitChat(_ id: ChatID, by userId: UserID) async throws {
         guard let relation = try await repo.findRelation(of: id, userId: userId) else {
             throw ServiceError(.forbidden)
         }
@@ -274,7 +274,7 @@ actor ChatService: ChatServiceProtocol {
         try await repo.deleteRelation(relation)
     }
     
-    func clearChat(_ id: UUID, by userId: UserID) async throws {
+    func clearChat(_ id: ChatID, by userId: UserID) async throws {
         guard let relation = try await repo.findRelation(of: id, userId: userId) else {
             throw ServiceError(.forbidden)
         }
@@ -286,7 +286,7 @@ actor ChatService: ChatServiceProtocol {
         try await core.notificator.notify(chat: chat, in: repo, about: .chatCleared, from: relation.user, with: nil)
     }
     
-    func messages(from id: UUID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo] {
+    func messages(from id: ChatID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo] {
         guard let relation = try await repo.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
@@ -294,7 +294,7 @@ actor ChatService: ChatServiceProtocol {
         return messages.map { $0.info() }
     }
     
-    func postMessage(to id: UUID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
+    func postMessage(to id: ChatID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
         if info.isEmpty {
             throw ServiceError(.badRequest, reason: "Message is empty.")
         }
@@ -376,7 +376,7 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
-    func updateMessage(_ id: UUID, with update: UpdateMessageRequest, by userId: UserID) async throws -> MessageInfo {
+    func updateMessage(_ id: MessageID, with update: UpdateMessageRequest, by userId: UserID) async throws -> MessageInfo {
         guard let message = try await repo.findMessage(id: id), message.author.id == userId else {
             throw ServiceError(.forbidden)
         }
@@ -409,7 +409,7 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
-    func deleteMessage(_ id: UUID, by userId: UserID) async throws -> MessageInfo {
+    func deleteMessage(_ id: MessageID, by userId: UserID) async throws -> MessageInfo {
         guard let message = try await repo.findMessage(id: id), message.author.id == userId else {
             throw ServiceError(.forbidden)
         }
@@ -432,7 +432,7 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
-    func readMessage(_ id: UUID, by userId: UserID) async throws {
+    func readMessage(_ id: MessageID, by userId: UserID) async throws {
         guard let message = try await repo.findMessage(id: id) else {
             throw ServiceError(.notFound)
         }
@@ -447,7 +447,7 @@ actor ChatService: ChatServiceProtocol {
         }
     }
     
-    func addChatImage(_ chatId: UUID, with info: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
+    func addChatImage(_ chatId: ChatID, with info: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
         guard let relation = try await repo.findRelation(of: chatId, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
@@ -475,7 +475,7 @@ actor ChatService: ChatServiceProtocol {
         return ChatInfo(from: relation, fullInfo: false)
     }
     
-    func deleteChatImage(_ resourceId: UUID, by userId: UserID) async throws {
+    func deleteChatImage(_ resourceId: ResourceID, by userId: UserID) async throws {
         guard let resource = try await repo.findChatImage(resourceId) else {
             throw ServiceError(.notFound, reason: "Media resource is missing.")
         }

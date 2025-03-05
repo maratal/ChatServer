@@ -5,13 +5,13 @@ final class DeviceSession: RepositoryItem, @unchecked Sendable /* https://blog.v
     static let schema = "device_sessions"
 
     @ID(key: .id)
-    var id: UUID?
+    var id: SessionID?
     
     @Field(key: "access_token")
     var accessToken: String
     
     @Field(key: "device_id")
-    var deviceId: UUID
+    var deviceId: DeviceID
     
     @Field(key: "device_name")
     var deviceName: String
@@ -39,7 +39,7 @@ final class DeviceSession: RepositoryItem, @unchecked Sendable /* https://blog.v
     
     init() { }
 
-    init(id: UUID? = nil, accessToken: String, userID: UserID, deviceId: UUID, deviceName: String, deviceModel: String, deviceToken: String?, pushTransport: String) {
+    init(id: SessionID? = nil, accessToken: String, userID: UserID, deviceId: DeviceID, deviceName: String, deviceModel: String, deviceToken: String?, pushTransport: String) {
         self.id = id
         self.accessToken = accessToken
         self.$user.id = userID
@@ -54,7 +54,7 @@ final class DeviceSession: RepositoryItem, @unchecked Sendable /* https://blog.v
 extension DeviceSession {
     
     struct Info: Serializable {
-        var id: UUID
+        var id: SessionID
         var accessToken: String
         var deviceInfo: DeviceInfo
         var ipAddress: String?
@@ -84,7 +84,7 @@ struct DeviceInfo: Serializable {
     enum PushTransport: String, Codable {
         case none, apns, fcm, web
     }
-    var id: UUID
+    var id: DeviceID
     var name: String
     var model: String
     var token: String?

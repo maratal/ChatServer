@@ -5,7 +5,7 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     static let schema = "chats"
     
     @ID(key: .id)
-    var id: UUID?
+    var id: ChatID?
     
     @Field(key: "title")
     var title: String?
@@ -42,7 +42,7 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     
     init() {}
     
-    init(id: UUID? = nil,
+    init(id: ChatID? = nil,
          title: String? = nil,
          ownerId: UserID,
          isPersonal: Bool
@@ -61,7 +61,7 @@ extension Chat {
     }
     
     struct Info: Serializable {
-        var id: UUID?
+        var id: ChatID?
         var title: String?
         var isPersonal: Bool?
         var owner: UserInfo?

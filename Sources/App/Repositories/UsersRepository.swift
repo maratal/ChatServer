@@ -8,7 +8,7 @@ protocol UsersRepository: Sendable {
     func delete(_ user: User) async throws
     func search(_ s: String) async throws -> [User]
     
-    func findPhoto(_ id: UUID) async throws -> MediaResource?
+    func findPhoto(_ id: ResourceID) async throws -> MediaResource?
     func savePhoto(_ photo: MediaResource) async throws
     func deletePhoto(_ photo: MediaResource) async throws
     func reloadPhotos(for user: User) async throws
@@ -57,7 +57,7 @@ actor UsersDatabaseRepository: DatabaseRepository, UsersRepository {
         .all()
     }
     
-    func findPhoto(_ id: UUID) async throws -> MediaResource? {
+    func findPhoto(_ id: ResourceID) async throws -> MediaResource? {
         try await MediaResource.query(on: database)
             .filter(\.$id == id)
             .with(\.$photoOf)

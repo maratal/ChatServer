@@ -9,7 +9,7 @@ protocol ContactsServiceProtocol {
     func addContact(_ info: ContactInfo, to user: User) async throws -> ContactInfo
     
     /// Deletes the contact of the current user.
-    func deleteContact(_ contactId: UUID, from user: User) async throws
+    func deleteContact(_ contactId: ContactID, from user: User) async throws
 }
 
 actor ContactsService: ContactsServiceProtocol {
@@ -37,7 +37,7 @@ actor ContactsService: ContactsServiceProtocol {
         return ContactInfo(from: info, id: contact.id!)
     }
     
-    func deleteContact(_ contactId: UUID, from user: User) async throws {
+    func deleteContact(_ contactId: ContactID, from user: User) async throws {
         guard let contact = try await repo.findContact(contactId), contact.$owner.id == user.id else {
             throw ServiceError(.notFound, reason: "Contact not found.")
         }

@@ -30,7 +30,7 @@ final class ChatToUser: RepositoryItem, @unchecked Sendable /* https://blog.vapo
     
     init() {}
     
-    init(id: UUID? = nil, chatId: UUID, userId: UserID) {
+    init(id: UUID? = nil, chatId: ChatID, userId: UserID) {
         self.id = id
         self.$chat.id = chatId
         self.$user.id = userId

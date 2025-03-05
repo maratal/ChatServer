@@ -5,7 +5,7 @@ final class Contact: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     static let schema = "user_contacts"
     
     @ID(key: .id)
-    var id: UUID?
+    var id: ContactID?
     
     @Field(key: "name")
     var name: String?
@@ -24,7 +24,7 @@ final class Contact: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     
     init() {}
     
-    init(id: UUID? = nil, ownerId: UserID, userId: UserID, isFavorite: Bool = false, isBlocked: Bool = false, name: String? = nil) {
+    init(id: ContactID? = nil, ownerId: UserID, userId: UserID, isFavorite: Bool = false, isBlocked: Bool = false, name: String? = nil) {
         self.id = id
         self.name = name
         self.isFavorite = isFavorite
@@ -37,13 +37,13 @@ final class Contact: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
 extension Contact {
     
     struct Info: Serializable {
-        var id: UUID?
+        var id: ContactID?
         var name: String?
         var isFavorite: Bool
         var isBlocked: Bool
         var user: UserInfo
         
-        init(id: UUID? = nil,
+        init(id: ContactID? = nil,
              name: String?,
              isFavorite: Bool,
              isBlocked: Bool,
@@ -64,7 +64,7 @@ extension Contact {
                       user: contact.user.info())
         }
         
-        init(from copy: Self, id: UUID) {
+        init(from copy: Self, id: ContactID) {
             self.id = id
             self.name = copy.name
             self.user = copy.user

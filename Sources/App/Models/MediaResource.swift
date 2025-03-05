@@ -5,7 +5,7 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
     static let schema = "media_resources"
     
     @ID(key: .id)
-    var id: UUID?
+    var id: ResourceID?
     
     @Field(key: "file_type")
     var fileType: String
@@ -34,9 +34,9 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
     required init() {}
     
     init(
-        id: UUID? = nil,
+        id: ResourceID? = nil,
         photoOf userId: UserID? = nil,
-        imageOf chatId: UUID? = nil,
+        imageOf chatId: ChatID? = nil,
         attachmentOf messageId: MessageID? = nil,
         fileType: String,
         fileSize: Int64,
@@ -57,14 +57,14 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
 extension MediaResource {
     
     struct Info: Serializable {
-        var id: UUID?
+        var id: ResourceID?
         var fileType: String
         var fileSize: Int64
         var previewWidth: Int?
         var previewHeight: Int?
         var createdAt: Date?
         
-        init(id: UUID? = nil, fileType: String, fileSize: Int64) {
+        init(id: ResourceID? = nil, fileType: String, fileSize: Int64) {
             self.id = id
             self.fileType = fileType
             self.fileSize = fileSize

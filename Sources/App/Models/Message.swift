@@ -5,7 +5,7 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     static let schema = "messages"
     
     @ID(key: .id)
-    var id: UUID?
+    var id: MessageID?
     
     @Field(key: "local_id")
     var localId: UUID
@@ -43,10 +43,10 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     required init() {}
     
     init(
-        id: UUID? = nil,
+        id: MessageID? = nil,
         localId: UUID,
         authorId: UserID,
-        chatId: UUID,
+        chatId: ChatID,
         text: String?,
         isVisible: Bool = true
     ) {
@@ -64,9 +64,9 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
 extension Message {
     
     struct Info: Serializable {
-        var id: UUID?
+        var id: MessageID?
         var localId: UUID?
-        var chatId: UUID?
+        var chatId: ChatID?
         var authorId: UserID?
         var text: String?
         var createdAt: Date?

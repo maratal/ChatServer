@@ -38,7 +38,7 @@ protocol UserServiceProtocol {
     func addPhoto(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
     
     /// Deletes photo from the current user.
-    func deletePhoto(_ id: UUID, of user: User) async throws
+    func deletePhoto(_ id: ResourceID, of user: User) async throws
     
     /// Finds user by `id`.
     /// This method works without authentication.
@@ -171,7 +171,7 @@ actor UserService: UserServiceProtocol {
         return user.fullInfo()
     }
     
-    func deletePhoto(_ id: UUID, of user: User) async throws {
+    func deletePhoto(_ id: ResourceID, of user: User) async throws {
         guard let resource = try await repo.findPhoto(id) else {
             throw ServiceError(.notFound, reason: "Media resource is missing.")
         }
