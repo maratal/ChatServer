@@ -1,3 +1,6 @@
+/**
+ * This controller object just redirects everything to the appropriate service actor. Do not add any logic here.
+ */
 import Vapor
 
 struct UserController: RouteCollection {

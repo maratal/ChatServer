@@ -1,3 +1,6 @@
+/**
+ * This file abstracts pure chat logic from everything else. Do not add any other import except `Foundation`.
+ */
 import Foundation
 
 protocol ContactsServiceProtocol {
