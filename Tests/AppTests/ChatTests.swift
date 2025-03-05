@@ -3,7 +3,7 @@ import XCTVapor
 
 final class ChatTests: AppTestCase {
     
-    func testGetUserChats() async throws {
+    func test_01_getUserChats() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat1 = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
@@ -19,7 +19,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testGetChat() async throws {
+    func test_02_getChat() async throws {
         let current = try await service.seedCurrentUser()
         let (user, photoRes) = try await service.seedUserWithPhoto(name: "User", username: "user")
         let (chat, imageRes) = try await service.makeChatWithImage(ownerId: current.id!, users: [user.id!])
@@ -37,7 +37,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testGetPersonalChat() async throws {
+    func test_03_getPersonalChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
@@ -50,7 +50,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryGetOtherUsersChat() async throws {
+    func test_04_tryGetOtherUsersChat() async throws {
         try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
@@ -60,7 +60,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testCreateChat() async throws {
+    func test_05_createChat() async throws {
         try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         
@@ -77,7 +77,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testCreatePersonalChat() async throws {
+    func test_06_createPersonalChat() async throws {
         try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         
@@ -94,7 +94,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryCreateChatDuplicate() async throws {
+    func test_07_tryCreateChatDuplicate() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
@@ -112,7 +112,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryCreatePersonalChatDuplicate() async throws {
+    func test_08_tryCreatePersonalChatDuplicate() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
@@ -129,7 +129,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testCreatePersonalChatWhenParticipantsKeyDuplicateExists() async throws {
+    func test_09_createPersonalChatWhenParticipantsKeyDuplicateExists() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
@@ -148,7 +148,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testBlockAndUnblockChat() async throws {
+    func test_10_blockAndUnblockChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
@@ -167,7 +167,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testBlockAndUnblockUserInChat() async throws {
+    func test_11_blockAndUnblockUserInChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
@@ -186,7 +186,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testGetBlockedUsersInChat() async throws {
+    func test_12_getBlockedUsersInChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false, blockedId: users[0].id)
@@ -199,7 +199,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testUpdateChat() async throws {
+    func test_13_updateChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
@@ -217,7 +217,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryUpdateChatByBlockedUser() async throws {
+    func test_14_tryUpdateChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
@@ -229,7 +229,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryUpdatePersonalChat() async throws {
+    func test_15_tryUpdatePersonalChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
@@ -241,7 +241,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryUpdatePersonalChatByBlockedUser() async throws {
+    func test_16_tryUpdatePersonalChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true, blockedId: current.id)
@@ -253,7 +253,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testUpdateChatSettings() async throws {
+    func test_17_updateChatSettings() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
@@ -270,7 +270,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testAddAndDeleteChatImage() async throws {
+    func test_18_addAndDeleteChatImage() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
@@ -304,7 +304,7 @@ final class ChatTests: AppTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: previewPath))
     }
     
-    func testAddUsersToChat() async throws {
+    func test_19_addUsersToChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
@@ -325,7 +325,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryAddUsersToChatByBlockedUser() async throws {
+    func test_20_tryAddUsersToChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
@@ -338,7 +338,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testRemoveUsersFromChat() async throws {
+    func test_21_removeUsersFromChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
@@ -359,7 +359,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryRemoveUsersFromChatByBlockedUser() async throws {
+    func test_22_tryRemoveUsersFromChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
@@ -372,7 +372,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testGetChatMessagesPaginated() async throws {
+    func test_23_getChatMessagesPaginated() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
@@ -399,7 +399,7 @@ final class ChatTests: AppTestCase {
         try service.removeFiles(for: messageRes)
     }
     
-    func testTryGetChatMessagesPaginatedByBlockedUser() async throws {
+    func test_24_tryGetChatMessagesPaginatedByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
@@ -410,7 +410,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testPostMessageToChat() async throws {
+    func test_25_postMessageToChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
@@ -430,7 +430,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testPostAndDeleteChatMessageWithAttachment() async throws {
+    func test_26_postAndDeleteChatMessageWithAttachment() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
@@ -493,7 +493,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testPostMessageToBlockedChat() async throws {
+    func test_27_postMessageToBlockedChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false, blockedById: users[0].id)
@@ -515,7 +515,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryPostMessageToChatByBlockedUser() async throws {
+    func test_28_tryPostMessageToChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false, blockedId: current.id)
@@ -529,7 +529,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryPostMessageToBlockedPersonalChat() async throws {
+    func test_29_tryPostMessageToBlockedPersonalChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedById: users[0].id)
@@ -543,7 +543,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryPostMessageToOtherUsersChat() async throws {
+    func test_30_tryPostMessageToOtherUsersChat() async throws {
         try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
@@ -557,7 +557,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testEditMessageInChat() async throws {
+    func test_31_editMessageInChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
@@ -586,7 +586,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryEditMessageInChatByBlockedUser() async throws {
+    func test_32_tryEditMessageInChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
@@ -603,7 +603,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testReadMessageInChat() async throws {
+    func test_33_readMessageInChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
@@ -627,7 +627,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testDeleteMessageInChat() async throws {
+    func test_34_deleteMessageInChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
@@ -652,7 +652,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testDeleteMessageInChatByBlockedUser() async throws {
+    func test_35_deleteMessageInChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
@@ -668,7 +668,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testDeleteChatOnDevice() async throws {
+    func test_36_deleteChatOnDevice() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
@@ -687,7 +687,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testDeleteChat() async throws {
+    func test_37_deleteChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
@@ -718,7 +718,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryDeleteChatNotOwningIt() async throws {
+    func test_38_tryDeleteChatNotOwningIt() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
@@ -730,7 +730,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testDeletePersonalChat() async throws {
+    func test_39_deletePersonalChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
@@ -745,7 +745,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testDeletePersonalChatNotOwningIt() async throws {
+    func test_40_deletePersonalChatNotOwningIt() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
@@ -760,7 +760,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testDeletePersonalChatByBlockedUser() async throws {
+    func test_41_deletePersonalChatByBlockedUser() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true, blockedId: current.id)
@@ -778,7 +778,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testExitChat() async throws {
+    func test_42_exitChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
@@ -792,7 +792,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryExitPersonalChat() async throws {
+    func test_43_tryExitPersonalChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
@@ -804,7 +804,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testClearChat() async throws {
+    func test_44_clearChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
@@ -822,7 +822,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testTryClearChatNotOwningIt() async throws {
+    func test_45_tryClearChatNotOwningIt() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
@@ -832,7 +832,7 @@ final class ChatTests: AppTestCase {
         })
     }
     
-    func testClearPersonalChat() async throws {
+    func test_46_clearPersonalChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)

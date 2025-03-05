@@ -3,7 +3,7 @@ import XCTVapor
 
 final class UserTests: AppTestCase {
     
-    func testRegisterUser() throws {
+    func test_01_registerUser() throws {
         try app.test(.POST, "users", beforeRequest: { req in
             try req.content.encode(
                 RegistrationRequest(name: "Test", username: "testuser", password: "********", deviceInfo: .testInfoMobile)
@@ -17,7 +17,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testDeregisterUser() async throws {
+    func test_02_deregisterUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -50,7 +50,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testLoginUser() async throws {
+    func test_03_loginUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -82,7 +82,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testLoginUserFailure() async throws {
+    func test_04_loginUserFailure() async throws {
         try await service.seedCurrentUser()
         try await asyncTest(.POST, "users/login",
                             headers: .authWith(username: CurrentUser.username, password: "123"),
@@ -95,7 +95,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testCurrentUser() async throws {
+    func test_05_currentUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -118,7 +118,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testLogoutUser() async throws {
+    func test_06_logoutUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -151,7 +151,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testChangePassword() async throws {
+    func test_07_changePassword() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -187,7 +187,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testTryChangePasswordWithIncorrectCurrentPassword() async throws {
+    func test_08_tryChangePasswordWithIncorrectCurrentPassword() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -214,7 +214,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testResetPassword() async throws {
+    func test_09_resetPassword() async throws {
         try await service.seedCurrentUser()
         try await asyncTest(.POST, "users/resetPassword",
                             beforeRequest: { req in
@@ -235,7 +235,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testTryResetPasswordWithInvalidAccountKey() async throws {
+    func test_10_tryResetPasswordWithInvalidAccountKey() async throws {
         try await service.seedCurrentUser()
         try await asyncTest(.POST, "users/resetPassword",
                             beforeRequest: { req in
@@ -247,7 +247,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testTryResetPasswordWithAccountKeyNotSet() async throws {
+    func test_11_tryResetPasswordWithAccountKeyNotSet() async throws {
         try await service.seedCurrentUser(accountKey: nil)
         try await asyncTest(.POST, "users/resetPassword",
                             beforeRequest: { req in
@@ -259,7 +259,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testSetAccountKey() async throws {
+    func test_12_setAccountKey() async throws {
         try await service.seedCurrentUser(accountKey: nil)
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -294,7 +294,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testTrySetAccountKeyWithIncorrectCurrentPassword() async throws {
+    func test_13_trySetAccountKeyWithIncorrectCurrentPassword() async throws {
         try await service.seedCurrentUser(accountKey: nil)
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -321,7 +321,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testUpdateUser() async throws {
+    func test_14_updateUser() async throws {
         try await service.seedCurrentUser()
         let about = UUID().uuidString
         try await asyncTest(.PUT, "users/me", headers: .none, beforeRequest: { req in
@@ -339,7 +339,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testUpdateDeviceSession() async throws {
+    func test_15_updateDeviceSession() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
         try await asyncTest(.POST, "users/login",
@@ -380,7 +380,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testGetUser() async throws {
+    func test_16_getUser() async throws {
         let (_, photo) = try await service.seedUserWithPhoto(name: "Test", username: "test")
         try await asyncTest(.GET, "users/1", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -392,7 +392,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testSearchUsers() async throws {
+    func test_17_searchUsers() async throws {
         try await service.seedUsers(count: 2, namePrefix: "Name", usernamePrefix: "user")
         try await service.seedUser(name: "Demo 1", username: "test1")
         let (_, photo) = try await service.seedUserWithPhoto(name: "Demo 2", username: "test2")
@@ -420,7 +420,7 @@ final class UserTests: AppTestCase {
         })
     }
     
-    func testAddAndDeletePhotoOfUser() async throws {
+    func test_18_addAndDeletePhotoOfUser() async throws {
         try await service.seedCurrentUser()
         let fileId = UUID()
         let fileName = fileId.uuidString

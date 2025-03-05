@@ -3,7 +3,7 @@ import XCTVapor
 
 final class ContactsTests: AppTestCase {
     
-    func testGetUserContacts() async throws {
+    func test_01_getUserContacts() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         try await service.makeContact(users[0], of: current)
@@ -15,7 +15,7 @@ final class ContactsTests: AppTestCase {
         })
     }
     
-    func testAddUserContact() async throws {
+    func test_02_addUserContact() async throws {
         try await service.seedCurrentUser()
         let user = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user").first!
         try await asyncTest(.POST, "users/me/contacts", beforeRequest: { req in
@@ -31,7 +31,7 @@ final class ContactsTests: AppTestCase {
         })
     }
     
-    func testDeleteUserContact() async throws {
+    func test_03_deleteUserContact() async throws {
         let current = try await service.seedCurrentUser()
         let user = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user").first!
         let contact = try await service.makeContact(user, of: current)

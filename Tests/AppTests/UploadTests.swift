@@ -3,7 +3,7 @@ import XCTVapor
 
 final class UploadTests: AppTestCase {
 
-    func testUploadVideo() async throws {
+    func test_01_uploadVideo() async throws {
         // app.test(...) doesn't support streaming uploads, that's why this custom setup is used together with `UploadClient`
         app.http.server.configuration.hostname = "127.0.0.1"
         app.http.server.configuration.port = 0

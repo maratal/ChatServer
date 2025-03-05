@@ -13,7 +13,7 @@ final class WebSocketTests: AppLiveTestCase {
         super.tearDown()
     }
 
-    func testSendingMessageOverWebSocket() async throws {
+    func test_01_sendingMessageOverWebSocket() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
