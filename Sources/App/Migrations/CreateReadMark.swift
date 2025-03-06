@@ -8,7 +8,7 @@ struct CreateReaction: AsyncMigration {
             .id()
             .field("created_at", .datetime)
             .field("user_id", .uint32, .required, .references("users", "id", onDelete: .cascade))
-            .field("message_id", .uuid, .required, .references("messages", "id", onDelete: .cascade))
+            .field("message_id", .uint64, .required, .references("messages", "id", onDelete: .cascade))
             .unique(on: "user_id", "message_id")
             .create()
     }

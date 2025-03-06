@@ -13,7 +13,7 @@ struct CreateMediaResource: AsyncMigration {
             .field("created_at", .datetime, .required)
             .field("photo_of", .uint32, .references("users", "id", onDelete: .setNull))
             .field("image_of", .uuid, .references("chats", "id", onDelete: .setNull))
-            .field("attachment_of", .uuid, .references("messages", "id", onDelete: .setNull))
+            .field("attachment_of", .uint64, .references("messages", "id", onDelete: .setNull))
             .create()
     }
     

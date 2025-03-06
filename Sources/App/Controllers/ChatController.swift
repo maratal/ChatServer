@@ -135,7 +135,7 @@ struct ChatController: RouteCollection {
     func messages(_ req: Request) async throws -> [MessageInfo] {
         try await service.messages(from: req.objectUUID(),
                                    for: req.currentUser().requireID(),
-                                   before: req.date(from: "before"),
+                                   before: req.id(from: "before"),
                                    count: req.query["count"])
     }
     
@@ -146,17 +146,17 @@ struct ChatController: RouteCollection {
     }
     
     func updateMessage(_ req: Request) async throws -> MessageInfo {
-        try await service.updateMessage(req.messageUUID(),
+        try await service.updateMessage(req.messageID(),
                                         with: req.content.decode(UpdateMessageRequest.self),
                                         by: req.currentUser().requireID())
     }
     
     func readMessage(_ req: Request) async throws -> HTTPStatus {
-        try await service.readMessage(req.messageUUID(), by: req.currentUser().requireID())
+        try await service.readMessage(req.messageID(), by: req.currentUser().requireID())
         return .ok
     }
     
     func deleteMessage(_ req: Request) async throws -> MessageInfo {
-        try await service.deleteMessage(req.messageUUID(), by: req.currentUser().requireID())
+        try await service.deleteMessage(req.messageID(), by: req.currentUser().requireID())
     }
 }

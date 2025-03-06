@@ -29,11 +29,11 @@ extension Request {
         return uuid
     }
     
-    func messageUUID() throws -> UUID {
-        guard let uuid = parameters.get(Parameter.messageId.rawValue, as: UUID.self) else {
-            throw Abort(.badRequest, reason: "Message UUID was not found in the path.")
+    func messageID() throws -> Int {
+        guard let id = parameters.get(Parameter.messageId.rawValue, as: Int.self) else {
+            throw Abort(.badRequest, reason: "Message id was not found in the path.")
         }
-        return uuid
+        return id
     }
     
     func userID() throws -> Int {
@@ -60,6 +60,13 @@ extension Request {
             return Date(timeIntervalSinceReferenceDate: ts)
         }
         return nil
+    }
+    
+    func id(from param: String) -> Int? {
+        guard let id: Int = query[param] else {
+            return nil
+        }
+        return id
     }
 }
 

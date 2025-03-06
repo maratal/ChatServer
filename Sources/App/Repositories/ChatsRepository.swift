@@ -16,7 +16,7 @@ protocol ChatsRepository: Sendable {
     func deleteRelation(_ relation: ChatRelation) async throws
 
     func findMessage(id: MessageID) async throws -> Message?
-    func messages(from chatId: ChatID, before: Date?, count: Int) async throws -> [Message]
+    func messages(from chatId: ChatID, before: MessageID?, count: Int) async throws -> [Message]
     func saveMessage(_ message: Message) async throws
     func loadAttachments(for message: Message) async throws
     func deleteMessages(from chat: Chat) async throws
@@ -174,13 +174,13 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .first()
     }
     
-    func messages(from chatId: ChatID, before: Date?, count: Int) async throws -> [Message] {
-        if let date = before {
+    func messages(from chatId: ChatID, before: MessageID?, count: Int) async throws -> [Message] {
+        if let before {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
                 .with(\.$attachments)
                 .sort(\.$createdAt, .descending)
-                .filter(\.$createdAt < date)
+                .filter(\.$id < before)
                 .range(..<count)
                 .all()
         } else {

@@ -195,8 +195,6 @@ extension CoreService {
         var messages = [Message]()
         for i in 1...count {
             try await messages.append(makeMessage(for: chatId, authorId: authorId, text: "text \(i)"))
-            // Sleep for 1 second, bc url query sends timestamp in unix format and can't select messages with nanosecond precision
-            sleep(1)
         }
         return messages
     }

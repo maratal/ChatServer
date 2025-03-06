@@ -385,16 +385,16 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             page1 = try res.content.decode([MessageInfo].self)
             XCTAssertEqual(page1.count, 5)
-            XCTAssertEqual(page1.first!.text, "pic")
-            XCTAssertEqual(page1.first!.attachments?.count, 1)
-            XCTAssertEqual(page1.last!.text, "text 5")
+            XCTAssertEqual(page1.first?.text, "pic")
+            XCTAssertEqual(page1.first?.attachments?.count, 1)
+            XCTAssertEqual(page1.last?.text, "text 5")
         })
-        try await asyncTest(.GET, "chats/\(chat.id!)/messages?count=\(count)&before=\(page1.last!.createdAt!.timeIntervalSinceReferenceDate)", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "chats/\(chat.id!)/messages?count=\(count)&before=\(page1.last!.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let page2 = try res.content.decode([MessageInfo].self)
             XCTAssertEqual(page2.count, 4)
-            XCTAssertEqual(page2.first!.text, "text 4")
-            XCTAssertEqual(page2.last!.text, "text 1")
+            XCTAssertEqual(page2.first?.text, "text 4")
+            XCTAssertEqual(page2.last?.text, "text 1")
         })
         try service.removeFiles(for: messageRes)
     }
@@ -592,7 +592,6 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
         let message = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
         XCTAssertEqual(message.text, "text 1")
-        sleep(1)
         
         try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(

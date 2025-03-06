@@ -51,9 +51,9 @@ protocol ChatServiceProtocol {
     /// Deletes all messages in a chat.
     func clearChat(_ id: ChatID, by userId: UserID) async throws
     
-    /// Returns `count` messages from a chat before cirtain timestamp (limited to 50 by default).
+    /// Returns `count` messages from a chat before certain message (limited to 50 by default).
     /// In case if `before` is omitted, returns `count` latest messages.
-    func messages(from id: ChatID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo]
+    func messages(from id: ChatID, for userId: UserID, before: MessageID?, count: Int?) async throws -> [MessageInfo]
     
     /// Creates new message in a chat with `id` (if user with `userId` is not blocked).
     func postMessage(to id: ChatID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo
@@ -289,7 +289,7 @@ actor ChatService: ChatServiceProtocol {
         try await core.notificator.notify(chat: chat, in: repo, about: .chatCleared, from: relation.user, with: nil)
     }
     
-    func messages(from id: ChatID, for userId: UserID, before: Date?, count: Int?) async throws -> [MessageInfo] {
+    func messages(from id: ChatID, for userId: UserID, before: MessageID?, count: Int?) async throws -> [MessageInfo] {
         guard let relation = try await repo.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }

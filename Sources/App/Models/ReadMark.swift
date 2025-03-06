@@ -18,7 +18,7 @@ final class ReadMark: RepositoryItem, @unchecked Sendable /* https://blog.vapor.
     
     init() {}
     
-    init(id: UUID? = nil, messageId: UUID, userId: UserID) {
+    init(id: UUID? = nil, messageId: MessageID, userId: UserID) {
         self.id = id
         self.$message.id = messageId
         self.$user.id = userId
