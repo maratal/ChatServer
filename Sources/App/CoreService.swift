@@ -37,6 +37,8 @@ struct CoreService: Sendable {
     
     var database: Database { app.db }
     
+    var logger: Logger { app.logger }
+    
     lazy var users: UserService = UserService(core: self, repo: UsersDatabaseRepository(database: app.db))
     lazy var chats: ChatService = ChatService(core: self, repo: ChatsDatabaseRepository(core: self))
     lazy var contacts: ContactsService = ContactsService(repo: ContactsDatabaseRepository(database: app.db))
@@ -54,10 +56,10 @@ extension CoreService {
         var service = CoreService(app: app)
         
         let wsManager = WebSocketManager(core: service)
-        let pushSender = PushManager(apnsKeyPath: "", fcmKeyPath: "")
+        let pushSender = PushManager(core: service, apnsKeyPath: "", fcmKeyPath: "")
         
         service.wsServer = wsManager
-        service.notificator = NotificationManager(wsSender: wsManager, pushSender: pushSender)
+        service.notificator = NotificationManager(webSocket: wsManager, push: pushSender)
         
         return service
     }

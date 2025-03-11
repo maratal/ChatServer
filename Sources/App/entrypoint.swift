@@ -4,8 +4,16 @@ import Logging
 @main
 enum Entrypoint {
     static func main() throws {
-        var env = try Environment.detect()
-        try LoggingSystem.bootstrap(from: &env)
+        let env = try Environment.detect()
+//        try LoggingSystem.bootstrap(from: &env)
+        LoggingSystem.bootstrap { label in
+            MultiplexLogHandler(
+                [
+                    FileLogHandler(label: label, logLevel: .notice, localPath: "Logs/Service.log"), // do not log info/debug level to the file
+                    StreamLogHandler.standardOutput(label: label)
+                ]
+            )
+        }
         
         let app = Application(env)
         defer { app.shutdown() }

@@ -3,6 +3,8 @@ import FluentPostgresDriver
 import Vapor
 
 func configure(_ app: Application, service: inout CoreService) throws {
+    app.logger = Logger(label: "Default 👉")
+    
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
     app.databases.use(DatabaseConfigurationFactory.postgres(configuration: .init(
@@ -28,7 +30,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     try app.register(collection: UserController(service: service.users))
     try app.register(collection: ChatController(service: service.chats))
     try app.register(collection: ContactsController(service: service.contacts))
-    try app.register(collection: WebSocketController(server: service.wsServer))
+    try app.register(collection: WebSocketController(core: service))
     try app.register(collection: UploadController())
     
     try routes(app)

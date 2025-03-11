@@ -3,26 +3,43 @@ import XCTVapor
 
 final class TestPushManager: PushSender {
     
+    let core: CoreService
+    
+    init(core: CoreService) {
+        self.core = core
+    }
+    
     func send(_ notification: CoreService.Notification, to device: DeviceInfo) {
-        guard let deviceToken = device.token else { return print("Can't send push without device token.") }
-        print("--- TEST '\(device.transport.rawValue.uppercased())' push '\(notification.event)' sent to device '\(deviceToken)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
+        guard let deviceToken = device.token else { return core.logger.info("Can't send push without device token.") }
+        core.logger.info("--- TEST '\(device.transport.rawValue.uppercased())' push '\(notification.event)' sent to device '\(deviceToken)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
     }
 }
 
 final class TestWebSocketManager: WebSocketServer, WebSocketSender {
     
+    let core: CoreService
+    
+    init(core: CoreService) {
+        self.core = core
+    }
+    
     func accept(_ ws: App.WebSocketProtocol, clientAddress: String, for session: App.DeviceSession) async throws {
-        print("Accepted client at address \(clientAddress)")
+        core.logger.info("Accepted client at address \(clientAddress)")
     }
     
     func send(_ notification: CoreService.Notification, to session: DeviceSession) async throws -> Bool {
         guard let channel = session.id?.uuidString else { throw ServiceError(.internalServerError) }
-        print("--- Test Message '\(notification.event)' sent to channel '\(channel)' with source '\(notification.source)' and data: \(String(describing: notification.payload))")
+        core.logger.info("--- Test Message '\(notification.event)' sent to channel '\(channel)' with source '\(notification.source)' and data: \(String(describing: notification.payload))")
         return true
     }
 }
 
 actor TestNotificationManager: Notificator {
+    let core: CoreService
+    
+    init(core: CoreService) {
+        self.core = core
+    }
     
     private var sentNotifications = [CoreService.Notification]()
     
@@ -41,7 +58,7 @@ actor TestNotificationManager: Notificator {
         let allowed = relations.filter { !$0.isChatBlocked }
         for relation in allowed {
             notification.destination = "\(relation.user.id!)"
-            print("--- TEST notification '\(notification.event)' sent to '\(relation.user.username)' of chat '\(chat.id!)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
+            core.logger.info("--- TEST notification '\(notification.event)' sent to '\(relation.user.username)' of chat '\(chat.id!)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
             sentNotifications.append(notification)
         }
     }

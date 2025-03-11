@@ -1,9 +1,25 @@
 @testable import App
 import XCTVapor
 
+let runOnce: Void = {
+    print("Bootstrapping Logger...")
+    LoggingSystem.bootstrap { label in
+        MultiplexLogHandler(
+            [
+//                FileLogHandler(label: label, logLevel: .trace, localPath: "Logs/Debug.log"),
+                StreamLogHandler.standardOutput(label: label)
+            ]
+        )
+    }
+}()
+
 class AppTestCase: XCTestCase {
     var app: Application!
     var service: CoreService!
+    
+    override class func setUp() {
+        runOnce
+    }
     
     override func setUp() {
         (app, service) = try! Application.testable(with: .test)
@@ -53,9 +69,12 @@ class AppLiveTestCase: AppTestCase {
 extension CoreService {
 
     static func test(_ app: Application) -> CoreService {
-        CoreService(app: app,
-                    wsServer: TestWebSocketManager(),
-                    notificator: TestNotificationManager())
+        var service = CoreService(app: app)
+        
+        service.wsServer = TestWebSocketManager(core: service)
+        service.notificator = TestNotificationManager(core: service)
+        
+        return service
     }
 }
 

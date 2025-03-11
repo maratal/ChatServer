@@ -61,20 +61,20 @@ actor WebSocketManager: WebSocketServer, WebSocketSender {
     func send(_ notification: CoreService.Notification, to session: DeviceSession) async throws -> Bool {
         guard let channel = session.id?.uuidString else { throw CoreService.Errors.idRequired }
         guard let ws = getClient(channel) else {
-            print("Client at channel '\(channel)' was not connected.")
+            core.logger.info("Client at channel '\(channel)' was not connected.")
             return false
         }
         guard !ws.isClosed else {
-            print("Client at channel '\(channel)' was disconnected.")
+            core.logger.info("Client at channel '\(channel)' was disconnected.")
             setClient(nil, for: channel)
             return false
         }
         do {
             try await ws.send(data: notification.jsonObject().data())
-            print("--- Message '\(notification.event)' sent to channel '\(channel)' with source '\(notification.source)' and data: \(String(describing: notification.payload))")
+            core.logger.info("--- Message '\(notification.event)' sent to channel '\(channel)' with source '\(notification.source)' and data: \(String(describing: notification.payload))")
             return true
         } catch {
-            print("--- Message '\(notification.event)' send failed on channel '\(channel)': \(error)")
+            core.logger.info("--- Message '\(notification.event)' send failed on channel '\(channel)': \(error)")
             return false
         }
     }

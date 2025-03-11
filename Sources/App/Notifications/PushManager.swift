@@ -5,13 +5,16 @@ protocol PushSender: Sendable {
 }
 
 actor PushManager: PushSender {
+    private let core: CoreService
     
     func send(_ notification: CoreService.Notification, to device: DeviceInfo) async {
-        guard let deviceToken = device.token else { return print("Can't send push without device token.") }
-        print("'\(device.transport.rawValue.uppercased())' push '\(notification.event)' sent to device '\(deviceToken)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
+        guard let deviceToken = device.token else {
+            return core.logger.debug("Can't send push without device token.")
+        }
+        core.logger.info("'\(device.transport.rawValue.uppercased())' push '\(notification.event)' sent to device '\(deviceToken)' with source '\(notification.source)' and payload: \(String(describing: notification.payload))")
     }
     
-    init(apnsKeyPath: String, fcmKeyPath: String) {
-        //
+    init(core: CoreService, apnsKeyPath: String, fcmKeyPath: String) {
+        self.core = core
     }
 }
