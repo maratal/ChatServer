@@ -5,8 +5,8 @@ protocol Notificator: Sendable {
 }
 
 actor NotificationManager: Notificator {
-    let webSocket: WebSocketSender
-    let push: PushSender
+    private let webSocket: WebSocketSender
+    private let push: PushSender
     
     init(webSocket: WebSocketSender, push: PushSender) {
         self.webSocket = webSocket
