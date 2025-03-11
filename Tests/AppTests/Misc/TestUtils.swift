@@ -196,14 +196,14 @@ extension CoreService {
 
     @discardableResult
     mutating func makeMessage(for chatId: ChatID, authorId: UserID, text: String) async throws -> Message {
-        let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
+        let message = Message(localId: UUID().uuidString, authorId: authorId, chatId: chatId, text: text)
         try await chats.repo.saveMessage(message)
         return message
     }
 
     @discardableResult
     mutating func makeMessageWithAttachment(for chatId: ChatID, authorId: UserID, text: String = "") async throws -> (Message, MediaResource) {
-        let message = Message(localId: UUID(), authorId: authorId, chatId: chatId, text: text)
+        let message = Message(localId: UUID().uuidString, authorId: authorId, chatId: chatId, text: text)
         try await chats.repo.saveMessage(message)
         let resource = try await makeMediaResource(attachmentOf: message.id!)
         return (message, resource)

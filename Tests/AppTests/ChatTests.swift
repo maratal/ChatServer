@@ -417,9 +417,12 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hey")
+                PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
         }, afterResponse: { res in
+            guard res.status == .ok else {
+                return XCTFail("Error response: " + res.body.string)
+            }
             XCTAssertEqual(res.status, .ok, res.body.string)
             let message = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(message.text, "Hey")
@@ -441,7 +444,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), attachment: MediaInfo(fileType: fileType, fileSize: 1))
+                PostMessageRequest(localId: UUID().uuidString, attachment: MediaInfo(fileType: fileType, fileSize: 1))
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -500,7 +503,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hey")
+                PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -522,7 +525,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hey")
+                PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
@@ -536,7 +539,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hey")
+                PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
@@ -550,7 +553,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hey")
+                PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)

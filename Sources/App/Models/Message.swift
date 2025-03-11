@@ -8,7 +8,7 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     var id: MessageID?
     
     @Field(key: "local_id")
-    var localId: UUID
+    var localId: String
     
     @Field(key: "text")
     var text: String?
@@ -44,7 +44,7 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     
     init(
         id: MessageID? = nil,
-        localId: UUID,
+        localId: String,
         authorId: UserID,
         chatId: ChatID,
         text: String?,
@@ -65,7 +65,7 @@ extension Message {
     
     struct Info: Serializable {
         var id: MessageID?
-        var localId: UUID?
+        var localId: String?
         var chatId: ChatID?
         var authorId: UserID?
         var text: String?

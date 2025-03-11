@@ -66,6 +66,15 @@ protocol ChatServiceProtocol {
     
     /// Marks message with`id` as seen by the user with `userId`.
     func readMessage(_ id: MessageID, by userId: UserID) async throws
+    
+    /// Adds chat's profile picture (not to confuse with user's profile picture in personal chat).
+    func addChatImage(_ chatId: ChatID, with info: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo
+    
+    /// Removes chat's picture with `resourceId`.
+    func deleteChatImage(_ resourceId: ResourceID, by userId: UserID) async throws
+    
+    /// Gets the list of all users blocked in this chat.
+    func blockedUsersInChat(_ id: ChatID, with userId: UserID) async throws -> [UserInfo]
 }
 
 actor ChatService: ChatServiceProtocol {
@@ -127,7 +136,7 @@ actor ChatService: ChatServiceProtocol {
         }
         try await repo.save(chat)
         let info = ChatInfo(from: relation, fullInfo: false)
-        try await core.notificator.notify(chat: chat, in: repo, about: .chatUpdate, from: relation.user, with: try info.jsonObject())
+        try await core.notificator.notify(chat: chat, in: repo, about: .chatUpdate, from: relation.user, with: info.jsonObject())
         return info
     }
     
@@ -167,7 +176,7 @@ actor ChatService: ChatServiceProtocol {
         try await repo.save(relation.chat, with: Array(newUsers))
         let addedUsers = chat.users.filter { newUsers.contains($0.id!) }.map { $0.info() }
         let info = ChatInfo(from: relation, addedUsers: addedUsers, removedUsers: nil)
-        try await core.notificator.notify(chat: chat, in: repo, about: .addedUsers, from: relation.user, with: try info.jsonObject())
+        try await core.notificator.notify(chat: chat, in: repo, about: .addedUsers, from: relation.user, with: info.jsonObject())
         return info
     }
     
@@ -192,7 +201,7 @@ actor ChatService: ChatServiceProtocol {
         let removedUsersSet = Set(usersBefore).subtracting(Set(usersAfter))
         let removedUsers = usersCache.filter { removedUsersSet.contains($0.id!) }.map { $0.info() }
         let info = ChatInfo(from: relation, addedUsers: nil, removedUsers: removedUsers)
-        try await core.notificator.notify(chat: chat, in: repo, about: .removedUsers, from: relation.user, with: try info.jsonObject())
+        try await core.notificator.notify(chat: chat, in: repo, about: .removedUsers, from: relation.user, with: info.jsonObject())
         return info
     }
     
@@ -297,19 +306,21 @@ actor ChatService: ChatServiceProtocol {
         return messages.map { $0.info() }
     }
     
-    func postMessage(to id: ChatID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
+    func postMessage(to chatId: ChatID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
         if info.isEmpty {
             throw ServiceError(.badRequest, reason: "Message is empty.")
         }
-        let relations = try await repo.findRelations(of: id, isUserBlocked: false)
+        let relations = try await repo.findRelations(of: chatId, isUserBlocked: false)
         guard relations.count > 0 else {
             throw ServiceError(.notFound)
         }
         guard let authorRelation = relations.ofUser(userId) else {
             throw ServiceError(.forbidden, reason: "You can't post into this chat.")
         }
+        
         let chat = authorRelation.chat
         let recipientsRelations = relations.otherThen(userId)
+        
         if chat.isPersonal {
             guard recipientsRelations.count == 1 else {
                 throw ServiceError(.internalServerError, reason: "Personal chat should have only one recipient.")
@@ -318,14 +329,17 @@ actor ChatService: ChatServiceProtocol {
                 throw ServiceError(.forbidden, reason: "This chat was blocked.")
             }
         }
-        guard let localId = info.localId else {
+        
+        guard let localId = info.localId, localId.count >= UUID().uuidString.count else { // localId should be "UserID+UUID"
             throw ServiceError(.badRequest, reason: "Malformed message data.")
         }
+        
         if let attachment = info.attachment {
             guard attachment.fileSize > 0 && !attachment.fileType.isEmpty else {
                 throw ServiceError(.badRequest, reason: "Malformed message data.")
             }
         }
+        
         if let text = info.text {
             guard text.count > 0 && text.count <= 2048 else {
                 throw ServiceError(.badRequest, reason: "Message text should be between 1 and 2048 characters long.")
@@ -334,7 +348,7 @@ actor ChatService: ChatServiceProtocol {
         
         let message = Message(localId: localId,
                               authorId: userId,
-                              chatId: id,
+                              chatId: chatId,
                               text: info.text,
                               isVisible: info.isVisible ?? true)
         
@@ -375,7 +389,7 @@ actor ChatService: ChatServiceProtocol {
         }
         
         let info = message.info()
-        try await core.notificator.notify(chat: chat, in: repo, about: .message, from: authorRelation.user, with: try info.jsonObject())
+        try await core.notificator.notify(chat: chat, in: repo, about: .message, from: authorRelation.user, with: info.jsonObject())
         return info
     }
     
@@ -408,7 +422,7 @@ actor ChatService: ChatServiceProtocol {
         }
         
         let info = message.info()
-        try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: authorRelation.user, with: try info.jsonObject())
+        try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: authorRelation.user, with: info.jsonObject())
         return info
     }
     
@@ -431,7 +445,7 @@ actor ChatService: ChatServiceProtocol {
         try await core.saveAll(itemsToSave)
         
         let info = message.info()
-        try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: message.author, with: try info.jsonObject())
+        try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: message.author, with: info.jsonObject())
         return info
     }
     
@@ -446,7 +460,7 @@ actor ChatService: ChatServiceProtocol {
             let readMark = ReadMark(messageId: id, userId: userId)
             try await core.saveItem(readMark)
             let info = message.info()
-            try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: readerRelation.user, with: try info.jsonObject())
+            try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: readerRelation.user, with: info.jsonObject())
         }
     }
     

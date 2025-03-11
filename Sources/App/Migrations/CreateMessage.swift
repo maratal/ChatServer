@@ -6,7 +6,7 @@ struct CreateMessage: AsyncMigration {
     func prepare(on database: Database) async throws {
         try await database.schema("messages")
             .field(.id, .uint64, .identifier(auto: true))
-            .field("local_id", .uuid, .required)
+            .field("local_id", .string, .required)
             .field("text", .string)
             .field("file_type", .string)
             .field("file_size", .int64)

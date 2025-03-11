@@ -100,7 +100,7 @@ final class WebSocketTests: AppLiveTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .authWith(token: deviceSession1.accessToken), beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID(), text: "Hey")
+                PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)

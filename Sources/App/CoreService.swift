@@ -43,10 +43,8 @@ struct CoreService: Sendable {
     lazy var chats: ChatService = ChatService(core: self, repo: ChatsDatabaseRepository(core: self))
     lazy var contacts: ContactsService = ContactsService(repo: ContactsDatabaseRepository(database: app.db))
     
-    init(app: Application, wsServer: WebSocketServer? = nil, notificator: Notificator? = nil) {
+    init(app: Application) {
         self.app = app
-        self.wsServer = wsServer
-        self.notificator = notificator
     }
 }
 

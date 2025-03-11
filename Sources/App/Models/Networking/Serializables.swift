@@ -54,7 +54,7 @@ struct UpdateChatUsersRequest: Serializable {
 }
 
 struct PostMessageRequest: Serializable {
-    var localId: UUID?
+    var localId: String?
     var text: String?
     var isVisible: Bool?
     var attachment: MediaInfo?

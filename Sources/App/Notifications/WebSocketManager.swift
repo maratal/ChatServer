@@ -51,7 +51,7 @@ actor WebSocketManager: WebSocketServer, WebSocketSender {
         setClient(ws, for: channel)
         ws.onClose { [weak self] _ in
             guard let self else { return }
-            Task { @Sendable in
+            Task {
                 await self.setClient(nil, for: channel)
             }
         }
