@@ -851,4 +851,27 @@ final class ChatTests: AppTestCase {
             XCTAssertTrue(sentNotifications[0].event == .chatCleared)
         })
     }
+    
+    func test_47_typingNotification() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
+        
+        try await asyncTest(.POST, "chats/\(chat.id!)/notify", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                ChatNotificationRequest(type: "typing", data: ["deleted": true].jsonData())
+            )
+        }, afterResponse: { res in
+            guard res.status == .ok else {
+                return XCTFail("Error response: " + res.body.string)
+            }
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let sentNotifications = await service.testNotificator.getSentNotifications()
+            XCTAssertEqual(sentNotifications.count, 3)
+            XCTAssertEqual(sentNotifications.filter { $0.event == .auxiliary }.count, 3)
+            XCTAssertEqual(sentNotifications[0].source, "\(current.id!)")
+            XCTAssertEqual(sentNotifications[0].payload?["type"] as? String, "typing")
+            XCTAssertEqual(sentNotifications[0].payload?["data"] as? [String: Bool], ["deleted": true])
+        })
+    }
 }

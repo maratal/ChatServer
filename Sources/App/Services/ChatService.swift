@@ -3,7 +3,7 @@
  */
 import Foundation
 
-protocol ChatServiceProtocol {
+protocol ChatServiceProtocol: Sendable {
 
     /// Returns all chats where `userId` is participant.
     /// Doesn't include chats where user is blocked and chats that were removed on users devices.
@@ -75,6 +75,10 @@ protocol ChatServiceProtocol {
     
     /// Gets the list of all users blocked in this chat.
     func blockedUsersInChat(_ id: ChatID, with userId: UserID) async throws -> [UserInfo]
+    
+    /// Broadcasts chat notifications from `userId` to all chat participants.
+    /// Use it to inform chat users about typing and other auxiliary events that should not be saved into database.
+    func notifyChat(_ chatId: ChatID, with info: ChatNotificationRequest, from userId: UserID) async throws
 }
 
 actor ChatService: ChatServiceProtocol {
@@ -501,6 +505,33 @@ actor ChatService: ChatServiceProtocol {
         }
         try core.removeFiles(for: resource)
         try await repo.deleteChatImage(resource)
+    }
+    
+    func notifyChat(_ chatId: ChatID, with info: ChatNotificationRequest, from userId: UserID) async throws {
+        let relations = try await repo.findRelations(of: chatId, isUserBlocked: false)
+        guard relations.count > 0 else {
+            throw ServiceError(.notFound)
+        }
+        guard let authorRelation = relations.ofUser(userId) else {
+            throw ServiceError(.forbidden, reason: "You can't post into this chat.")
+        }
+        
+        let chat = authorRelation.chat
+        let recipientsRelations = relations.otherThen(userId)
+        
+        if chat.isPersonal {
+            guard recipientsRelations.count == 1 else {
+                throw ServiceError(.internalServerError, reason: "Personal chat should have only one recipient.")
+            }
+            guard !recipientsRelations[0].isChatBlocked else {
+                throw ServiceError(.forbidden, reason: "This chat was blocked.")
+            }
+        }
+        
+        // TODO: improve this together with JSON type
+        // Converting REST payload to WebSocket one:
+        let payload = ["type": info.type, "data": try info.data?.jsonObject() ?? [:]] as? JSON
+        try await core.notificator.notify(chat: chat, in: repo, about: .auxiliary, from: authorRelation.user, with: payload)
     }
 }
 

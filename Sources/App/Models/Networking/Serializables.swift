@@ -66,3 +66,8 @@ struct UpdateMessageRequest: Serializable {
     var fileExists = false
     var previewExists = false
 }
+
+struct ChatNotificationRequest: Serializable {
+    var type: String
+    var data: Data? // TODO: should be of JSON type
+}

@@ -5,7 +5,7 @@ import Vapor
 
 struct ChatController: RouteCollection {
 
-    let service: ChatService
+    let service: ChatServiceProtocol
     
     func boot(routes: RoutesBuilder) throws {
         let protected = routes.grouped("chats").grouped(DeviceSession.authenticator())
@@ -35,6 +35,8 @@ struct ChatController: RouteCollection {
             
             route.post("images", use: addChatImage)
             route.delete("images", .id, use: deleteChatImage)
+            
+            route.post("notify", use: notifyChat)
         }
     }
     
@@ -158,5 +160,12 @@ struct ChatController: RouteCollection {
     
     func deleteMessage(_ req: Request) async throws -> MessageInfo {
         try await service.deleteMessage(req.messageID(), by: req.currentUser().requireID())
+    }
+    
+    func notifyChat(_ req: Request) async throws -> HTTPStatus {
+        try await service.notifyChat(req.objectUUID(),
+                                     with: req.content.decode(ChatNotificationRequest.self),
+                                     from: req.currentUser().requireID())
+        return .ok
     }
 }

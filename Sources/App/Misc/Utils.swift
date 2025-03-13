@@ -29,6 +29,11 @@ extension Data {
     func json() throws -> Any {
         try JSONSerialization.jsonObject(with: self, options: .allowFragments)
     }
+    
+    /// Converts a raw data to a JSON object.
+    func jsonObject() throws -> JSON? {
+        try json() as? JSON
+    }
 }
 
 extension JSON {

@@ -14,9 +14,9 @@ struct CoreService: Sendable {
         case userUpdate
         case addedUsers
         case removedUsers
-        case typing
         case chatCleared
         case chatDeleted
+        case auxiliary
     }
     
     struct Notification: Sendable, JSONSerializable {
