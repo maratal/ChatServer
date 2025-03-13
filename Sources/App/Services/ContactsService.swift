@@ -3,7 +3,7 @@
  */
 import Foundation
 
-protocol ContactsServiceProtocol {
+protocol ContactsServiceProtocol: Sendable {
 
     /// Returns all contacts for the current user.
     func contacts(of user: User) async throws -> [ContactInfo]

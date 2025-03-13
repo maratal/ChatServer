@@ -3,7 +3,7 @@
  */
 import Foundation
 
-protocol UserServiceProtocol {
+protocol UserServiceProtocol: Sendable {
 
     /// Registers a new user account and authenticates it.
     func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo

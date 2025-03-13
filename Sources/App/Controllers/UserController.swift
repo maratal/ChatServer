@@ -5,7 +5,7 @@ import Vapor
 
 struct UserController: RouteCollection {
 
-    let service: UserService
+    let service: UserServiceProtocol
     
     func boot(routes: RoutesBuilder) throws {
         let users = routes.grouped("users")
