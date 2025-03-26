@@ -13,10 +13,20 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try res.content.decode([ChatInfo].self)
             XCTAssertEqual(chats.count, 2)
+            XCTAssertFalse(chats.contains(where: { $0.allUsers?.count == 2 }))
             XCTAssertTrue(chats.contains(where: { $0.images?.count == 1 }))
             XCTAssertEqual([chat1, chat2].map { $0.id! }.sorted(), chats.map { $0.id! }.sorted())
-            try service.removeFiles(for: resource)
         })
+        
+        try await asyncTest(.GET, "chats/?full=1", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chats = try res.content.decode([ChatInfo].self)
+            XCTAssertEqual(chats.count, 2)
+            XCTAssertTrue(chats.contains(where: { $0.allUsers?.count == 2 }))
+            XCTAssertTrue(chats.contains(where: { $0.images?.count == 1 }))
+            XCTAssertEqual([chat1, chat2].map { $0.id! }.sorted(), chats.map { $0.id! }.sorted())
+        })
+        try service.removeFiles(for: resource)
     }
     
     func test_02_getChat() async throws {
