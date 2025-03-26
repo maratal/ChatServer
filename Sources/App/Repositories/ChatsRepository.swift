@@ -110,9 +110,6 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         guard users.count > 0 else {
             return try await save(chat)
         }
-        if chat.isPersonal && users.count > 1 {
-            throw ServiceError(.unprocessableEntity, reason: "Personal chat can only contain two users.")
-        }
         var allUsers = Set<UserID>()
         var newUsers = Set<UserID>()
         if chat.id == nil {
@@ -121,6 +118,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         } else {
             allUsers = Set(users + chat.users.compactMap { $0.id })
             newUsers = Set(users)
+        }
+        if chat.isPersonal && allUsers.count > 2 {
+            throw ServiceError(.unprocessableEntity, reason: "Personal chat can only contain two users.")
         }
         if newUsers.count > 0 {
             chat.participantsKey = allUsers.participantsKey()

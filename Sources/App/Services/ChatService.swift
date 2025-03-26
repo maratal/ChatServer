@@ -105,16 +105,18 @@ actor ChatService: ChatServiceProtocol {
     }
     
     func createChat(with info: CreateChatRequest, by ownerId: UserID) async throws -> ChatInfo {
-        let participants = info.participants.unique().filter { $0 != ownerId }
+        var participants = info.participants.unique().filter { $0 != ownerId }
         guard participants.count > 0 else {
             throw ServiceError(.badRequest, reason: "New chat should contain at least one participant.")
         }
-
-        let participantsKey = Set(participants + [ownerId]).participantsKey()
-        var chat = try await repo.find(participantsKey: participantsKey, for: ownerId, isPersonal: info.isPersonal)
+        
+        participants = participants + [ownerId]
+        let participantsKey = Set(participants).participantsKey()
+        let isPersonal = info.isPersonal ?? (participants.count == 2)
+        var chat = try await repo.find(participantsKey: participantsKey, for: ownerId, isPersonal: isPersonal)
         
         if chat == nil {
-            chat = Chat(title: info.title, ownerId: ownerId, isPersonal: info.isPersonal)
+            chat = Chat(title: info.title, ownerId: ownerId, isPersonal: isPersonal)
             try await repo.save(chat!, with: participants)
             let relation = try await repo.findRelation(of: chat!.id!, userId: ownerId)!
             return ChatInfo(from: relation, fullInfo: true)

@@ -26,7 +26,7 @@ struct SetAccountKeyRequest: Serializable {
 struct CreateChatRequest: Serializable {
     var title: String?
     var participants: [UserID]
-    var isPersonal: Bool
+    var isPersonal: Bool?
 }
 
 struct UpdateUserRequest: Serializable {
