@@ -797,7 +797,7 @@ final class ChatTests: AppTestCase {
         let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
         XCTAssertNotNil(relation)
         
-        try await app.test(.DELETE, "chats/\(chat.id!)/exit", headers: .none, afterResponse: { res in
+        try await app.test(.DELETE, "chats/\(chat.id!)/me", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
             XCTAssertNil(relation)
@@ -811,7 +811,7 @@ final class ChatTests: AppTestCase {
         let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
         XCTAssertNotNil(relation)
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/exit", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "chats/\(chat.id!)/me", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .badRequest, res.body.string)
         })
     }

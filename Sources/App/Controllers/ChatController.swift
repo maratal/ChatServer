@@ -16,7 +16,7 @@ struct ChatController: RouteCollection {
             route.put(use: updateChat)
             route.put("settings", use: updateChatSettings)
             route.delete(use: deleteChat)
-            route.delete("exit", use: exitChat)
+            route.delete("me", use: exitChat)
             route.put("block", use: blockChat)
             route.put("unblock", use: unblockChat)
             
