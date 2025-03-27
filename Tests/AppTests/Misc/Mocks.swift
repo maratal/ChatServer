@@ -51,7 +51,8 @@ actor TestNotificationManager: Notificator {
         sentNotifications.removeAll()
     }
     
-    func notify(chat: Chat, in repo: ChatsRepository, about event: CoreService.Event, from user: User?, with payload: JSON?) async throws {
+    // TODO: implement `via` parameter
+    func notify(chat: Chat, via: NotificationRealm, in repo: ChatsRepository, about event: CoreService.Event, from user: User?, with payload: JSON?) async throws {
         let source = user == nil ? "system" : "\(user!.id ?? 0)"
         var notification = CoreService.Notification(event: event, source: source, payload: payload)
         let relations = try await repo.findRelations(of: chat.id!, isUserBlocked: false)

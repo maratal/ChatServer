@@ -869,7 +869,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/notify", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                ChatNotificationRequest(type: "typing", data: ["deleted": true].jsonData())
+                ChatNotificationRequest(name: "typing", data: ["deleted": true].jsonData())
             )
         }, afterResponse: { res in
             guard res.status == .ok else {
@@ -880,7 +880,7 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(sentNotifications.count, 3)
             XCTAssertEqual(sentNotifications.filter { $0.event == .auxiliary }.count, 3)
             XCTAssertEqual(sentNotifications[0].source, "\(current.id!)")
-            XCTAssertEqual(sentNotifications[0].payload?["type"] as? String, "typing")
+            XCTAssertEqual(sentNotifications[0].payload?["name"] as? String, "typing")
             XCTAssertEqual(sentNotifications[0].payload?["data"] as? [String: Bool], ["deleted": true])
         })
     }

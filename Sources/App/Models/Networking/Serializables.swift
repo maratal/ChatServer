@@ -68,6 +68,8 @@ struct UpdateMessageRequest: Serializable {
 }
 
 struct ChatNotificationRequest: Serializable {
-    var type: String
+    var name: String
+    var text: String?
     var data: Data? // TODO: should be of JSON type
+    var realm: NotificationRealm = .webSocket
 }

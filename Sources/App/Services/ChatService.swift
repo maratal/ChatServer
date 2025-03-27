@@ -395,7 +395,7 @@ actor ChatService: ChatServiceProtocol {
         }
         
         let info = message.info()
-        try await core.notificator.notify(chat: chat, in: repo, about: .message, from: authorRelation.user, with: info.jsonObject())
+        try await core.notificator.notify(chat: chat, via: .all, in: repo, about: .message, from: authorRelation.user, with: info.jsonObject())
         return info
     }
     
@@ -532,8 +532,12 @@ actor ChatService: ChatServiceProtocol {
         
         // TODO: improve this together with JSON type
         // Converting REST payload to WebSocket one:
-        let payload = ["type": info.type, "data": try info.data?.jsonObject() ?? [:]] as? JSON
-        try await core.notificator.notify(chat: chat, in: repo, about: .auxiliary, from: authorRelation.user, with: payload)
+        let payload: JSON = [
+            "name": info.name,
+            "text": info.text,
+            "data": try info.data?.jsonObject()
+        ]
+        try await core.notificator.notify(chat: chat, via: info.realm, in: repo, about: .auxiliary, from: authorRelation.user, with: payload)
     }
 }
 
