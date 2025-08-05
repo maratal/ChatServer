@@ -1,0 +1,60 @@
+{
+  "name": "ChatServer",
+  "description": "A personal communication server built with Swift Vapor framework",
+  "keywords": [
+    "swift",
+    "vapor",
+    "chat",
+    "server",
+    "communication",
+    "websocket"
+  ],
+  "website": "https://github.com/maratal/ChatServer",
+  "repository": "https://github.com/maratal/ChatServer",
+  "logo": "https://cdn.vapor.codes/vapor-logo.png",
+  "success_url": "/",
+  "buildpacks": [
+    {
+      "url": "https://github.com/vapor-community/heroku-buildpack"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:essential-0",
+      "as": "DATABASE"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": {
+      "description": "PostgreSQL database URL (automatically provided by Heroku PostgreSQL addon)",
+      "required": false
+    },
+    "LOG_LEVEL": {
+      "description": "Application log level",
+      "value": "info"
+    },
+    "VAPOR_ENV": {
+      "description": "Vapor environment",
+      "value": "production"
+    }
+  },
+  "environments": {
+    "test": {
+      "addons": [
+        "heroku-postgresql:essential-0"
+      ],
+      "env": {
+        "VAPOR_ENV": "testing"
+      }
+    }
+  },
+  "scripts": {
+    "postdeploy": "vapor run migrate --yes"
+  }
+}
