@@ -53,8 +53,5 @@
         "VAPOR_ENV": "testing"
       }
     }
-  },
-  "scripts": {
-    "postdeploy": "vapor run migrate --yes"
   }
 }
