@@ -2,6 +2,12 @@ import Fluent
 import FluentPostgresDriver
 import Vapor
 
+extension Environment {
+    static var isHeroku: Bool {
+        Self.get("DYNO") != nil
+    }
+}
+
 func configure(_ app: Application, service: inout CoreService) throws {
     app.logger = Logger(label: "Default 👉")
     
@@ -30,7 +36,10 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(CreateReaction())
     app.migrations.add(CreateMediaResource())
     
-    try app.createUploadsDirectory()
+    // Skip uploads directory creation on Heroku (read-only filesystem)
+    if !Environment.isHeroku {
+        try app.createUploadsDirectory()
+    }
     
     try app.register(collection: UserController(service: service.users))
     try app.register(collection: ChatController(service: service.chats))
