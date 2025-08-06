@@ -54,7 +54,7 @@ final class WebSocketTests: AppLiveTestCase {
             let json = try! data.json() as! JSON
             let payload = json["payload"] as! JSON
             
-            // Received message! 🎉🎉 // add emoji here each time this breaks after swift/vapor update
+            // Received message! 🎉🎉🎉
             let message = try! MessageInfo.fromData(payload.data())
             
             XCTAssertEqual(message.text, "Hey")
