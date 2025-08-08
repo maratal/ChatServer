@@ -7,7 +7,7 @@ import Vapor
 
 protocol XCTApplicationLiveTester {
     func startServer(port: Int) throws
-    func performLiveTest(request: XCTHTTPRequest) throws -> XCTHTTPResponse
+    func performLiveTest(request: XCTHTTPRequest) throws -> TestingHTTPResponse
     func stopServer()
 }
 
@@ -18,7 +18,7 @@ extension Application: XCTApplicationLiveTester {
         try server.start(address: .hostname("localhost", port: port))
     }
     
-    func performLiveTest(request: XCTHTTPRequest) throws -> XCTHTTPResponse {
+    func performLiveTest(request: XCTHTTPRequest) throws -> TestingHTTPResponse {
         let client = HTTPClient(eventLoopGroup: MultiThreadedEventLoopGroup.singleton)
         defer { try! client.syncShutdown() }
         
@@ -43,7 +43,7 @@ extension Application: XCTApplicationLiveTester {
         )
         clientRequest.body = .byteBuffer(request.body)
         let response = try client.execute(request: clientRequest).wait()
-        return XCTHTTPResponse(
+        return TestingHTTPResponse(
             status: response.status,
             headers: response.headers,
             body: response.body ?? ByteBufferAllocator().buffer(capacity: 0)
@@ -65,7 +65,7 @@ extension XCTApplicationLiveTester {
         file: StaticString = #filePath,
         line: UInt = #line,
         beforeRequest: (inout XCTHTTPRequest) throws -> () = { _ in },
-        afterRequest: (XCTHTTPResponse) throws -> () = { _ in }
+        afterRequest: (TestingHTTPResponse) throws -> () = { _ in }
     ) throws {
         var request = XCTHTTPRequest(
             method: method,
@@ -81,5 +81,40 @@ extension XCTApplicationLiveTester {
             XCTFail("\(error)", file: file, line: line)
             throw error
         }
+    }
+}
+
+struct TestingHTTPResponse: Sendable {
+    var status: HTTPStatus
+    var headers: HTTPHeaders
+    var body: ByteBuffer
+}
+
+extension TestingHTTPResponse {
+    private struct _ContentContainer: ContentContainer {
+        var body: ByteBuffer
+        var headers: HTTPHeaders
+
+        var contentType: HTTPMediaType? {
+            return self.headers.contentType
+        }
+
+        mutating func encode<E>(_ encodable: E, using encoder: ContentEncoder) throws where E : Encodable {
+            fatalError("Encoding to test response is not supported")
+        }
+
+        func decode<D>(_ decodable: D.Type, using decoder: ContentDecoder) throws -> D where D : Decodable {
+            try decoder.decode(D.self, from: self.body, headers: self.headers)
+        }
+
+        func decode<C>(_ content: C.Type, using decoder: ContentDecoder) throws -> C where C : Content {
+            var decoded = try decoder.decode(C.self, from: self.body, headers: self.headers)
+            try decoded.afterDecode()
+            return decoded
+        }
+    }
+
+    var content: ContentContainer {
+        _ContentContainer(body: self.body, headers: self.headers)
     }
 }
