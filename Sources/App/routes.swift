@@ -1,7 +1,7 @@
 import Vapor
 
-func routes(_ app: Application) throws {
-    app.get { req async in
-        ProductInfo.fullVersion
+func routes(_ app: Application) {
+    app.get { req async throws -> View in
+        try await req.view.render("main", ProductInfo())
     }
 }

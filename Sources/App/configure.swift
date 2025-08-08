@@ -1,11 +1,13 @@
 import Fluent
 import FluentPostgresDriver
 import Vapor
+import Leaf
 
 func configure(_ app: Application, service: inout CoreService) throws {
     app.logger = Logger(label: "Default 👉")
     
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    app.views.use(.leaf)
     
     // Configure database - prefer DATABASE_URL for Heroku, fallback to individual env vars
     if let databaseURL = Environment.get("DATABASE_URL") {
@@ -38,5 +40,5 @@ func configure(_ app: Application, service: inout CoreService) throws {
     try app.register(collection: WebSocketController(core: service))
     try app.register(collection: UploadController())
     
-    try routes(app)
+    routes(app)
 }
