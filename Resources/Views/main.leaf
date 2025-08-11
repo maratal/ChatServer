@@ -379,6 +379,11 @@
     </div>
     
     <script>
+        // Global variables
+        let currentUser = null;
+        let currentChatId = null;
+        let chats = [];
+        
         // Get cookie function
         function getCookie(name) {
             const value = `; ${document.cookie}`;
@@ -390,28 +395,6 @@
         // Delete cookie function
         function deleteCookie(name) {
             document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        }
-        
-        // Check authentication on page load
-        function checkAuth() {
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
-            const userInfo = localStorage.getItem('userInfo');
-            
-            if (!accessToken) {
-                // No token, redirect to home
-                window.location.href = '/';
-                return;
-            }
-            
-            // Display user info if available
-            if (userInfo) {
-                try {
-                    const user = JSON.parse(userInfo);
-                    document.getElementById('userName').textContent = user.name || user.username || 'User';
-                } catch (e) {
-                    console.error('Error parsing user info:', e);
-                }
-            }
         }
         
         // Logout function
@@ -441,13 +424,32 @@
             window.location.href = '/';
         }
         
+        // Enhanced authentication check to get current user
+        async function checkAuth() {
+            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const userInfo = localStorage.getItem('userInfo');
+            
+            if (!accessToken) {
+                window.location.href = '/';
+                return;
+            }
+            
+            // Display user info if available
+            if (userInfo) {
+                try {
+                    currentUser = JSON.parse(userInfo);
+                    document.getElementById('userName').textContent = currentUser.name || currentUser.username || 'User';
+                    
+                    // Initialize chat interface
+                    await initializeChat();
+                } catch (e) {
+                    console.error('Error parsing user info:', e);
+                }
+            }
+        }
+        
         // Check authentication when page loads
         checkAuth();
-        
-        // Global variables
-        let currentUser = null;
-        let currentChatId = null;
-        let chats = [];
         
         // Initialize the chat interface
         async function initializeChat() {
@@ -654,30 +656,6 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }
-        
-        // Enhanced authentication check to get current user
-        async function checkAuth() {
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
-            const userInfo = localStorage.getItem('userInfo');
-            
-            if (!accessToken) {
-                window.location.href = '/';
-                return;
-            }
-            
-            // Display user info if available
-            if (userInfo) {
-                try {
-                    currentUser = JSON.parse(userInfo);
-                    document.getElementById('userName').textContent = currentUser.name || currentUser.username || 'User';
-                    
-                    // Initialize chat interface
-                    await initializeChat();
-                } catch (e) {
-                    console.error('Error parsing user info:', e);
-                }
-            }
         }
     </script>
 </body>
