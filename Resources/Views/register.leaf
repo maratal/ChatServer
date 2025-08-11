@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - ChatServer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            padding: 20px 0;
+        }
+        
+        .register-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid #ddd;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .logo p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            background: #f9f9f9;
+            font-family: inherit;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #666;
+            background: white;
+        }
+        
+        .form-group.error input, .form-group.error textarea {
+            border-color: #e74c3c;
+            background: #fdf2f2;
+        }
+        
+        .error-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #e74c3c;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .error-popup::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 15px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid #e74c3c;
+        }
+        
+        .form-group.error .error-popup {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .info-button {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            background: #333;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 10px;
+            line-height: 16px;
+            font-weight: bold;
+            font-style: normal;
+            font-family: serif;
+            margin-left: 2px;
+            margin-bottom: 2px;
+            position: relative;
+            vertical-align: middle;
+        }
+        
+        .info-button:hover {
+            background: #555;
+        }
+        
+        .password-requirements-tooltip {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            width: 280px;
+            top: 25px;
+            left: 0;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .password-requirements-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 20px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid #333;
+        }
+        
+        .password-requirements-tooltip ul {
+            margin: 5px 0 0 15px;
+            color: #fff;
+        }
+        
+        .password-requirements-tooltip li {
+            margin-bottom: 2px;
+            color: #fff;
+        }
+        
+        .password-requirements-tooltip strong {
+            color: #fff;
+        }
+        
+        .info-button:hover + .password-requirements-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .register-button {
+            width: 100%;
+            padding: 12px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .register-button:hover {
+            background: #555;
+        }
+        
+        .register-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .register-button.loading {
+            background: #999;
+            cursor: wait;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #ddd;
+            z-index: 1;
+        }
+        
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .login-link {
+            text-align: center;
+        }
+        
+        .login-link a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid #ddd;
+            transition: border-color 0.3s ease;
+        }
+        
+        .login-link a:hover {
+            border-bottom-color: #333;
+        }
+        
+        .status-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @media (max-width: 480px) {
+            .register-container {
+                margin: 20px;
+                padding: 30px 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="logo">
+            <h1>ChatServer</h1>
+            <p>Create your account</p>
+        </div>
+        
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+        
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">
+                    Password
+                    <span class="info-button" id="password-info">i</span>
+                    <div class="password-requirements-tooltip">
+                        <strong>Password requirements:</strong>
+                        <ul>
+                            <li>At least 8 characters long</li>
+                            <li>Contains at least one uppercase letter</li>
+                            <li>Contains at least one lowercase letter</li>
+                            <li>Contains at least one number</li>
+                        </ul>
+                    </div>
+                </label>
+                <input type="password" id="password" name="password" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <button type="submit" class="register-button">Create Account</button>
+        </form>
+        
+        <div class="divider">
+            <span>or</span>
+        </div>
+        
+        <div class="login-link">
+            <a href="/login">Already have an account? Sign in</a>
+        </div>
+    </div>
+    
+    <script>
+        // Set cookie function
+        function setCookie(name, value, days = 30) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + date.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Strict;Secure";
+        }
+        
+        // Generate a unique device ID
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        // Get device info automatically
+        function getDeviceInfo() {
+            const userAgent = navigator.userAgent;
+            let deviceName = 'Web Browser';
+            let deviceModel = 'Unknown';
+            
+            // Extract browser name
+            if (userAgent.includes('Chrome')) {
+                deviceName = 'Chrome Browser';
+            } else if (userAgent.includes('Firefox')) {
+                deviceName = 'Firefox Browser';
+            } else if (userAgent.includes('Safari')) {
+                deviceName = 'Safari Browser';
+            } else if (userAgent.includes('Edge')) {
+                deviceName = 'Edge Browser';
+            }
+            
+            // Extract OS info
+            if (userAgent.includes('Windows')) {
+                deviceModel = 'Windows PC';
+            } else if (userAgent.includes('Mac')) {
+                deviceModel = 'Mac';
+            } else if (userAgent.includes('Linux')) {
+                deviceModel = 'Linux PC';
+            } else if (userAgent.includes('Android')) {
+                deviceModel = 'Android Device';
+            } else if (userAgent.includes('iPhone')) {
+                deviceModel = 'iPhone';
+            } else if (userAgent.includes('iPad')) {
+                deviceModel = 'iPad';
+            }
+            
+            return {
+                id: generateUUID(),
+                name: deviceName,
+                model: deviceModel,
+                token: null, // No push support for web yet
+                transport: 'web'
+            };
+        }
+        
+        // Validate password strength
+        function validatePassword(password) {
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /\d/.test(password)
+            };
+            
+            const isValid = Object.values(requirements).every(req => req);
+            return { isValid, requirements };
+        }
+        
+        // Show error for a specific field
+        function showFieldError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const formGroup = field.closest('.form-group');
+            const errorPopup = formGroup.querySelector('.error-popup');
+            
+            formGroup.classList.add('error');
+            errorPopup.textContent = message;
+            
+            // Auto-hide error after 5 seconds
+            setTimeout(() => {
+                hideFieldError(fieldId);
+            }, 5000);
+        }
+        
+        // Hide error for a specific field
+        function hideFieldError(fieldId) {
+            const field = document.getElementById(fieldId);
+            const formGroup = field.closest('.form-group');
+            formGroup.classList.remove('error');
+        }
+        
+        // Show status message
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+            statusEl.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // Handle form submission
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Clear previous errors
+            document.querySelectorAll('.form-group.error').forEach(group => {
+                group.classList.remove('error');
+            });
+            
+            const button = document.querySelector('.register-button');
+            button.classList.add('loading');
+            button.textContent = 'Creating Account...';
+            button.disabled = true;
+            
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value,
+                confirmPassword: document.getElementById('confirmPassword').value,
+                deviceInfo: getDeviceInfo()
+            };
+            
+            // Validation
+            let hasErrors = false;
+            
+            if (!formData.name) {
+                showFieldError('name', 'Full name is required');
+                hasErrors = true;
+            }
+            
+            if (!formData.username) {
+                showFieldError('username', 'Username is required');
+                hasErrors = true;
+            } else if (formData.username.length < 3) {
+                showFieldError('username', 'Username must be at least 3 characters');
+                hasErrors = true;
+            } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+                showFieldError('username', 'Username can only contain letters, numbers, and underscores');
+                hasErrors = true;
+            }
+            
+            if (!formData.password) {
+                showFieldError('password', 'Password is required');
+                hasErrors = true;
+            } else {
+                const passwordValidation = validatePassword(formData.password);
+                if (!passwordValidation.isValid) {
+                    const missing = [];
+                    if (!passwordValidation.requirements.length) missing.push('at least 8 characters');
+                    if (!passwordValidation.requirements.uppercase) missing.push('uppercase letter');
+                    if (!passwordValidation.requirements.lowercase) missing.push('lowercase letter');
+                    if (!passwordValidation.requirements.number) missing.push('number');
+                    
+                    showFieldError('password', `Password must contain: ${missing.join(', ')}`);
+                    hasErrors = true;
+                }
+            }
+            
+            if (!formData.confirmPassword) {
+                showFieldError('confirmPassword', 'Please confirm your password');
+                hasErrors = true;
+            } else if (formData.password !== formData.confirmPassword) {
+                showFieldError('confirmPassword', 'Passwords do not match');
+                hasErrors = true;
+            }
+            
+            if (hasErrors) {
+                button.classList.remove('loading');
+                button.textContent = 'Create Account';
+                button.disabled = false;
+                return;
+            }
+            
+            try {
+                const response = await fetch('/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: formData.name,
+                        username: formData.username,
+                        password: formData.password,
+                        deviceInfo: formData.deviceInfo
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store access token in both localStorage and cookie
+                    const accessToken = data.deviceSessions[Object.keys(data.deviceSessions)[0]].accessToken;
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('userInfo', JSON.stringify(data));
+                    
+                    // Set accessToken as a secure cookie
+                    setCookie('accessToken', accessToken);
+                    
+                    showStatus('Account created successfully! Redirecting...', 'success');
+                    
+                    // Redirect to main page
+                    setTimeout(() => {
+                        window.location.href = '/main';
+                    }, 0);
+                } else {
+                    // Handle specific error cases
+                    if (response.status === 409) {
+                        showFieldError('username', 'Username already exists');
+                    } else if (response.status === 400) {
+                        const errorMsg = data.message || 'Invalid registration data';
+                        if (errorMsg.toLowerCase().includes('username')) {
+                            showFieldError('username', errorMsg);
+                        } else if (errorMsg.toLowerCase().includes('password')) {
+                            showFieldError('password', errorMsg);
+                        } else {
+                            showStatus(errorMsg, 'error');
+                        }
+                    } else {
+                        showStatus('Registration failed. Please try again.', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showStatus('Network error. Please check your connection.', 'error');
+            }
+            
+            button.classList.remove('loading');
+            button.textContent = 'Create Account';
+            button.disabled = false;
+        });
+        
+        // Clear errors when user starts typing
+        document.querySelectorAll('input, textarea, select').forEach(input => {
+            input.addEventListener('input', function() {
+                hideFieldError(this.id);
+            });
+        });
+        
+        // Real-time password validation feedback
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            const validation = validatePassword(password);
+            
+            if (password && !validation.isValid) {
+                const requirements = document.querySelector('.password-requirements-tooltip');
+                const items = requirements.querySelectorAll('li');
+                
+                items[0].style.color = validation.requirements.length ? '#28a745' : '#dc3545';
+                items[1].style.color = validation.requirements.uppercase ? '#28a745' : '#dc3545';
+                items[2].style.color = validation.requirements.lowercase ? '#28a745' : '#dc3545';
+                items[3].style.color = validation.requirements.number ? '#28a745' : '#dc3545';
+            } else {
+                // Reset colors
+                const items = document.querySelectorAll('.password-requirements-tooltip li');
+                items.forEach(item => item.style.color = '');
+            }
+        });
+        
+        // Real-time confirm password validation
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = this.value;
+            
+            if (confirmPassword && password !== confirmPassword) {
+                showFieldError('confirmPassword', 'Passwords do not match');
+            } else {
+                hideFieldError('confirmPassword');
+            }
+        });
+    </script>
+</body>
+</html>
