@@ -96,6 +96,9 @@
             padding: 20px;
             border-bottom: 1px solid #e9ecef;
             background: white;
+            height: 60px;
+            display: flex;
+            align-items: center;
         }
         
         .chat-list-header h2 {
@@ -179,21 +182,27 @@
         }
         
         .chat-header {
-            padding: 20px;
+            padding: 8px 16px;
             border-bottom: 1px solid #e9ecef;
             background: white;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .chat-header h2 {
             font-size: 1.2rem;
             color: #333;
-            margin: 0;
+            margin: 0 0 2px 0;
+            line-height: 1.2;
         }
         
         .chat-header p {
             color: #666;
             font-size: 0.9rem;
-            margin: 5px 0 0 0;
+            margin: 0;
+            line-height: 1.3;
         }
         
         .messages-container {
@@ -205,7 +214,7 @@
         
         .message {
             display: flex;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             align-items: flex-start;
         }
         
@@ -223,7 +232,7 @@
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            margin: 0 10px;
+            margin: 0 8px;
             flex-shrink: 0;
             font-size: 12px;
         }
@@ -235,17 +244,14 @@
             object-fit: cover;
         }
         
-        .message-content {
+        .message-wrapper {
+            display: flex;
+            flex-direction: column;
             max-width: 70%;
-            background: white;
-            padding: 10px 15px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
-        .message.own .message-content {
-            background: #2196f3;
-            color: white;
+        .message.own .message-wrapper {
+            align-items: flex-end;
         }
         
         .message-author {
@@ -253,21 +259,44 @@
             font-size: 0.8rem;
             margin-bottom: 4px;
             color: #666;
+            padding: 0 5px;
         }
         
-        .message.own .message-author {
-            color: rgba(255, 255, 255, 0.8);
+        .message-content {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            min-height: 32px;
+        }
+        
+        .message.own .message-content {
+            background: #2196f3;
+            color: white;
         }
         
         .message-text {
             font-size: 0.9rem;
             line-height: 1.4;
+            margin: 0;
+            word-wrap: break-word;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            padding-right: 4px;
         }
         
         .message-time {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #999;
-            margin-top: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            align-self: flex-end;
+            padding: 4px 10px;
+            padding-left: 0px;
         }
         
         .message.own .message-time {
@@ -323,7 +352,7 @@
                 width: 100%;
             }
             
-            .message-content {
+            .message-wrapper {
                 max-width: 85%;
             }
             
@@ -629,12 +658,17 @@
                 minute: '2-digit'
             });
             
+            // Check if this is a group chat (show author names only for group chats)
+            const isGroupChat = chat && !chat.isPersonal;
+            
             messageDiv.innerHTML = `
                 <div class="message-avatar">${authorInitials}</div>
-                <div class="message-content">
-                    ${!isOwnMessage ? `<div class="message-author">${escapeHtml(authorName)}</div>` : ''}
-                    <div class="message-text">${escapeHtml(message.text || '[Media]')}</div>
-                    <div class="message-time">${messageTime}</div>
+                <div class="message-wrapper">
+                    ${(isGroupChat && !isOwnMessage) ? `<div class="message-author">${escapeHtml(authorName)}</div>` : ''}
+                    <div class="message-content">
+                        <div class="message-text">${escapeHtml(message.text || '[Media]')}</div>
+                        <div class="message-time">${messageTime}</div>
+                    </div>
                 </div>
             `;
             
