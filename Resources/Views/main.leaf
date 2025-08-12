@@ -1207,14 +1207,34 @@
                 
                 websocket.onmessage = function(event) {
                     console.log('WebSocket received:', event.data);
-                    try {
-                        const notification = JSON.parse(event.data);
-                        handleWebSocketMessage(notification);
-                    } catch (error) {
-                        console.error('Error parsing WebSocket message:', error);
-                        console.error('Raw message data:', event.data);
-                        console.error('Message type:', typeof event.data);
-                        console.error('First 100 characters:', event.data.substring(0, 100));
+                    
+                    // Handle both text and binary (Blob) messages
+                    if (event.data instanceof Blob) {
+                        // Convert Blob to text
+                        const reader = new FileReader();
+                        reader.onload = function() {
+                            try {
+                                console.log('Blob content as text:', reader.result);
+                                const notification = JSON.parse(reader.result);
+                                handleWebSocketMessage(notification);
+                            } catch (error) {
+                                console.error('Error parsing Blob message as JSON:', error);
+                                console.error('Blob text content:', reader.result);
+                                console.error('First 100 characters:', reader.result.substring(0, 100));
+                            }
+                        };
+                        reader.readAsText(event.data);
+                    } else {
+                        // Handle text messages normally
+                        try {
+                            const notification = JSON.parse(event.data);
+                            handleWebSocketMessage(notification);
+                        } catch (error) {
+                            console.error('Error parsing WebSocket message:', error);
+                            console.error('Raw message data:', event.data);
+                            console.error('Message type:', typeof event.data);
+                            console.error('First 100 characters:', event.data.substring(0, 100));
+                        }
                     }
                 };
                 
