@@ -236,6 +236,7 @@
             overflow-y: auto;
             padding: 20px;
             background: #fafafa;
+            min-height: 0;
         }
         
         .message {
@@ -287,10 +288,21 @@
             display: flex;
             flex-direction: column;
             max-width: 70%;
+            position: relative;
         }
         
         .message.own .message-wrapper {
             align-items: flex-end;
+        }
+        
+        .message-wrapper .message-content-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 0;
+        }
+        
+        .message.own .message-content-row {
+            justify-content: flex-end;
         }
         
         .message-author {
@@ -316,39 +328,39 @@
             color: white;
         }
         
-        /* Message grouping styles - inward corners always 16px */
-        /* Regular messages (left side) - top-right, bottom-right always 16px */
+        /* Message grouping styles with correct corner radius logic - higher specificity */
+        /* Regular messages (left side) - top-right, bottom-right always 16px (positions 1,2) */
         .message.group-first .message-content {
-            border-radius: 16px 16px 16px 3px;
+            border-radius: 16px 16px 16px 3px !important;
         }
         
         .message.group-middle .message-content {
-            border-radius: 3px 16px 16px 3px;
+            border-radius: 3px 16px 16px 3px !important;
         }
         
         .message.group-last .message-content {
-            border-radius: 3px 16px 16px 16px;
+            border-radius: 3px 16px 16px 16px !important;
         }
         
         .message.group-single .message-content {
-            border-radius: 16px;
+            border-radius: 16px 16px 16px 16px !important;
         }
         
-        /* Own messages (right side) - top-left, bottom-left always 16px */
+        /* Own messages (right side) - top-left, bottom-left always 16px (positions 0,3) */
         .message.own.group-first .message-content {
-            border-radius: 16px 16px 3px 16px;
+            border-radius: 16px 16px 3px 16px !important;
         }
         
         .message.own.group-middle .message-content {
-            border-radius: 16px 3px 3px 16px;
+            border-radius: 16px 3px 3px 16px !important;
         }
         
         .message.own.group-last .message-content {
-            border-radius: 16px 3px 16px 16px;
+            border-radius: 16px 3px 16px 16px !important;
         }
         
         .message.own.group-single .message-content {
-            border-radius: 16px;
+            border-radius: 16px 16px 16px 16px !important;
         }
         
         .message-text {
@@ -384,6 +396,75 @@
             height: 100%;
             color: #666;
             font-size: 1.1rem;
+        }
+        
+        .message-input-container {
+            padding: 15px 20px;
+            border-top: 1px solid #e9ecef;
+            background: white;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        
+        .message-input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            resize: none;
+            max-height: 100px;
+            overflow-y: auto;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+        
+        .send-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #2196f3;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+        
+        .send-button.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        
+        .send-button:hover {
+            background: #1976d2;
+        }
+        
+        .message-error {
+            color: #e74c3c;
+            font-size: 16px;
+            margin-right: 8px;
+            cursor: pointer;
+            align-self: flex-end;
+            padding-bottom: 3px;
+            flex-shrink: 0;
+        }
+        
+        .message.sending {
+            opacity: 0.7;
         }
         
         @media (max-width: 768px) {
@@ -480,6 +561,13 @@
                         Select a chat to start messaging
                     </div>
                 </div>
+                
+                <div class="message-input-container" id="messageInputContainer" style="display: none;">
+                    <textarea class="message-input" id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+                    <button class="send-button" id="sendButton" onclick="sendMessage()">
+                        <span>➤</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -489,6 +577,9 @@
         let currentUser = null;
         let currentChatId = null;
         let chats = [];
+        let websocket = null;
+        let deviceSessionId = null;
+        let pendingMessages = new Map(); // Track messages being sent
         
         // Get cookie function
         function getCookie(name) {
@@ -546,8 +637,17 @@
                     currentUser = JSON.parse(userInfo);
                     document.getElementById('userName').textContent = currentUser.name || currentUser.username || 'User';
                     
-                    // Initialize chat interface
+                    // Get device session ID for WebSocket
+                    deviceSessionId = getDeviceSessionId();
+                    
+                    // Initialize everything
                     await initializeChat();
+                    initializeMessageInput();
+                    
+                    // Initialize WebSocket if device session ID is available
+                    if (deviceSessionId) {
+                        initializeWebSocket();
+                    }
                 } catch (e) {
                     console.error('Error parsing user info:', e);
                 }
@@ -605,6 +705,7 @@
         function createChatItem(chat) {
             const item = document.createElement('div');
             item.className = 'chat-item';
+            item.dataset.chatId = chat.id; // Add chat ID as data attribute
             item.onclick = () => selectChat(chat.id);
             
             // Determine chat name and avatar
@@ -674,6 +775,10 @@
             }
             
             chatHeader.style.display = 'flex';
+            
+            // Show message input
+            const messageInputContainer = document.getElementById('messageInputContainer');
+            messageInputContainer.style.display = 'flex';
             
             // Load messages
             await loadMessages(chatId);
@@ -752,6 +857,15 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
             
+            // Set the author ID and local ID as data attributes
+            messageDiv.dataset.authorId = message.authorId;
+            if (message.localId) {
+                messageDiv.dataset.localId = message.localId;
+            }
+            if (message.id) {
+                messageDiv.dataset.messageId = message.id;
+            }
+            
             const isOwnMessage = currentUser && message.authorId === currentUser.id;
             if (isOwnMessage) {
                 messageDiv.classList.add('own');
@@ -786,9 +900,11 @@
                 <div class="message-avatar">${authorInitials}</div>
                 <div class="message-wrapper">
                     ${(isGroupChat && !isOwnMessage) ? `<div class="message-author">${escapeHtml(authorName)}</div>` : ''}
-                    <div class="message-content">
-                        <div class="message-text">${escapeHtml(message.text || '[Media]')}</div>
-                        <div class="message-time">${messageTime}</div>
+                    <div class="message-content-row">
+                        <div class="message-content">
+                            <div class="message-text">${escapeHtml(message.text || '[Media]')}</div>
+                            <div class="message-time">${messageTime}</div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -811,6 +927,358 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        // Message input handling
+        function initializeMessageInput() {
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            
+            messageInput.addEventListener('input', function() {
+                // Auto-resize textarea
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+                
+                // Show/hide send button
+                const hasText = this.value.trim().length > 0;
+                sendButton.classList.toggle('visible', hasText);
+            });
+            
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (this.value.trim()) {
+                        sendMessage();
+                    }
+                }
+            });
+        }
+        
+        // Generate local ID for messages
+        function generateLocalId() {
+            return `${currentUser.id}+${crypto.randomUUID()}`;
+        }
+        
+        // Send message
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value.trim();
+            
+            if (!text || !currentChatId) return;
+            
+            const localId = generateLocalId();
+            
+            // Create message object
+            const message = {
+                localId: localId,
+                chatId: currentChatId,
+                authorId: currentUser.id,
+                text: text,
+                createdAt: new Date().toISOString(),
+                isVisible: true,
+                attachments: [],
+                readMarks: [],
+                isPending: true
+            };
+            
+            // Clear input and hide send button
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            document.getElementById('sendButton').classList.remove('visible');
+            
+            // Add message to pending list
+            pendingMessages.set(localId, message);
+            
+            // Display message immediately with sending state
+            addMessageToChat(message, true);
+            
+            // Update chat list with new message
+            updateChatListWithMessage(message);
+            
+            // Send to server using the shared function
+            await sendMessageToServer(message);
+        }
+        
+        // Add message to chat with animation
+        function addMessageToChat(message, animated = true) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            // Remove "no chat selected" message if present
+            const noChat = messagesContainer.querySelector('.no-chat-selected');
+            if (noChat) {
+                noChat.remove();
+            }
+            
+            // Determine grouping for the new message
+            const existingMessages = Array.from(messagesContainer.children);
+            const lastMessage = existingMessages[existingMessages.length - 1];
+            let isAuthorChange = true;
+            let initialGroupPosition = 'single';
+            
+            if (lastMessage && lastMessage.dataset.authorId) {
+                isAuthorChange = lastMessage.dataset.authorId !== message.authorId.toString();
+                if (!isAuthorChange) {
+                    // Same author as previous message - this will be 'last' and previous should be updated
+                    initialGroupPosition = 'last';
+                }
+            }
+            
+            // Create message element
+            const messageWithGrouping = {
+                ...message,
+                groupPosition: initialGroupPosition,
+                isAuthorChange: isAuthorChange
+            };
+            
+            const messageElement = createMessageElement(messageWithGrouping);
+            
+            if (message.isPending) {
+                messageElement.classList.add('sending');
+            }
+            
+            if (animated) {
+                messageElement.style.opacity = '0';
+                messageElement.style.transform = 'translateY(20px)';
+                messagesContainer.appendChild(messageElement);
+                
+                // Trigger animation
+                requestAnimationFrame(() => {
+                    messageElement.style.transition = 'all 0.3s ease';
+                    messageElement.style.opacity = '1';
+                    messageElement.style.transform = 'translateY(0)';
+                });
+            } else {
+                messagesContainer.appendChild(messageElement);
+            }
+            
+            // Scroll to bottom
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, animated ? 300 : 0);
+            
+            // Update grouping for all messages to ensure consistency
+            updateMessageGrouping();
+        }
+        
+        // Update message grouping
+        function updateMessageGrouping() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messages = Array.from(messagesContainer.children);
+            
+            console.log('Updating message grouping for', messages.length, 'messages');
+            
+            messages.forEach((messageEl, index) => {
+                const prevMessage = index > 0 ? messages[index - 1] : null;
+                const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+                
+                const currentAuthor = messageEl.dataset.authorId;
+                const prevAuthor = prevMessage?.dataset.authorId;
+                const nextAuthor = nextMessage?.dataset.authorId;
+                
+                const sameAsPrev = prevAuthor === currentAuthor;
+                const sameAsNext = nextAuthor === currentAuthor;
+                
+                // Remove existing group classes
+                messageEl.classList.remove('group-single', 'group-first', 'group-middle', 'group-last');
+                
+                let groupPosition;
+                if (!sameAsPrev && !sameAsNext) {
+                    groupPosition = 'single';
+                } else if (!sameAsPrev && sameAsNext) {
+                    groupPosition = 'first';
+                } else if (sameAsPrev && sameAsNext) {
+                    groupPosition = 'middle';
+                } else if (sameAsPrev && !sameAsNext) {
+                    groupPosition = 'last';
+                }
+                
+                messageEl.classList.add(`group-${groupPosition}`);
+                
+                console.log(`Message ${index}: author=${currentAuthor}, prev=${prevAuthor}, next=${nextAuthor}, position=${groupPosition}, classes=${messageEl.className}`);
+            });
+        }
+        
+        // Update existing message
+        function updateMessageInChat(localId, serverMessage) {
+            const messageElement = document.querySelector(`[data-local-id="${localId}"]`);
+            if (messageElement) {
+                messageElement.classList.remove('sending');
+                messageElement.dataset.messageId = serverMessage.id;
+                // Update any other properties if needed
+            }
+        }
+        
+        // Mark message as failed
+        function markMessageAsFailed(localId) {
+            const messageElement = document.querySelector(`[data-local-id="${localId}"]`);
+            if (messageElement) {
+                messageElement.classList.remove('sending');
+                messageElement.classList.add('error');
+                
+                // Add error indicator in front of the message balloon
+                const errorIndicator = document.createElement('span');
+                errorIndicator.className = 'message-error';
+                errorIndicator.innerHTML = '⚠️';
+                errorIndicator.title = 'Failed to send. Click to retry.';
+                errorIndicator.onclick = () => retryMessage(localId);
+                
+                const messageContentRow = messageElement.querySelector('.message-content-row');
+                const messageContent = messageElement.querySelector('.message-content');
+                if (messageContentRow && messageContent) {
+                    // For own messages, insert before the message content to appear on the left
+                    messageContentRow.insertBefore(errorIndicator, messageContent);
+                }
+            }
+        }
+        
+        // Retry failed message
+        function retryMessage(localId) {
+            const message = pendingMessages.get(localId);
+            if (message) {
+                // Remove error indicator
+                const messageElement = document.querySelector(`[data-local-id="${localId}"]`);
+                const errorIndicator = messageElement?.querySelector('.message-error');
+                if (errorIndicator) {
+                    errorIndicator.remove();
+                }
+                
+                messageElement?.classList.remove('error');
+                messageElement?.classList.add('sending');
+                
+                // Retry sending
+                sendMessageToServer(message);
+            }
+        }
+        
+        // Send message to server (helper function)
+        async function sendMessageToServer(message) {
+            try {
+                const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+                const response = await fetch(`/chats/${message.chatId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        localId: message.localId,
+                        text: message.text,
+                        isVisible: true
+                    })
+                });
+                
+                if (response.ok) {
+                    const serverMessage = await response.json();
+                    pendingMessages.delete(message.localId);
+                    updateMessageInChat(message.localId, serverMessage);
+                } else {
+                    markMessageAsFailed(message.localId);
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                markMessageAsFailed(message.localId);
+            }
+        }
+        
+        // WebSocket functionality
+        function initializeWebSocket() {
+            if (!deviceSessionId) {
+                console.warn('No device session ID available for WebSocket');
+                return;
+            }
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/${deviceSessionId}`;
+            
+            try {
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function() {
+                    console.log('WebSocket connected');
+                };
+                
+                websocket.onmessage = function(event) {
+                    try {
+                        const notification = JSON.parse(event.data);
+                        handleWebSocketMessage(notification);
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error);
+                    }
+                };
+                
+                websocket.onclose = function() {
+                    console.log('WebSocket disconnected');
+                    // Attempt to reconnect after a delay
+                    setTimeout(() => {
+                        if (deviceSessionId) {
+                            initializeWebSocket();
+                        }
+                    }, 5000);
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                };
+            } catch (error) {
+                console.error('Failed to create WebSocket:', error);
+            }
+        }
+        
+        // Handle WebSocket messages
+        function handleWebSocketMessage(notification) {
+            if (notification.event === 'message' && notification.payload) {
+                const message = notification.payload;
+                
+                // Check if this is for the current chat
+                if (message.chatId === currentChatId) {
+                    // Check if we already have this message (by localId)
+                    const existingElement = document.querySelector(`[data-local-id="${message.localId}"]`);
+                    
+                    if (existingElement) {
+                        // Update existing message
+                        updateMessageInChat(message.localId, message);
+                    } else {
+                        // Add new message from others
+                        addMessageToChat(message, true);
+                    }
+                }
+                
+                // Update chat list with new message
+                updateChatListWithMessage(message);
+            }
+        }
+        
+        // Update chat list when new message arrives
+        function updateChatListWithMessage(message) {
+            const chat = chats.find(c => c.id === message.chatId);
+            if (chat) {
+                chat.lastMessage = message;
+                
+                // Find the specific chat item in the DOM and update only the last message text
+                const chatItem = document.querySelector(`[data-chat-id="${message.chatId}"]`);
+                if (chatItem) {
+                    const lastMessageElement = chatItem.querySelector('.chat-last-message');
+                    if (lastMessageElement) {
+                        const lastMessageText = message.text ? 
+                            truncateText(message.text, 30) : 
+                            '[Media]';
+                        lastMessageElement.textContent = lastMessageText;
+                    }
+                }
+            }
+        }
+        
+        // Get device session ID from storage or user info
+        function getDeviceSessionId() {
+            // Try to get from localStorage first
+            const storedSessionId = localStorage.getItem('deviceSessionId');
+            if (storedSessionId) {
+                return storedSessionId;
+            }
+            
+            // If not available, we might need to extract it from login response
+            // For now, return null and handle gracefully
+            return null;
         }
     </script>
 </body>
