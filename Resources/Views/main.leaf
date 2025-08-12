@@ -302,7 +302,7 @@
         }
         
         .message-content {
-            background: white;
+            background: linear-gradient(179deg, #ffffff 50%, #efefef 100%);
             border-radius: 16px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             display: flex;
@@ -312,7 +312,7 @@
         }
         
         .message.own .message-content {
-            background: #2196f3;
+            background: linear-gradient(179deg, #2196f3 50%, #1880e5 100%);
             color: white;
         }
         
