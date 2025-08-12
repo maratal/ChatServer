@@ -463,6 +463,16 @@
             flex-shrink: 0;
         }
         
+        .message-sending {
+            color: #666;
+            font-size: 0.75rem;
+            margin-right: 8px;
+            align-self: flex-end;
+            padding-bottom: 5px;
+            flex-shrink: 0;
+            font-style: italic;
+        }
+        
         .message.sending {
             opacity: 0.7;
         }
@@ -1036,6 +1046,11 @@
             
             if (message.isPending) {
                 messageElement.classList.add('sending');
+                // Add sending indicator for own messages
+                const isOwnMessage = currentUser && message.authorId === currentUser.id;
+                if (isOwnMessage) {
+                    addSendingIndicator(messageElement);
+                }
             }
             
             if (animated) {
@@ -1106,7 +1121,26 @@
             if (messageElement) {
                 messageElement.classList.remove('sending');
                 messageElement.dataset.messageId = serverMessage.id;
-                // Update any other properties if needed
+                
+                // Remove sending indicator
+                const sendingIndicator = messageElement.querySelector('.message-sending');
+                if (sendingIndicator) {
+                    sendingIndicator.remove();
+                }
+            }
+        }
+        
+        // Add sending indicator
+        function addSendingIndicator(messageElement) {
+            const sendingIndicator = document.createElement('span');
+            sendingIndicator.className = 'message-sending';
+            sendingIndicator.textContent = 'sending...';
+            
+            const messageContentRow = messageElement.querySelector('.message-content-row');
+            const messageContent = messageElement.querySelector('.message-content');
+            if (messageContentRow && messageContent) {
+                // For own messages, insert before the message content to appear on the left
+                messageContentRow.insertBefore(sendingIndicator, messageContent);
             }
         }
         
@@ -1116,6 +1150,12 @@
             if (messageElement) {
                 messageElement.classList.remove('sending');
                 messageElement.classList.add('error');
+                
+                // Remove sending indicator
+                const sendingIndicator = messageElement.querySelector('.message-sending');
+                if (sendingIndicator) {
+                    sendingIndicator.remove();
+                }
                 
                 // Add error indicator in front of the message balloon
                 const errorIndicator = document.createElement('span');
@@ -1146,6 +1186,11 @@
                 
                 messageElement?.classList.remove('error');
                 messageElement?.classList.add('sending');
+                
+                // Add sending indicator back
+                if (messageElement) {
+                    addSendingIndicator(messageElement);
+                }
                 
                 // Retry sending
                 sendMessageToServer(message);
