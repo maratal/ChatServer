@@ -398,13 +398,17 @@
                 
                 if (response.ok) {
                     // Store access token in both localStorage and cookie
-                    const accessToken = data.deviceSessions[Object.keys(data.deviceSessions)[0]].accessToken;
+                    const sessionInfo = data.deviceSessions[0];
+                    const accessToken = sessionInfo.accessToken;
                     localStorage.setItem('accessToken', accessToken);
                     localStorage.setItem('userInfo', JSON.stringify(data.info));
-                    
+                    localStorage.setItem('deviceSessionId', sessionInfo.id);
+                    localStorage.setItem('sessionInfo', JSON.stringify(sessionInfo));
+
                     // Set accessToken as a secure cookie
                     setCookie('accessToken', accessToken);
-                    
+                    setCookie('deviceSessionId', sessionInfo.id);
+
                     showStatus('Login successful! Redirecting...', 'success');
                     
                     // Redirect to main page

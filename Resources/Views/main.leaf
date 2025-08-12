@@ -647,6 +647,8 @@
                     // Initialize WebSocket if device session ID is available
                     if (deviceSessionId) {
                         initializeWebSocket();
+                    } else {
+                        console.error('Device sessionId is empty.');
                     }
                 } catch (e) {
                     console.error('Error parsing user info:', e);
@@ -1187,7 +1189,7 @@
                 return;
             }
             
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const protocol = 'ws:'; // window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/${deviceSessionId}`;
             
             try {
