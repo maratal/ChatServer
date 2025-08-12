@@ -240,12 +240,16 @@
         
         .message {
             display: flex;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             align-items: flex-start;
         }
         
         .message.own {
             flex-direction: row-reverse;
+        }
+        
+        .message.author-change {
+            margin-top: 10px;
         }
         
         .message-avatar {
@@ -310,6 +314,41 @@
         .message.own .message-content {
             background: #2196f3;
             color: white;
+        }
+        
+        /* Message grouping styles - inward corners always 16px */
+        /* Regular messages (left side) - top-right, bottom-right always 16px */
+        .message.group-first .message-content {
+            border-radius: 16px 16px 16px 3px;
+        }
+        
+        .message.group-middle .message-content {
+            border-radius: 3px 16px 16px 3px;
+        }
+        
+        .message.group-last .message-content {
+            border-radius: 3px 16px 16px 16px;
+        }
+        
+        .message.group-single .message-content {
+            border-radius: 16px;
+        }
+        
+        /* Own messages (right side) - top-left, bottom-left always 16px */
+        .message.own.group-first .message-content {
+            border-radius: 16px 16px 3px 16px;
+        }
+        
+        .message.own.group-middle .message-content {
+            border-radius: 16px 3px 3px 16px;
+        }
+        
+        .message.own.group-last .message-content {
+            border-radius: 16px 3px 16px 16px;
+        }
+        
+        .message.own.group-single .message-content {
+            border-radius: 16px;
         }
         
         .message-text {
@@ -674,7 +713,32 @@
             }
             
             // Reverse messages to show oldest first
-            messages.reverse().forEach(message => {
+            messages.reverse();
+            
+            // Group messages by author and determine position in group
+            const messagesWithGrouping = messages.map((message, index) => {
+                const prevMessage = index > 0 ? messages[index - 1] : null;
+                const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+                
+                const sameAsPrev = prevMessage && prevMessage.authorId === message.authorId;
+                const sameAsNext = nextMessage && nextMessage.authorId === message.authorId;
+                const isAuthorChange = !sameAsPrev;
+                
+                let groupPosition;
+                if (!sameAsPrev && !sameAsNext) {
+                    groupPosition = 'single';
+                } else if (!sameAsPrev && sameAsNext) {
+                    groupPosition = 'first';
+                } else if (sameAsPrev && sameAsNext) {
+                    groupPosition = 'middle';
+                } else if (sameAsPrev && !sameAsNext) {
+                    groupPosition = 'last';
+                }
+                
+                return { ...message, groupPosition, isAuthorChange };
+            });
+            
+            messagesWithGrouping.forEach(message => {
                 const messageElement = createMessageElement(message);
                 messagesContainer.appendChild(messageElement);
             });
@@ -691,6 +755,16 @@
             const isOwnMessage = currentUser && message.authorId === currentUser.id;
             if (isOwnMessage) {
                 messageDiv.classList.add('own');
+            }
+            
+            // Add grouping class for corner radius styling
+            if (message.groupPosition) {
+                messageDiv.classList.add(`group-${message.groupPosition}`);
+            }
+            
+            // Add author-change class for additional spacing
+            if (message.isAuthorChange) {
+                messageDiv.classList.add('author-change');
             }
             
             // Find author info
