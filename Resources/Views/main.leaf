@@ -1206,16 +1206,24 @@
                 };
                 
                 websocket.onmessage = function(event) {
+                    console.log('WebSocket received:', event.data);
                     try {
                         const notification = JSON.parse(event.data);
                         handleWebSocketMessage(notification);
                     } catch (error) {
                         console.error('Error parsing WebSocket message:', error);
+                        console.error('Raw message data:', event.data);
+                        console.error('Message type:', typeof event.data);
+                        console.error('First 100 characters:', event.data.substring(0, 100));
                     }
                 };
                 
-                websocket.onclose = function() {
+                websocket.onclose = function(event) {
                     console.log('WebSocket disconnected');
+                    console.log('Close code:', event.code);
+                    console.log('Close reason:', event.reason);
+                    console.log('Was clean:', event.wasClean);
+                    
                     // Attempt to reconnect after a delay
                     setTimeout(() => {
                         if (deviceSessionId) {
@@ -1226,6 +1234,8 @@
                 
                 websocket.onerror = function(error) {
                     console.error('WebSocket error:', error);
+                    console.error('WebSocket URL:', wsUrl);
+                    console.error('Ready state:', websocket.readyState);
                 };
             } catch (error) {
                 console.error('Failed to create WebSocket:', error);
