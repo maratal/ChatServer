@@ -1189,8 +1189,14 @@
                 return;
             }
             
+            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            if (!accessToken) {
+                console.warn('No access token available for WebSocket');
+                return;
+            }
+            
             const protocol = 'ws:'; // window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/${deviceSessionId}`;
+            const wsUrl = `${protocol}//${window.location.host}/${deviceSessionId}?token=${encodeURIComponent(accessToken)}`;
             
             try {
                 websocket = new WebSocket(wsUrl);
