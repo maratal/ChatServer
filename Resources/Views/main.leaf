@@ -399,7 +399,7 @@
         }
         
         .message-input-container {
-            padding: 15px 20px;
+            padding: 10px;
             border-top: 1px solid #e9ecef;
             background: white;
             display: flex;
@@ -411,23 +411,27 @@
             flex: 1;
             border: 1px solid #ddd;
             border-radius: 20px;
-            padding: 10px 15px;
-            font-size: 0.9rem;
+            padding: 10px;
+            font-size: 1rem;
             resize: none;
             max-height: 100px;
             overflow-y: auto;
             font-family: inherit;
-            line-height: 1.4;
+            line-height: 1;
+            min-height: 38px;
+            height: 38px;
+            transition: height 0.1s ease;
+            background: #fafafa;
         }
         
         .message-input:focus {
             outline: none;
-            border-color: #2196f3;
+            background: white;
         }
         
         .send-button {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             background: #2196f3;
             border: none;
@@ -946,15 +950,18 @@
             const messageInput = document.getElementById('messageInput');
             const sendButton = document.getElementById('sendButton');
             
-            messageInput.addEventListener('input', function() {
-                // Auto-resize textarea
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            function adjustHeight() {
+                // Reset to auto to get natural height
+                messageInput.style.height = 'auto';
+                // Set to scroll height, constrained by CSS max-height
+                messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
                 
                 // Show/hide send button
-                const hasText = this.value.trim().length > 0;
+                const hasText = messageInput.value.trim().length > 0;
                 sendButton.classList.toggle('visible', hasText);
-            });
+            }
+            
+            messageInput.addEventListener('input', adjustHeight);
             
             messageInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -964,6 +971,9 @@
                     }
                 }
             });
+            
+            // Initial adjustment
+            adjustHeight();
         }
         
         // Generate local ID for messages
@@ -995,7 +1005,7 @@
             
             // Clear input and hide send button
             messageInput.value = '';
-            messageInput.style.height = 'auto';
+            messageInput.style.height = '38px'; // Reset to initial height
             document.getElementById('sendButton').classList.remove('visible');
             
             // Add message to pending list
