@@ -468,13 +468,12 @@
         }
         
         .message-sending {
-            color: #666;
+            color: #888;
             font-size: 0.75rem;
-            margin-right: 8px;
+            margin-right: 4px;
             align-self: flex-end;
-            padding-bottom: 5px;
+            padding-bottom: 7px;
             flex-shrink: 0;
-            font-style: italic;
         }
         
         .message.sending {
@@ -1056,11 +1055,7 @@
             
             if (message.isPending) {
                 messageElement.classList.add('sending');
-                // Add sending indicator for own messages
-                const isOwnMessage = currentUser && message.authorId === currentUser.id;
-                if (isOwnMessage) {
-                    addSendingIndicator(messageElement);
-                }
+                addSendingIndicator(messageElement);
             }
             
             if (animated) {
@@ -1144,7 +1139,7 @@
         function addSendingIndicator(messageElement) {
             const sendingIndicator = document.createElement('span');
             sendingIndicator.className = 'message-sending';
-            sendingIndicator.textContent = 'sending...';
+            sendingIndicator.textContent = 'Sending...';
             
             const messageContentRow = messageElement.querySelector('.message-content-row');
             const messageContent = messageElement.querySelector('.message-content');
