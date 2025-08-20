@@ -981,8 +981,14 @@
             if (chat.isPersonal) {
                 // For personal chats, show the other user's name
                 const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
-                chatName = otherUser ? otherUser.name : 'Unknown User';
-                avatarContent = otherUser ? getInitials(otherUser.name) : '?';
+                if (!otherUser) {
+                    // Chat with oneself
+                    chatName = 'Personal Notes';
+                    avatarContent = '📝';
+                } else {
+                    chatName = otherUser.name;
+                    avatarContent = getInitials(otherUser.name);
+                }
             } else {
                 // For group chats, show chat title
                 chatName = chat.title || 'Group Chat';
@@ -1029,9 +1035,16 @@
             if (chat.isPersonal) {
                 messagesContainer.classList.add('personal-chat');
                 const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
-                chatTitle.textContent = otherUser ? otherUser.name : 'Unknown User';
-                chatSubtitle.textContent = `Personal chat`;
-                chatHeaderAvatar.textContent = otherUser ? getInitials(otherUser.name) : '?';
+                if (!otherUser || otherUser.id === currentUser?.info.id) {
+                    // Chat with oneself
+                    chatTitle.textContent = 'Personal Notes';
+                    chatSubtitle.textContent = 'Notes to yourself';
+                    chatHeaderAvatar.textContent = '📝';
+                } else {
+                    chatTitle.textContent = otherUser.name;
+                    chatSubtitle.textContent = `Personal chat`;
+                    chatHeaderAvatar.textContent = getInitials(otherUser.name);
+                }
                 chatHeaderAvatar.style.display = 'flex';
             } else {
                 messagesContainer.classList.remove('personal-chat');
