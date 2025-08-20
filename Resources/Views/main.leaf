@@ -551,6 +551,25 @@
             padding-right: 4px;
         }
         
+        .message-text a {
+            color: inherit;
+            text-decoration: underline;
+            word-break: break-all;
+        }
+        
+        .message-text a:hover {
+            text-decoration: none;
+            opacity: 0.8;
+        }
+        
+        .message.own .message-text a {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .message.own .message-text a:hover {
+            color: white;
+        }
+        
         .message-time {
             font-size: 0.7rem;
             color: #999;
@@ -1182,7 +1201,7 @@
                     ${(isGroupChat && !isOwnMessage) ? `<div class="message-author">${escapeHtml(authorName)}</div>` : ''}
                     <div class="message-content-row">
                         <div class="message-content">
-                            <div class="message-text">${escapeHtml(message.text || '[Media]')}</div>
+                            <div class="message-text">${convertLinksToClickable(message.text || '[Media]')}</div>
                             <div class="message-time">${messageTime}</div>
                         </div>
                     </div>
@@ -1207,6 +1226,33 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        function convertLinksToClickable(text) {
+            if (!text) return '';
+            
+            // First escape HTML to prevent XSS
+            const escapedText = escapeHtml(text);
+            
+            // URL regex pattern that matches http, https, and www links
+            const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+            
+            return escapedText.replace(urlRegex, function(url) {
+                let href = url;
+                let displayUrl = url;
+                
+                // Add https:// prefix for www links
+                if (url.toLowerCase().startsWith('www.')) {
+                    href = 'https://' + url;
+                }
+                
+                // Truncate display URL if it's too long
+                if (displayUrl.length > 50) {
+                    displayUrl = displayUrl.substring(0, 47) + '...';
+                }
+                
+                return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
+            });
         }
         
         // Message input handling
