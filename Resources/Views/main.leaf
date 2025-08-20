@@ -69,19 +69,19 @@
         }
         
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            height: calc(100vh - 120px);
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            height: calc(100vh - 80px);
         }
         
         .chat-container {
             display: flex;
             height: 100%;
             background: white;
-            border-radius: 12px;
+            border-radius: 0;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: none;
         }
         
         .chat-list {
@@ -694,8 +694,8 @@
             }
             
             .container {
-                padding: 10px;
-                height: calc(100vh - 100px);
+                padding: 0;
+                height: calc(100vh - 80px);
             }
                         
             .user-info {
@@ -707,7 +707,7 @@
             }
             
             .chat-container {
-                border-radius: 8px;
+                border-radius: 0;
             }
             
             .chat-list {
