@@ -930,8 +930,6 @@
                 window.location.href = '/';
                 return;
             }
-                return;
-            }
             
             // Display user info if available, otherwise fetch from API
             if (userInfo) {
