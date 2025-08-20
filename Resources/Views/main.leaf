@@ -1165,7 +1165,13 @@
                 messageDiv.dataset.messageId = message.id;
             }
             
-            const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.info.id;
+            const chat = chats.find(c => c.id === currentChatId);
+            
+            // Check if this is a personal notes chat (chat with oneself)
+            const otherUser = chat?.isPersonal ? chat.allUsers.find(user => user.id !== currentUser?.info.id) : null;
+            const isPersonalNotesChat = chat?.isPersonal && (!otherUser || otherUser.id === currentUser?.info.id);
+            
+            const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.info.id && !isPersonalNotesChat;
             if (isOwnMessage) {
                 messageDiv.classList.add('own');
             }
@@ -1181,7 +1187,6 @@
             }
             
             // Find author info
-            const chat = chats.find(c => c.id === currentChatId);
             const author = chat?.allUsers.find(user => user.id === message.authorId);
             const authorName = author ? author.name : 'Unknown';
             const authorInitials = author ? getInitials(author.name) : '?';
