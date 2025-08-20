@@ -1715,9 +1715,14 @@
             const modal = document.getElementById('userSelectionModal');
             modal.style.display = 'block';
             
+            // Force a reflow to ensure initial styles are applied
+            modal.offsetHeight;
+            
             // Trigger animation after display is set
             requestAnimationFrame(() => {
-                modal.classList.add('show');
+                requestAnimationFrame(() => {
+                    modal.classList.add('show');
+                });
             });
             
             // Reset state
