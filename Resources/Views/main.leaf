@@ -113,6 +113,182 @@
             padding: 0;
         }
         
+        .add-chat-button {
+            margin: 15px 20px;
+            padding: 12px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+        
+        .add-chat-button:hover {
+            background: #1976d2;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+        
+        .user-selection-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .user-selection-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        }
+        
+        .user-selection-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .user-selection-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #333;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s ease;
+        }
+        
+        .close-modal:hover {
+            background: #f1f1f1;
+        }
+        
+        .user-search-container {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .user-search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: #f8f9fa;
+        }
+        
+        .user-search-input:focus {
+            outline: none;
+            border-color: #2196f3;
+            background: white;
+        }
+        
+        .users-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            min-height: 200px;
+            max-height: 400px;
+        }
+        
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .user-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .user-item:last-child {
+            border-bottom: none;
+        }
+        
+        .user-item-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #666;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+        
+        .user-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .user-item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 2px;
+            font-size: 0.9rem;
+        }
+        
+        .user-item-username {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        .users-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .users-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+            text-align: center;
+        }
+        
         .chat-item {
             display: flex;
             align-items: center;
@@ -558,6 +734,9 @@
                 <div class="chat-items" id="chatItems">
                     <!-- Chat items will be loaded here -->
                 </div>
+                <button class="add-chat-button" onclick="openUserSelection()">
+                    <span>+</span>
+                </button>
             </div>
             
             <div class="chat-content">
@@ -585,6 +764,22 @@
         </div>
     </div>
     
+    <!-- User Selection Modal -->
+    <div class="user-selection-modal" id="userSelectionModal">
+        <div class="user-selection-content">
+            <div class="user-selection-header">
+                <h3>Start New Chat</h3>
+                <button class="close-modal" onclick="closeUserSelection()">&times;</button>
+            </div>
+            <div class="user-search-container">
+                <input type="text" class="user-search-input" id="userSearchInput" placeholder="Search users..." autocomplete="off">
+            </div>
+            <div class="users-list" id="usersList">
+                <div class="users-loading">Loading users...</div>
+            </div>
+        </div>
+    </div>
+    
     <script>
         // Global variables
         let currentUser = null;
@@ -593,6 +788,13 @@
         let websocket = null;
         let deviceSessionId = null;
         let pendingMessages = new Map(); // Track messages being sent
+        
+        // User selection variables
+        let currentUsers = [];
+        let userSearchTimeout = null;
+        let lastUserId = null;
+        let isLoadingUsers = false;
+        let hasMoreUsers = true;
         
         // Get cookie function
         function getCookie(name) {
@@ -1368,6 +1570,270 @@
             // For now, return null and handle gracefully
             return null;
         }
+        
+        // User Selection Functions
+        function openUserSelection() {
+            const modal = document.getElementById('userSelectionModal');
+            modal.style.display = 'flex';
+            
+            // Reset state
+            currentUsers = [];
+            lastUserId = null;
+            hasMoreUsers = true;
+            isLoadingUsers = false;
+            
+            // Clear search input
+            document.getElementById('userSearchInput').value = '';
+            
+            // Load initial users
+            loadUsers();
+            
+            // Setup search listener
+            setupUserSearch();
+            
+            // Setup scroll listener for pagination
+            setupUserScrollPagination();
+        }
+        
+        function closeUserSelection() {
+            const modal = document.getElementById('userSelectionModal');
+            modal.style.display = 'none';
+            
+            // Clear timeout if exists
+            if (userSearchTimeout) {
+                clearTimeout(userSearchTimeout);
+                userSearchTimeout = null;
+            }
+        }
+        
+        function setupUserSearch() {
+            const searchInput = document.getElementById('userSearchInput');
+            
+            searchInput.addEventListener('input', function() {
+                // Clear existing timeout
+                if (userSearchTimeout) {
+                    clearTimeout(userSearchTimeout);
+                }
+                
+                // Set new timeout for search
+                userSearchTimeout = setTimeout(() => {
+                    const query = this.value.trim();
+                    if (query) {
+                        searchUsers(query);
+                    } else {
+                        // Reset to all users if search is cleared
+                        currentUsers = [];
+                        lastUserId = null;
+                        hasMoreUsers = true;
+                        loadUsers();
+                    }
+                }, 300);
+            });
+        }
+        
+        function setupUserScrollPagination() {
+            const usersList = document.getElementById('usersList');
+            
+            usersList.addEventListener('scroll', function() {
+                // Check if scrolled to bottom
+                if (this.scrollTop + this.clientHeight >= this.scrollHeight - 5) {
+                    // Load more users if available and not currently loading
+                    if (hasMoreUsers && !isLoadingUsers && !document.getElementById('userSearchInput').value.trim()) {
+                        loadUsers();
+                    }
+                }
+            });
+        }
+        
+        async function loadUsers() {
+            if (isLoadingUsers || !hasMoreUsers) return;
+            
+            isLoadingUsers = true;
+            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            
+            try {
+                const response = await fetch(`/users/all?page=${lastUserId}&limit=20`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    
+                    // Filter out current user
+                    const filteredUsers = users.filter(user => user.id !== currentUser?.id);
+                    
+                    if (filteredUsers.length === 0) {
+                        hasMoreUsers = false;
+                    } else {
+                        currentUsers = [...currentUsers, ...filteredUsers];
+                        // Update lastUserId to the ID of the last user for cursor-based pagination
+                        lastUserId = filteredUsers[filteredUsers.length - 1].id;
+                    }
+                    
+                    displayUsers();
+                } else {
+                    console.error('Failed to load users:', response.statusText);
+                    showUsersError('Failed to load users');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showUsersError('Error loading users');
+            } finally {
+                isLoadingUsers = false;
+            }
+        }
+        
+        async function searchUsers(query) {
+            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const usersList = document.getElementById('usersList');
+            
+            // Show loading
+            usersList.innerHTML = '<div class="users-loading">Searching users...</div>';
+            
+            try {
+                const response = await fetch(`/users?s=${encodeURIComponent(query)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    
+                    // Filter out current user
+                    const filteredUsers = users.filter(user => user.id !== currentUser?.id);
+                    
+                    currentUsers = filteredUsers;
+                    displayUsers();
+                } else {
+                    console.error('Failed to search users:', response.statusText);
+                    showUsersError('Failed to search users');
+                }
+            } catch (error) {
+                console.error('Error searching users:', error);
+                showUsersError('Error searching users');
+            }
+        }
+        
+        function displayUsers() {
+            const usersList = document.getElementById('usersList');
+            
+            if (currentUsers.length === 0) {
+                usersList.innerHTML = '<div class="users-empty">No users found</div>';
+                return;
+            }
+            
+            let html = '';
+            currentUsers.forEach(user => {
+                const userInitials = getInitials(user.name || user.username || '?');
+                html += `
+                    <div class="user-item" onclick="selectUser(${user.id})">
+                        <div class="user-item-avatar">${userInitials}</div>
+                        <div class="user-item-info">
+                            <div class="user-item-name">${escapeHtml(user.name || user.username || 'Unknown User')}</div>
+                            <div class="user-item-username">@${escapeHtml(user.username || 'unknown')}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Add loading indicator if there are more users to load
+            if (hasMoreUsers && !document.getElementById('userSearchInput').value.trim()) {
+                html += '<div class="users-loading" style="padding: 20px;">Loading more users...</div>';
+            }
+            
+            usersList.innerHTML = html;
+        }
+        
+        function showUsersError(message) {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = `<div class="users-empty">${message}</div>`;
+        }
+        
+        async function selectUser(userId) {
+            // Close modal
+            closeUserSelection();
+            
+            // Create or find chat with this user
+            await createOrOpenPersonalChat(userId);
+        }
+        
+        async function createOrOpenPersonalChat(userId) {
+            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            
+            try {
+                // First, check if we already have a personal chat with this user
+                const existingChat = chats.find(chat => 
+                    chat.isPersonal && 
+                    chat.allUsers.some(user => user.id === userId)
+                );
+                
+                if (existingChat) {
+                    // Open existing chat
+                    selectChat(existingChat.id);
+                    return;
+                }
+                
+                // Create new personal chat
+                const response = await fetch('/chats', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        isPersonal: true,
+                        userIds: [userId]
+                    })
+                });
+                
+                if (response.ok) {
+                    const newChat = await response.json();
+                    
+                    // Add to chats list
+                    chats.unshift(newChat);
+                    
+                    // Refresh chat display
+                    displayChats();
+                    
+                    // Select the new chat
+                    selectChat(newChat.id);
+                } else {
+                    console.error('Failed to create chat:', response.statusText);
+                    alert('Failed to create chat. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error creating chat:', error);
+                alert('Error creating chat. Please try again.');
+            }
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('userSelectionModal');
+            if (event.target === modal) {
+                closeUserSelection();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeUserSelection();
+            }
+        });
+        
+        // Add plus button click handler when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const addChatButton = document.getElementById('addChatButton');
+            if (addChatButton) {
+                addChatButton.addEventListener('click', openUserSelection);
+            }
+        });
     </script>
 </body>
 </html>
