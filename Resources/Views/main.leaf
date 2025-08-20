@@ -1112,7 +1112,7 @@
             messagesContainer.innerHTML = '';
             
             if (messages.length === 0) {
-                messagesContainer.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No messages in this chat</div>';
+                messagesContainer.innerHTML = '<div class="no-messages" style="text-align: center; color: #666; padding: 40px;">No messages in this chat</div>';
                 return;
             }
             
@@ -1344,6 +1344,12 @@
             const noChat = messagesContainer.querySelector('.no-chat-selected');
             if (noChat) {
                 noChat.remove();
+            }
+            
+            // Remove "No messages in this chat" message if present
+            const noMessages = messagesContainer.querySelector('.no-messages');
+            if (noMessages) {
+                noMessages.remove();
             }
             
             // Determine grouping for the new message
