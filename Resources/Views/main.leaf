@@ -850,7 +850,7 @@
             if (userInfo) {
                 try {
                     currentUser = JSON.parse(userInfo);
-                    document.getElementById('userName').textContent = currentUser.name || currentUser.username || 'User';
+                    document.getElementById('userName').textContent = currentUser.info.name || currentUser.info.username || 'User';
                     
                     // Get device session ID for WebSocket
                     deviceSessionId = getDeviceSessionId();
@@ -894,7 +894,7 @@
                     // Store in localStorage for future use
                     localStorage.setItem('userInfo', JSON.stringify(currentUser));
                     
-                    document.getElementById('userName').textContent = currentUser.name || currentUser.username || 'User';
+                    document.getElementById('userName').textContent = currentUser.info.name || currentUser.info.username || 'User';
                     
                     // Get device session ID for WebSocket
                     deviceSessionId = getDeviceSessionId();
@@ -980,7 +980,7 @@
             
             if (chat.isPersonal) {
                 // For personal chats, show the other user's name
-                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.id);
+                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
                 chatName = otherUser ? otherUser.name : 'Unknown User';
                 avatarContent = otherUser ? getInitials(otherUser.name) : '?';
             } else {
@@ -1028,7 +1028,7 @@
             // Add/remove personal chat class for styling
             if (chat.isPersonal) {
                 messagesContainer.classList.add('personal-chat');
-                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.id);
+                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
                 chatTitle.textContent = otherUser ? otherUser.name : 'Unknown User';
                 chatSubtitle.textContent = `Personal chat`;
                 chatHeaderAvatar.textContent = otherUser ? getInitials(otherUser.name) : '?';
@@ -1133,7 +1133,7 @@
                 messageDiv.dataset.messageId = message.id;
             }
             
-            const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.id;
+            const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.info.id;
             if (isOwnMessage) {
                 messageDiv.classList.add('own');
             }
@@ -1229,7 +1229,7 @@
         
         // Generate local ID for messages
         function generateLocalId() {
-            return `${currentUser.id}+${crypto.randomUUID()}`;
+            return `${currentUser.info.id}+${crypto.randomUUID()}`;
         }
         
         // Send message
@@ -1237,7 +1237,7 @@
             const messageInput = document.getElementById('messageInput');
             const text = messageInput.value.trim();
             
-            if (!text || !currentChatId || !currentUser || !currentUser.id) return;
+            if (!text || !currentChatId || !currentUser || !currentUser.info.id) return;
             
             const localId = generateLocalId();
             
@@ -1245,7 +1245,7 @@
             const message = {
                 localId: localId,
                 chatId: currentChatId,
-                authorId: currentUser.id,
+                authorId: currentUser.info.id,
                 text: text,
                 createdAt: new Date().toISOString(),
                 isVisible: true,
@@ -1713,7 +1713,7 @@
                     const users = await response.json();
                     
                     // Filter out current user
-                    const filteredUsers = users.filter(user => user.id !== currentUser?.id);
+                    const filteredUsers = users.filter(user => user.id !== currentUser?.info.id);
                     
                     if (filteredUsers.length === 0) {
                         hasMoreUsers = false;
@@ -1755,7 +1755,7 @@
                     const users = await response.json();
                     
                     // Filter out current user
-                    const filteredUsers = users.filter(user => user.id !== currentUser?.id);
+                    const filteredUsers = users.filter(user => user.id !== currentUser?.info.id);
                     
                     currentUsers = filteredUsers;
                     displayUsers();
