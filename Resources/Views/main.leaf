@@ -1075,7 +1075,7 @@
             messageDiv.className = 'message';
             
             // Set the author ID and local ID as data attributes
-            messageDiv.dataset.authorId = message.authorId;
+            messageDiv.dataset.authorId = message.authorId || '';
             if (message.localId) {
                 messageDiv.dataset.localId = message.localId;
             }
@@ -1083,7 +1083,7 @@
                 messageDiv.dataset.messageId = message.id;
             }
             
-            const isOwnMessage = currentUser && message.authorId === currentUser.id;
+            const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.id;
             if (isOwnMessage) {
                 messageDiv.classList.add('own');
             }
@@ -1187,7 +1187,7 @@
             const messageInput = document.getElementById('messageInput');
             const text = messageInput.value.trim();
             
-            if (!text || !currentChatId) return;
+            if (!text || !currentChatId || !currentUser || !currentUser.id) return;
             
             const localId = generateLocalId();
             
