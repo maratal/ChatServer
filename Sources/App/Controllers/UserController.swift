@@ -33,6 +33,7 @@ struct UserController: RouteCollection {
         }
         
         protected.get(use: search)
+        protected.get("all", use: all)
     }
     
     func register(req: Request) async throws -> User.PrivateInfo {
@@ -97,6 +98,10 @@ struct UserController: RouteCollection {
     
     func user(_ req: Request) async throws -> UserInfo {
         try await service.find(id: req.objectID())
+    }
+    
+    func all(_ req: Request) async throws -> [UserInfo] {
+        try await service.users(from: req.objectID(), count: 25)
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {

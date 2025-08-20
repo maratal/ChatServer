@@ -6,6 +6,7 @@ protocol UsersRepository: Sendable {
     func find(id: UserID) async throws -> User?
     func save(_ user: User) async throws
     func delete(_ user: User) async throws
+    func all(from userID: UserID, count: Int) async throws -> [User]
     func search(_ s: String) async throws -> [User]
     
     func findPhoto(_ id: ResourceID) async throws -> MediaResource?
@@ -45,6 +46,15 @@ actor UsersDatabaseRepository: DatabaseRepository, UsersRepository {
     
     func delete(_ user: User) async throws {
         try await user.delete(on: database)
+    }
+    
+    func all(from userID: UserID, count: Int) async throws -> [User] {
+        try await User.query(on: database).group(.or) { query in
+            query.filter(\.$id > userID)
+        }
+        .range(..<count)
+        .with(\.$photos)
+        .all()
     }
     
     func search(_ s: String) async throws -> [User] {
