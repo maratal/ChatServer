@@ -43,12 +43,14 @@ protocol UserServiceProtocol: Sendable {
     /// Deletes photo from the current user.
     func deletePhoto(_ id: ResourceID, of user: User) async throws
     
+    /// List of `count` users starting from `userID` ordered by registration date.
+    func users(from userID: UserID, count: Int) async throws -> [UserInfo]
+    
     /// Finds user by `id`.
     /// This method works without authentication.
     func find(id: UserID) async throws -> UserInfo
     
     /// Looking for users with a `username` or `name` using the provided string as a substring for those fields.
-    /// This method works without authentication.
     func search(_ s: String) async throws -> [UserInfo]
 }
 
@@ -183,6 +185,11 @@ actor UserService: UserServiceProtocol {
         }
         try core.removeFiles(for: resource)
         try await repo.deletePhoto(resource)
+    }
+    
+    func users(from userID: UserID, count: Int) async throws -> [UserInfo] {
+        let users = try await repo.all(from: userID, count: count)
+        return users.map { $0.info() }
     }
     
     func find(id: UserID) async throws -> UserInfo {
