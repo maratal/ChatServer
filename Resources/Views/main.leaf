@@ -1652,7 +1652,7 @@
             const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
             
             try {
-                const response = await fetch(`/users/all?id=${lastUserId}&limit=20`, {
+                const response = await fetch(`/users/all?id=${lastUserId || 1}&limit=20`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`
@@ -1670,7 +1670,7 @@
                     } else {
                         currentUsers = [...currentUsers, ...filteredUsers];
                         // Update lastUserId to the ID of the last user for cursor-based pagination
-                        lastUserId = filteredUsers[filteredUsers.length - 1].id || 1;
+                        lastUserId = filteredUsers[filteredUsers.length - 1].id;
                     }
                     
                     displayUsers();
