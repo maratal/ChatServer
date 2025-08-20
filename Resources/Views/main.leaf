@@ -984,7 +984,7 @@
                 if (!otherUser) {
                     // Chat with oneself
                     chatName = 'Personal Notes';
-                    avatarContent = '📝';
+                    avatarContent = '✏️';
                 } else {
                     chatName = otherUser.name;
                     avatarContent = getInitials(otherUser.name);
@@ -1035,11 +1035,11 @@
             if (chat.isPersonal) {
                 messagesContainer.classList.add('personal-chat');
                 const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
-                if (!otherUser || otherUser.id === currentUser?.info.id) {
+                if (!otherUser) {
                     // Chat with oneself
                     chatTitle.textContent = 'Personal Notes';
                     chatSubtitle.textContent = 'Notes to yourself';
-                    chatHeaderAvatar.textContent = '📝';
+                    chatHeaderAvatar.textContent = '✏️';
                 } else {
                     chatTitle.textContent = otherUser.name;
                     chatSubtitle.textContent = `Personal chat`;
