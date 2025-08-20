@@ -918,11 +918,18 @@
         
         // Enhanced authentication check to get current user
         async function checkAuth() {
+            console.log('checkAuth called');
             const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
             const userInfo = localStorage.getItem('userInfo');
             
+            console.log('Access token:', accessToken ? 'exists' : 'missing');
+            console.log('User info:', userInfo ? 'exists' : 'missing');
+            
             if (!accessToken) {
+                console.log('No access token, redirecting to home');
                 window.location.href = '/';
+                return;
+            }
                 return;
             }
             
@@ -930,7 +937,13 @@
             if (userInfo) {
                 try {
                     currentUser = JSON.parse(userInfo);
-                    updateCurrentUserDisplay();
+                    console.log('Parsed currentUser from localStorage:', currentUser);
+                    
+                    try {
+                        updateCurrentUserDisplay();
+                    } catch (error) {
+                        console.error('Error updating current user display:', error);
+                    }
                     
                     // Get device session ID for WebSocket
                     deviceSessionId = getDeviceSessionId();
@@ -958,9 +971,11 @@
         
         // Fetch current user info from API
         async function fetchCurrentUser() {
+            console.log('fetchCurrentUser called');
             const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
             
             try {
+                console.log('Making request to /users/me');
                 const response = await fetch('/users/me', {
                     method: 'GET',
                     headers: {
@@ -968,13 +983,20 @@
                     }
                 });
                 
+                console.log('Response status:', response.status);
+                
                 if (response.ok) {
                     currentUser = await response.json();
+                    console.log('Fetched currentUser from API:', currentUser);
                     
                     // Store in localStorage for future use
                     localStorage.setItem('userInfo', JSON.stringify(currentUser));
                     
-                    updateCurrentUserDisplay();
+                    try {
+                        updateCurrentUserDisplay();
+                    } catch (error) {
+                        console.error('Error updating current user display from API:', error);
+                    }
                     
                     // Get device session ID for WebSocket
                     deviceSessionId = getDeviceSessionId();
@@ -1002,7 +1024,19 @@
         }
         
         // Check authentication when page loads
-        checkAuth();
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, calling checkAuth');
+            checkAuth();
+        });
+        
+        // Also call immediately in case DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            // Document still loading, wait for DOMContentLoaded
+        } else {
+            // Document already loaded
+            console.log('Document already loaded, calling checkAuth immediately');
+            checkAuth();
+        }
         
         // Initialize the chat interface
         async function initializeChat() {
@@ -1323,13 +1357,25 @@
         
         // Update current user display in chat list header
         function updateCurrentUserDisplay() {
-            if (!currentUser || !currentUser.info) return;
+            console.log('updateCurrentUserDisplay called', currentUser);
+            
+            if (!currentUser || !currentUser.info) {
+                console.log('No currentUser or currentUser.info');
+                return;
+            }
             
             const userName = currentUser.info.name || currentUser.info.username || 'User';
             const userInitials = getInitials(userName);
             
-            document.getElementById('currentUserName').textContent = userName;
-            document.getElementById('currentUserAvatar').textContent = userInitials;
+            console.log('Updating display with:', userName, userInitials);
+            
+            const nameElement = document.getElementById('currentUserName');
+            const avatarElement = document.getElementById('currentUserAvatar');
+            
+            console.log('Elements found:', nameElement, avatarElement);
+            
+            if (nameElement) nameElement.textContent = userName;
+            if (avatarElement) avatarElement.textContent = userInitials;
         }
         
         // Toggle menu dropdown
