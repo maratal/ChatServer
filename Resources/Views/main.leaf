@@ -846,7 +846,7 @@
                 return;
             }
             
-            // Display user info if available
+            // Display user info if available, otherwise fetch from API
             if (userInfo) {
                 try {
                     currentUser = JSON.parse(userInfo);
@@ -867,7 +867,57 @@
                     }
                 } catch (e) {
                     console.error('Error parsing user info:', e);
+                    // If parsing fails, fetch from API
+                    await fetchCurrentUser();
                 }
+            } else {
+                // If no user info in localStorage, fetch from API
+                await fetchCurrentUser();
+            }
+        }
+        
+        // Fetch current user info from API
+        async function fetchCurrentUser() {
+            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            
+            try {
+                const response = await fetch('/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    
+                    // Store in localStorage for future use
+                    localStorage.setItem('userInfo', JSON.stringify(currentUser));
+                    
+                    document.getElementById('userName').textContent = currentUser.name || currentUser.username || 'User';
+                    
+                    // Get device session ID for WebSocket
+                    deviceSessionId = getDeviceSessionId();
+                    
+                    // Initialize everything
+                    await initializeChat();
+                    initializeMessageInput();
+                    
+                    // Initialize WebSocket if device session ID is available
+                    if (deviceSessionId) {
+                        initializeWebSocket();
+                    } else {
+                        console.error('Device sessionId is empty.');
+                    }
+                } else {
+                    console.error('Failed to fetch current user:', response.statusText);
+                    // If API call fails, redirect to login
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Error fetching current user:', error);
+                // If API call fails, redirect to login
+                window.location.href = '/';
             }
         }
         
