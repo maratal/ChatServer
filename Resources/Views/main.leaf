@@ -1086,7 +1086,7 @@
             
             if (chat.isPersonal) {
                 // For personal chats, show the other user's name
-                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
+                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.id);
                 if (!otherUser) {
                     // Chat with oneself
                     chatName = 'Personal Notes';
@@ -1140,7 +1140,7 @@
             // Add/remove personal chat class for styling
             if (chat.isPersonal) {
                 messagesContainer.classList.add('personal-chat');
-                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
+                const otherUser = chat.allUsers.find(user => user.id !== currentUser?.id);
                 if (!otherUser) {
                     // Chat with oneself
                     chatTitle.textContent = 'Personal Notes';
@@ -1255,10 +1255,10 @@
             const chat = chats.find(c => c.id === currentChatId);
             
             // Check if this is a personal notes chat (chat with oneself)
-            const otherUser = chat?.isPersonal ? chat.allUsers.find(user => user.id !== currentUser?.info.id) : null;
-            const isPersonalNotesChat = chat?.isPersonal && (!otherUser || otherUser.id === currentUser?.info.id);
+            const otherUser = chat?.isPersonal ? chat.allUsers.find(user => user.id !== currentUser?.id) : null;
+            const isPersonalNotesChat = chat?.isPersonal && (!otherUser || otherUser.id === currentUser?.id);
             
-            const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.info.id && !isPersonalNotesChat;
+            const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.id && !isPersonalNotesChat;
             if (isOwnMessage) {
                 messageDiv.classList.add('own');
             }
@@ -1351,12 +1351,12 @@
         function updateCurrentUserDisplay() {
             console.log('updateCurrentUserDisplay called', currentUser);
             
-            if (!currentUser || !currentUser.info) {
-                console.log('No currentUser or currentUser.info');
+            if (!currentUser) {
+                console.log('No currentUser');
                 return;
             }
             
-            const userName = currentUser.info.name || currentUser.info.username || 'User';
+            const userName = currentUser.name || currentUser.username || 'User';
             const userInitials = getInitials(userName);
             
             console.log('Updating display with:', userName, userInitials);
@@ -1419,7 +1419,7 @@
         
         // Generate local ID for messages
         function generateLocalId() {
-            return `${currentUser.info.id}+${crypto.randomUUID()}`;
+            return `${currentUser.id}+${crypto.randomUUID()}`;
         }
         
         // Send message
@@ -1427,7 +1427,7 @@
             const messageInput = document.getElementById('messageInput');
             const text = messageInput.value.trim();
             
-            if (!text || !currentChatId || !currentUser || !currentUser.info.id) return;
+            if (!text || !currentChatId || !currentUser || !currentUser.id) return;
             
             const localId = generateLocalId();
             
@@ -1435,7 +1435,7 @@
             const message = {
                 localId: localId,
                 chatId: currentChatId,
-                authorId: currentUser.info.id,
+                authorId: currentUser.id,
                 text: text,
                 createdAt: new Date().toISOString(),
                 isVisible: true,
