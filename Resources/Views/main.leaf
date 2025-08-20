@@ -1712,15 +1712,16 @@
                 if (response.ok) {
                     const users = await response.json();
                     
-                    // Filter out current user
-                    const filteredUsers = users.filter(user => user.id !== currentUser?.info.id);
-                    
-                    if (filteredUsers.length === 0) {
-                        hasMoreUsers = false;
-                    } else {
-                        currentUsers = [...currentUsers, ...filteredUsers];
+                    // Add users to current users
+                    if (users.length > 0) {
+                        currentUsers = [...currentUsers, ...users];
                         // Update lastUserId to the ID of the last user for cursor-based pagination
-                        lastUserId = filteredUsers[filteredUsers.length - 1].id;
+                        lastUserId = users[users.length - 1].id;
+                    }
+                    
+                    // Set hasMoreUsers to false if we got less than the requested amount (20)
+                    if (users.length < 20) {
+                        hasMoreUsers = false;
                     }
                     
                     displayUsers();
@@ -1754,10 +1755,7 @@
                 if (response.ok) {
                     const users = await response.json();
                     
-                    // Filter out current user
-                    const filteredUsers = users.filter(user => user.id !== currentUser?.info.id);
-                    
-                    currentUsers = filteredUsers;
+                    currentUsers = users;
                     displayUsers();
                 } else {
                     console.error('Failed to search users:', response.statusText);
