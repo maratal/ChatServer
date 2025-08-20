@@ -1024,9 +1024,9 @@
         }
         
         // Check authentication when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('DOM loaded, calling checkAuth');
-            checkAuth();
+            await checkAuth();
         });
         
         // Also call immediately in case DOMContentLoaded already fired
@@ -1035,7 +1035,9 @@
         } else {
             // Document already loaded
             console.log('Document already loaded, calling checkAuth immediately');
-            checkAuth();
+            checkAuth().catch(error => {
+                console.error('Error in checkAuth:', error);
+            });
         }
         
         // Initialize the chat interface
