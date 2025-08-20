@@ -143,56 +143,69 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.3);
             display: none;
-            align-items: center;
-            justify-content: center;
             z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .user-selection-modal.show {
+            opacity: 1;
         }
         
         .user-selection-content {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 100%;
+            max-width: 400px;
             background: white;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 70vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .user-selection-modal.show .user-selection-content {
+            transform: translateX(0);
         }
         
         .user-selection-header {
-            padding: 20px;
+            padding: 16px 20px;
             border-bottom: 1px solid #e9ecef;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: #fafafa;
+            min-height: 60px;
         }
         
         .user-selection-header h3 {
             margin: 0;
-            font-size: 1.3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
             color: #333;
+            text-align: center;
+            flex: 1;
         }
         
         .close-modal {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 16px;
             cursor: pointer;
-            color: #666;
-            padding: 0;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background 0.2s ease;
+            color: #007AFF;
+            padding: 8px;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
         }
         
         .close-modal:hover {
-            background: #f1f1f1;
+            background-color: rgba(0, 122, 255, 0.1);
         }
         
         .user-search-container {
@@ -730,6 +743,11 @@
                 height: 28px;
                 font-size: 11px;
             }
+            
+            .user-selection-content {
+                width: 100%;
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -787,8 +805,9 @@
     <div class="user-selection-modal" id="userSelectionModal">
         <div class="user-selection-content">
             <div class="user-selection-header">
+                <button class="close-modal" onclick="closeUserSelection()">Cancel</button>
                 <h3>Start New Chat</h3>
-                <button class="close-modal" onclick="closeUserSelection()">&times;</button>
+                <div style="width: 60px;"></div> <!-- Spacer for center alignment -->
             </div>
             <div class="user-search-container">
                 <input type="text" class="user-search-input" id="userSearchInput" placeholder="Search users..." autocomplete="off">
@@ -1694,7 +1713,12 @@
         // User Selection Functions
         function openUserSelection() {
             const modal = document.getElementById('userSelectionModal');
-            modal.style.display = 'flex';
+            modal.style.display = 'block';
+            
+            // Trigger animation after display is set
+            requestAnimationFrame(() => {
+                modal.classList.add('show');
+            });
             
             // Reset state
             currentUsers = [];
@@ -1717,7 +1741,12 @@
         
         function closeUserSelection() {
             const modal = document.getElementById('userSelectionModal');
-            modal.style.display = 'none';
+            modal.classList.remove('show');
+            
+            // Hide modal after animation completes
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
             
             // Clear timeout if exists
             if (userSearchTimeout) {
