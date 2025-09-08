@@ -350,13 +350,6 @@
     </div>
     
     <script>
-        // Set cookie function
-        function setCookie(name, value, days = 30) {
-            const date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            const expires = "expires=" + date.toUTCString();
-            document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Strict;Secure";
-        }
         
         // Generate a unique device ID
         function generateUUID() {
@@ -364,6 +357,36 @@
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
+        }
+        
+        // Centralized registration function
+        async function performRegistration(name, username, password, deviceInfo) {
+            const response = await fetch('/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    username: username,
+                    password: password,
+                    deviceInfo: deviceInfo
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Store user data with access token in currentUser
+                const currentUserData = {
+                    info: data.info,
+                    session: data.deviceSessions[0]
+                };
+                localStorage.setItem('currentUser', JSON.stringify(currentUserData));
+                return { success: true, data: currentUserData };
+            } else {
+                return { success: false, error: data, status: response.status };
+            }
         }
         
         // Get device info automatically
@@ -530,30 +553,9 @@
             }
             
             try {
-                const response = await fetch('/users', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name: formData.name,
-                        username: formData.username,
-                        password: formData.password,
-                        deviceInfo: formData.deviceInfo
-                    })
-                });
+                const result = await performRegistration(formData.name, formData.username, formData.password, formData.deviceInfo);
                 
-                const data = await response.json();
-                
-                if (response.ok) {
-                    // Store access token in both localStorage and cookie
-                    const accessToken = data.deviceSessions[Object.keys(data.deviceSessions)[0]].accessToken;
-                    localStorage.setItem('accessToken', accessToken);
-                    localStorage.setItem('userInfo', JSON.stringify(data));
-                    
-                    // Set accessToken as a secure cookie
-                    setCookie('accessToken', accessToken);
-                    
+                if (result.success) {
                     showStatus('Account created successfully! Redirecting...', 'success');
                     
                     // Redirect to main page
@@ -562,6 +564,8 @@
                     }, 0);
                 } else {
                     // Handle specific error cases
+                    const response = { status: result.status };
+                    const data = result.error;
                     if (response.status === 409) {
                         showFieldError('username', 'Username already exists');
                     } else if (response.status === 400) {

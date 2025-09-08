@@ -876,22 +876,9 @@
         let isLoadingUsers = false;
         let hasMoreUsers = true;
         
-        // Get cookie function
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return null;
-        }
-        
-        // Delete cookie function
-        function deleteCookie(name) {
-            document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        }
-        
         // Logout function
         async function logout() {
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const accessToken = getAccessToken();
             
             if (accessToken) {
                 try {
@@ -907,10 +894,8 @@
                 }
             }
             
-            // Clear local storage and cookies
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('userInfo');
-            deleteCookie('accessToken');
+            // Clear local storage
+            localStorage.removeItem('currentUser');
             
             // Redirect to home page
             window.location.href = '/';
@@ -919,104 +904,49 @@
         // Enhanced authentication check to get current user
         async function checkAuth() {
             console.log('checkAuth called');
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
-            const userInfo = localStorage.getItem('userInfo');
+            const currentUserData = localStorage.getItem('currentUser');
             
-            console.log('Access token:', accessToken ? 'exists' : 'missing');
-            console.log('User info:', userInfo ? 'exists' : 'missing');
+            console.log('Current user data:', currentUserData ? 'exists' : 'missing');
             
-            if (!accessToken) {
-                console.log('No access token, redirecting to home');
+            if (!currentUserData) {
+                console.log('No current user data, redirecting to home');
                 window.location.href = '/';
                 return;
             }
             
-            // Display user info if available, otherwise fetch from API
-            if (userInfo) {
-                try {
-                    currentUser = JSON.parse(userInfo);
-                    console.log('Parsed currentUser from localStorage:', currentUser);
-                    
-                    try {
-                        updateCurrentUserDisplay();
-                    } catch (error) {
-                        console.error('Error updating current user display:', error);
-                    }
-                    
-                    // Get device session ID for WebSocket
-                    deviceSessionId = getDeviceSessionId();
-                    
-                    // Initialize everything
-                    await initializeChat();
-                    initializeMessageInput();
-                    
-                    // Initialize WebSocket if device session ID is available
-                    if (deviceSessionId) {
-                        initializeWebSocket();
-                    } else {
-                        console.error('Device sessionId is empty.');
-                    }
-                } catch (e) {
-                    console.error('Error parsing user info:', e);
-                    // If parsing fails, fetch from API
-                    await fetchCurrentUser();
-                }
-            } else {
-                // If no user info in localStorage, fetch from API
-                await fetchCurrentUser();
-            }
-        }
-        
-        // Fetch current user info from API
-        async function fetchCurrentUser() {
-            console.log('fetchCurrentUser called');
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
-            
             try {
-                console.log('Making request to /users/me');
-                const response = await fetch('/users/me', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
+                const userData = JSON.parse(currentUserData);
+                currentUser = userData;
+                console.log('Parsed currentUser from localStorage:', currentUser);
                 
-                console.log('Response status:', response.status);
-                
-                if (response.ok) {
-                    currentUser = await response.json();
-                    console.log('Fetched currentUser from API:', currentUser);
-                    
-                    // Store in localStorage for future use
-                    localStorage.setItem('userInfo', JSON.stringify(currentUser));
-                    
-                    try {
-                        updateCurrentUserDisplay();
-                    } catch (error) {
-                        console.error('Error updating current user display from API:', error);
-                    }
-                    
-                    // Get device session ID for WebSocket
-                    deviceSessionId = getDeviceSessionId();
-                    
-                    // Initialize everything
-                    await initializeChat();
-                    initializeMessageInput();
-                    
-                    // Initialize WebSocket if device session ID is available
-                    if (deviceSessionId) {
-                        initializeWebSocket();
-                    } else {
-                        console.error('Device sessionId is empty.');
-                    }
-                } else {
-                    console.error('Failed to fetch current user:', response.statusText);
-                    // If API call fails, redirect to login
+                if (!getAccessToken()) {
+                    console.log('No access token in current user data, redirecting to home');
                     window.location.href = '/';
+                    return;
                 }
-            } catch (error) {
-                console.error('Error fetching current user:', error);
-                // If API call fails, redirect to login
+                
+                try {
+                    updateCurrentUserDisplay();
+                } catch (error) {
+                    console.error('Error updating current user display:', error);
+                }
+                
+                // Get device session ID for WebSocket
+                deviceSessionId = getDeviceSessionId();
+                
+                // Initialize everything
+                await initializeChat();
+                initializeMessageInput();
+                
+                // Initialize WebSocket if device session ID is available
+                if (deviceSessionId) {
+                    initializeWebSocket();
+                } else {
+                    console.error('Device sessionId is empty.');
+                }
+            } catch (e) {
+                console.error('Error parsing current user data:', e);
+                // If parsing fails, redirect to login
                 window.location.href = '/';
             }
         }
@@ -1037,7 +967,12 @@
         
         // Load chats from API
         async function loadChats() {
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                console.error('No access token available');
+                window.location.href = '/';
+                return;
+            }
             
             try {
                 const response = await fetch('/chats/?full=1', {
@@ -1172,7 +1107,12 @@
         
         // Load messages for a chat
         async function loadMessages(chatId) {
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                console.error('No access token available');
+                window.location.href = '/';
+                return;
+            }
             
             try {
                 const response = await fetch(`/chats/${chatId}/messages?count=20`, {
@@ -1653,7 +1593,13 @@
         // Send message to server (helper function)
         async function sendMessageToServer(message) {
             try {
-                const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+                const accessToken = getAccessToken();
+                if (!accessToken) {
+                    console.error('No access token available');
+                    markMessageAsFailed(message.localId);
+                    return;
+                }
+                
                 const response = await fetch(`/chats/${message.chatId}/messages`, {
                     method: 'POST',
                     headers: {
@@ -1687,7 +1633,7 @@
                 return;
             }
             
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const accessToken = getAccessToken();
             if (!accessToken) {
                 console.warn('No access token available for WebSocket');
                 return;
@@ -1804,17 +1750,14 @@
             }
         }
         
-        // Get device session ID from storage or user info
+        // Get access token from current user session
+        function getAccessToken() {
+            return currentUser.session.accessToken;
+        }
+        
+        // Get device session ID from current user session
         function getDeviceSessionId() {
-            // Try to get from localStorage first
-            const storedSessionId = localStorage.getItem('deviceSessionId');
-            if (storedSessionId) {
-                return storedSessionId;
-            }
-            
-            // If not available, we might need to extract it from login response
-            // For now, return null and handle gracefully
-            return null;
+            return currentUser.session.id;
         }
         
         // User Selection Functions
@@ -1909,8 +1852,14 @@
         async function loadUsers() {
             if (isLoadingUsers || !hasMoreUsers) return;
             
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                console.error('No access token available');
+                showUsersError('Authentication required');
+                return;
+            }
+            
             isLoadingUsers = true;
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
             
             try {
                 const response = await fetch(`/users/all?id=${lastUserId || 1}&limit=20`, {
@@ -1949,7 +1898,13 @@
         }
         
         async function searchUsers(query) {
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                console.error('No access token available');
+                showUsersError('Authentication required');
+                return;
+            }
+            
             const usersList = document.getElementById('usersList');
             
             // Show loading
@@ -2022,7 +1977,12 @@
         }
         
         async function createOrOpenPersonalChat(userId) {
-            const accessToken = getCookie('accessToken') || localStorage.getItem('accessToken');
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                console.error('No access token available');
+                alert('Authentication required. Please refresh the page.');
+                return;
+            }
             
             try {
                 // First, check if we already have a personal chat with this user

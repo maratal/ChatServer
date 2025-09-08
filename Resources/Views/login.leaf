@@ -248,13 +248,6 @@
     </div>
     
     <script>
-        // Set cookie function
-        function setCookie(name, value, days = 30) {
-            const date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            const expires = "expires=" + date.toUTCString();
-            document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Strict;Secure";
-        }
         
         // Generate a unique device ID
         function generateUUID() {
@@ -262,6 +255,35 @@
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
+        }
+        
+        // Centralized login function
+        async function performLogin(username, password, deviceInfo) {
+            // Create Basic Auth header
+            const credentials = btoa(`${username}:${password}`);
+            
+            const response = await fetch('/users/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${credentials}`
+                },
+                body: JSON.stringify(deviceInfo)
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Store user data with access token in currentUser
+                const currentUserData = {
+                    info: data.info,
+                    session: data.deviceSessions[0]
+                };
+                localStorage.setItem('currentUser', JSON.stringify(currentUserData));
+                return { success: true, data: currentUserData };
+            } else {
+                return { success: false, error: data, status: response.status };
+            }
         }
         
         // Get device info automatically
@@ -382,33 +404,9 @@
             }
             
             try {
-                // Create Basic Auth header
-                const credentials = btoa(`${formData.username}:${formData.password}`);
+                const result = await performLogin(formData.username, formData.password, formData.deviceInfo);
                 
-                const response = await fetch('/users/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Basic ${credentials}`
-                    },
-                    body: JSON.stringify(formData.deviceInfo)
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    // Store access token in both localStorage and cookie
-                    const sessionInfo = data.deviceSessions[0];
-                    const accessToken = sessionInfo.accessToken;
-                    localStorage.setItem('accessToken', accessToken);
-                    localStorage.setItem('userInfo', JSON.stringify(data.info));
-                    localStorage.setItem('deviceSessionId', sessionInfo.id);
-                    localStorage.setItem('sessionInfo', JSON.stringify(sessionInfo));
-
-                    // Set accessToken as a secure cookie
-                    setCookie('accessToken', accessToken);
-                    setCookie('deviceSessionId', sessionInfo.id);
-
+                if (result.success) {
                     showStatus('Login successful! Redirecting...', 'success');
                     
                     // Redirect to main page
@@ -417,6 +415,8 @@
                     }, 0);
                 } else {
                     // Handle specific error cases
+                    const response = { status: result.status };
+                    const data = result.error;
                     if (response.status === 401) {
                         showFieldError('username', 'Invalid username or password');
                         showFieldError('password', 'Invalid username or password');
