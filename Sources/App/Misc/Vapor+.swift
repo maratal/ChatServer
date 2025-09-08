@@ -50,6 +50,13 @@ extension Request {
         return s.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
     
+    func urlAccessToken() throws -> String {
+        guard let s: String = query["token"] else {
+            throw Abort(.badRequest, reason: "Parameter `token` was not found in the URL.")
+        }
+        return s.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+    
     func fullInfo() -> Bool {
         guard let full: String = query["full"] else { return false }
         return full == "true" || full == "1"
