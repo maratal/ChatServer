@@ -105,14 +105,19 @@ actor ChatService: ChatServiceProtocol {
     }
     
     func createChat(with info: CreateChatRequest, by ownerId: UserID) async throws -> ChatInfo {
-        var participants = info.participants.unique().filter { $0 != ownerId }
+        var participants = info.participants.unique()
         guard participants.count > 0 else {
             throw ServiceError(.badRequest, reason: "New chat should contain at least one participant.")
         }
         
-        participants = participants + [ownerId]
+        participants = (participants + [ownerId]).unique()
         let participantsKey = Set(participants).participantsKey()
         let isPersonal = info.isPersonal ?? (participants.count == 2)
+        
+        if isPersonal && participants.count > 2 {
+            throw ServiceError(.badRequest, reason: "Personal chats can contain at most two participants.")
+        }
+        
         var chat = try await repo.find(participantsKey: participantsKey, for: ownerId, isPersonal: isPersonal)
         
         if chat == nil {
@@ -326,12 +331,13 @@ actor ChatService: ChatServiceProtocol {
         
         let chat = authorRelation.chat
         let recipientsRelations = relations.otherThen(userId)
+        let otherUserRelation = chat.isPersonal ? recipientsRelations.first : nil
         
         if chat.isPersonal {
-            guard recipientsRelations.count == 1 else {
+            guard recipientsRelations.count <= 1 else { // 0 for personal notes
                 throw ServiceError(.internalServerError, reason: "Personal chat should have only one recipient.")
             }
-            guard !recipientsRelations[0].isChatBlocked else {
+            if let isChatBlocked = otherUserRelation?.isChatBlocked, isChatBlocked {
                 throw ServiceError(.forbidden, reason: "This chat was blocked.")
             }
         }
@@ -381,10 +387,10 @@ actor ChatService: ChatServiceProtocol {
             itemsToSave.append(authorRelation)
         }
         
-        if chat.isPersonal {
-            if recipientsRelations[0].isRemovedOnDevice {
-                recipientsRelations[0].isRemovedOnDevice = false
-                itemsToSave.append(recipientsRelations[0])
+        if let otherUserRelation {
+            if otherUserRelation.isRemovedOnDevice {
+                otherUserRelation.isRemovedOnDevice = false
+                itemsToSave.append(otherUserRelation)
             }
         }
         
