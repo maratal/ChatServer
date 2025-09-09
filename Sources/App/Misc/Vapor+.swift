@@ -69,8 +69,8 @@ extension Request {
         return nil
     }
     
-    func id(from param: String) -> Int? {
-        guard let id: Int = query[param] else {
+    func idFromQuery(_ paramName: String = Parameter.id.rawValue) -> Int? {
+        guard let id: Int = query[paramName] else {
             return nil
         }
         return id

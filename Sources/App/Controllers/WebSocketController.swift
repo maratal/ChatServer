@@ -1,4 +1,5 @@
 import Vapor
+import FluentKit
 
 struct WebSocketController: RouteCollection {
 
@@ -14,7 +15,8 @@ struct WebSocketController: RouteCollection {
             do {
                 let deviceSession = try req.deviceSession()
                 try await core.wsServer.accept(socket, clientAddress: address, for: deviceSession)
-                core.logger.info("Accepted user's web socket with address '\(address)' (session \(deviceSession.id?.uuidString ?? "<empty>"))")
+                let sessionID = try deviceSession.requireID()
+                core.logger.info("Accepted user's web socket session \(sessionID) with address '\(address)'")
             }
             catch {
                 core.logger.warning("Error accepting user's web socket with address '\(address)': \(error)")

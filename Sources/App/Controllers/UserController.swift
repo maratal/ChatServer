@@ -101,7 +101,7 @@ struct UserController: RouteCollection {
     }
     
     func all(_ req: Request) async throws -> [UserInfo] {
-        try await service.users(from: req.objectID(), count: 25)
+        try await service.users(from: req.idFromQuery() ?? 1, count: 25)
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {
