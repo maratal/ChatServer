@@ -196,7 +196,7 @@ actor UserService: UserServiceProtocol {
         guard let user = try await repo.find(id: id) else {
             throw ServiceError(.notFound)
         }
-        return user.fullInfo()
+        return user.info()
     }
     
     func search(_ s: String) async throws -> [UserInfo] {
