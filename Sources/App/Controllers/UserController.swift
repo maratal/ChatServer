@@ -8,19 +8,19 @@ struct UserController: RouteCollection {
     let service: UserServiceProtocol
     
     func boot(routes: RoutesBuilder) throws {
-        let users = routes.grouped("users")
-        users.post(use: register)
-        users.post("resetPassword", use: resetPassword)
+        let usersPath = routes.grouped("users")
+        usersPath.post(use: register)
+        usersPath.post("resetPassword", use: resetPassword)
         
-        users.group(.id) { route in
-            route.get(use: user)
+        usersPath.group(.id) { route in
+            route.get(use: getUser)
         }
         
-        let auth = users.grouped(User.authenticator())
-        auth.post("login", use: login)
+        let authPath = usersPath.grouped(User.authenticator())
+        authPath.post("login", use: login)
         
-        let protected = users.grouped(DeviceSession.authenticator())
-        protected.group("me") { route in
+        let protectedPath = usersPath.grouped(DeviceSession.authenticator())
+        protectedPath.group("me") { route in
             route.get(use: current)
             route.put("changePassword", use: changePassword)
             route.put("setAccountKey", use: setAccountKey)
@@ -32,8 +32,11 @@ struct UserController: RouteCollection {
             route.delete("photos", .id, use: deletePhoto)
         }
         
-        protected.get(use: search)
-        protected.get("all", use: all)
+        protectedPath.get(use: search)
+        protectedPath.get("all", use: users)
+        protectedPath.group(.id) { route in
+            route.get(use: getUser)
+        }
     }
     
     func register(req: Request) async throws -> User.PrivateInfo {
@@ -96,12 +99,12 @@ struct UserController: RouteCollection {
         return .ok
     }
     
-    func user(_ req: Request) async throws -> UserInfo {
-        try await service.find(id: req.objectID())
+    func getUser(_ req: Request) async throws -> UserInfo {
+        try await service.getUser(id: req.objectID(), fullInfo: req.isLoggedIn())
     }
     
-    func all(_ req: Request) async throws -> [UserInfo] {
-        try await service.users(from: req.objectID(), count: 25)
+    func users(_ req: Request) async throws -> [UserInfo] {
+        try await service.users(from: req.idFromQuery() ?? 1, count: 25)
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {

@@ -51,13 +51,13 @@ actor PushManager: PushSender {
         }
         switch device.transport {
         case .none:
-            core.logger.info("Push transport is not set, skipping push to \(deviceToken)")
+            core.logger.info("Push transport is not set, skipping push to device with token = \(deviceToken)")
         case .apns:
             await apns.send(notification, to: device)
         case .fcm:
             await fcm.send(notification, to: device)
         case .web:
-            core.logger.info("Web push transport is not supported yet, skipping push to \(deviceToken)")
+            core.logger.info("Web push transport is not supported yet, skipping push to device with token = \(deviceToken)")
         }
     }
 }

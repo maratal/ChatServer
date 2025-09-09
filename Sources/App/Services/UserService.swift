@@ -46,9 +46,9 @@ protocol UserServiceProtocol: Sendable {
     /// List of `count` users starting from `userID` ordered by registration date.
     func users(from userID: UserID, count: Int) async throws -> [UserInfo]
     
-    /// Finds user by `id`.
-    /// This method works without authentication.
-    func find(id: UserID) async throws -> UserInfo
+    /// Get user by `id`.
+    /// Pass `fullInfo` = `true` to get additional information about a user.
+    func getUser(id: UserID, fullInfo: Bool) async throws -> UserInfo
     
     /// Looking for users with a `username` or `name` using the provided string as a substring for those fields.
     func search(_ s: String) async throws -> [UserInfo]
@@ -192,16 +192,16 @@ actor UserService: UserServiceProtocol {
         return users.map { $0.info() }
     }
     
-    func find(id: UserID) async throws -> UserInfo {
+    func getUser(id: UserID, fullInfo: Bool) async throws -> UserInfo {
         guard let user = try await repo.find(id: id) else {
             throw ServiceError(.notFound)
         }
-        return user.fullInfo()
+        return fullInfo ? user.fullInfo() : user.info()
     }
     
     func search(_ s: String) async throws -> [UserInfo] {
         if let userId = Int(s), userId > 0 {
-            return [try await find(id: userId)]
+            return [try await getUser(id: userId, fullInfo: false)]
         }
         guard s.count >= 2 else {
             throw ServiceError(.notFound)
