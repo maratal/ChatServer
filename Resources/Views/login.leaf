@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ChatServer</title>
+    <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>ChatServer</h1>
+            <p>Sign in to your account</p>
+        </div>
+        
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <button type="submit" class="login-button">Sign In</button>
+        </form>
+        
+        <div class="divider">
+            <span>or</span>
+        </div>
+        
+        <div class="register-link">
+            <a href="/register">Create new account</a>
+        </div>
+    </div>
+    
+    <script src="/js/login.js"></script>
+</body>
+</html>
