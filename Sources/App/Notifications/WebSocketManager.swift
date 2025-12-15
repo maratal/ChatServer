@@ -21,27 +21,20 @@ actor WebSocketManager: WebSocketServer, WebSocketSender {
     
     private let core: CoreService
     private var clients = [String: WebSocketProtocol]()
-    private let clientsQueue = DispatchQueue(label: "\(WebSocketManager.self).clientsQueue", attributes: .concurrent)
     
     init(core: CoreService) {
         self.core = core
     }
     
     private func setClient(_ ws: WebSocketProtocol?, for channel: String) {
-        clientsQueue.sync(flags: .barrier) {
-            if let oldClient = clients[channel] {
-                _ = oldClient.close()
-            }
-            clients[channel] = ws
+        if let oldClient = clients[channel] {
+            _ = oldClient.close()
         }
+        clients[channel] = ws
     }
     
     private func getClient(_ channel: String) -> WebSocketProtocol? {
-        var ws: WebSocketProtocol? = nil
-        clientsQueue.sync(flags: .barrier) {
-            ws = clients[channel]
-        }
-        return ws
+        clients[channel]
     }
     
     func accept(_ ws: WebSocketProtocol, clientAddress: String, for session: DeviceSession) async throws {
