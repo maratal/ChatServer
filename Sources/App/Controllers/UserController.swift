@@ -83,28 +83,32 @@ struct UserController: RouteCollection {
     }
     
     func update(_ req: Request) async throws -> UserInfo {
-        try await service.update(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).update(currentUser, with: req.content.decode(UpdateUserRequest.self))
     }
     
     func updateDevice(_ req: Request) async throws -> User.PrivateInfo {
-        try await service.updateDevice(req.deviceSession(), with: req.content.decode(UpdateDeviceSessionRequest.self))
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).updateDevice(req.deviceSession(), with: req.content.decode(UpdateDeviceSessionRequest.self))
     }
     
     func addPhoto(_ req: Request) async throws -> UserInfo {
-        try await service.addPhoto(req.currentUser(), with: req.content.decode(UpdateUserRequest.self))
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).addPhoto(currentUser, with: req.content.decode(UpdateUserRequest.self))
     }
     
     func deletePhoto(_ req: Request) async throws -> HTTPStatus {
-        try await service.deletePhoto(req.objectUUID(), of: req.currentUser())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).deletePhoto(req.objectUUID(), of: currentUser)
         return .ok
     }
     
     func getUser(_ req: Request) async throws -> UserInfo {
-        try await service.getUser(id: req.objectID(), fullInfo: req.isLoggedIn())
+        try await service.with(req.currentUser()).getUser(id: req.objectID(), fullInfo: true)
     }
     
     func users(_ req: Request) async throws -> [UserInfo] {
-        try await service.users(from: req.idFromQuery() ?? 1, count: 25)
+        try await service.users(from: req.idFromQuery(), count: 25)
     }
     
     func search(_ req: Request) async throws -> [UserInfo] {

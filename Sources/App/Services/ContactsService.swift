@@ -3,7 +3,7 @@
  */
 import Foundation
 
-protocol ContactsServiceProtocol: Sendable {
+protocol ContactsServiceProtocol: LoggedIn {
 
     /// Returns all contacts for the current user.
     func contacts(of user: User) async throws -> [ContactInfo]
@@ -18,9 +18,15 @@ protocol ContactsServiceProtocol: Sendable {
 actor ContactsService: ContactsServiceProtocol {
     
     let repo: ContactsRepository
+    var currentUser: User?
     
     init(repo: ContactsRepository) {
         self.repo = repo
+    }
+    
+    func with(_ currentUser: User?) -> ContactsService {
+        self.currentUser = currentUser
+        return self
     }
     
     func contacts(of user: User) async throws -> [ContactInfo] {

@@ -94,7 +94,7 @@ extension Request {
     }
     
 #if DEBUG
-    func currentUser() async throws -> User {
+    func requireCurrentUser() async throws -> User {
         if NSClassFromString("XCTest") != nil {
             guard let user = try await User.find(1, on: db) else {
                 throw Abort(.notFound, reason: "Test current user not found.")
@@ -104,17 +104,16 @@ extension Request {
         return try authenticatedUser()
     }
 #else
-    func currentUser() throws -> User {
+    func requireCurrentUser() throws -> User {
         try authenticatedUser()
     }
 #endif
     
-    func isLoggedIn() async -> Bool {
+    func currentUser() async -> User? {
         do {
-            _ = try await currentUser()
-            return true
+            return try await requireCurrentUser()
         } catch {
-            return false
+            return nil
         }
     }
 }

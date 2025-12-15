@@ -3,7 +3,7 @@
  */
 import Foundation
 
-protocol UserServiceProtocol: Sendable {
+protocol UserServiceProtocol: LoggedIn {
 
     /// Registers a new user account and authenticates it.
     func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo
@@ -43,8 +43,8 @@ protocol UserServiceProtocol: Sendable {
     /// Deletes photo from the current user.
     func deletePhoto(_ id: ResourceID, of user: User) async throws
     
-    /// List of `count` users starting from `userID` ordered by registration date.
-    func users(from userID: UserID, count: Int) async throws -> [UserInfo]
+    /// List of `count` users starting from `userID` (or the first user if omitted) ordered by registration date.
+    func users(from userID: UserID?, count: Int) async throws -> [UserInfo]
     
     /// Get user by `id`.
     /// Pass `fullInfo` = `true` to get additional information about a user.
@@ -58,10 +58,16 @@ actor UserService: UserServiceProtocol {
 
     private let core: CoreService
     let repo: UsersRepository
+    var currentUser: User?
     
     init(core: CoreService, repo: UsersRepository) {
         self.core = core
         self.repo = repo
+    }
+    
+    func with(_ currentUser: User?) -> UserService {
+        self.currentUser = currentUser
+        return self
     }
     
     func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo {
@@ -187,8 +193,8 @@ actor UserService: UserServiceProtocol {
         try await repo.deletePhoto(resource)
     }
     
-    func users(from userID: UserID, count: Int) async throws -> [UserInfo] {
-        let users = try await repo.all(from: userID, count: count)
+    func users(from userID: UserID?, count: Int) async throws -> [UserInfo] {
+        let users = try await repo.all(from: userID ?? 1, count: count)
         return users.map { $0.info() }
     }
     
@@ -196,7 +202,7 @@ actor UserService: UserServiceProtocol {
         guard let user = try await repo.find(id: id) else {
             throw ServiceError(.notFound)
         }
-        return fullInfo ? user.fullInfo() : user.info()
+        return fullInfo && isLoggedIn ? user.fullInfo() : user.info()
     }
     
     func search(_ s: String) async throws -> [UserInfo] {

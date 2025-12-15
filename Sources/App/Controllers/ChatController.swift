@@ -41,131 +41,154 @@ struct ChatController: RouteCollection {
     }
     
     func chats(_ req: Request) async throws -> [ChatInfo] {
-        try await service.chats(with: req.currentUser().requireID(), fullInfo: req.fullInfo())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).chats(with: currentUser.requireID(), fullInfo: req.fullInfo())
     }
     
     func chat(_ req: Request) async throws -> ChatInfo {
-        try await service.chat(req.objectUUID(), with: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).chat(req.objectUUID(), with: currentUser.requireID())
     }
     
     func createChat(_ req: Request) async throws -> ChatInfo {
-        try await service.createChat(with: req.content.decode(CreateChatRequest.self),
-                                     by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).createChat(with: req.content.decode(CreateChatRequest.self),
+                                                              by: currentUser.requireID())
     }
     
     func updateChat(_ req: Request) async throws -> ChatInfo {
-        try await service.updateChat(req.objectUUID(),
-                                     with: req.content.decode(UpdateChatRequest.self),
-                                     by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).updateChat(req.objectUUID(),
+                                                              with: req.content.decode(UpdateChatRequest.self),
+                                                              by: currentUser.requireID())
     }
     
     func updateChatSettings(_ req: Request) async throws -> ChatInfo {
-        try await service.updateChatSettings(req.objectUUID(),
-                                             with: req.content.decode(UpdateChatRequest.self),
-                                             by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).updateChatSettings(req.objectUUID(),
+                                                                      with: req.content.decode(UpdateChatRequest.self),
+                                                                      by: currentUser.requireID())
     }
     
     func addChatImage(_ req: Request) async throws -> ChatInfo {
-        try await service.addChatImage(req.objectUUID(),
-                                       with: req.content.decode(UpdateChatRequest.self),
-                                       by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).addChatImage(req.objectUUID(),
+                                                                with: req.content.decode(UpdateChatRequest.self),
+                                                                by: currentUser.requireID())
     }
     
     func deleteChatImage(_ req: Request) async throws -> HTTPStatus {
-        try await service.deleteChatImage(req.objectUUID(), by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).deleteChatImage(req.objectUUID(), by: currentUser.requireID())
         return .ok
     }
     
     func deleteChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.deleteChat(req.objectUUID(), by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).deleteChat(req.objectUUID(), by: currentUser.requireID())
         return .ok
     }
     
     func exitChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.exitChat(req.objectUUID(), by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).exitChat(req.objectUUID(), by: currentUser.requireID())
         return .ok
     }
     
     func clearChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.clearChat(req.objectUUID(), by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).clearChat(req.objectUUID(), by: currentUser.requireID())
         return .ok
     }
     
     func addUsers(_ req: Request) async throws -> ChatInfo {
-        try await service.addUsers(to: req.objectUUID(),
-                                   users: req.content.decode(UpdateChatUsersRequest.self).users,
-                                   by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).addUsers(to: req.objectUUID(),
+                                                            users: req.content.decode(UpdateChatUsersRequest.self).users,
+                                                            by: currentUser.requireID())
     }
     
     func removeUsers(_ req: Request) async throws -> ChatInfo {
-        try await service.removeUsers(req.content.decode(UpdateChatUsersRequest.self).users,
-                                      from: req.objectUUID(),
-                                      by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).removeUsers(req.content.decode(UpdateChatUsersRequest.self).users,
+                                                               from: req.objectUUID(),
+                                                               by: currentUser.requireID())
     }
     
     func blockChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.blockChat(req.objectUUID(),
-                                    by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).blockChat(req.objectUUID(),
+                                                      by: currentUser.requireID())
         return .ok
     }
     
     func unblockChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.unblockChat(req.objectUUID(),
-                                      by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).unblockChat(req.objectUUID(),
+                                                        by: currentUser.requireID())
         return .ok
     }
     
     func blockUserInChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.blockUser(req.userID(),
-                                    in: req.objectUUID(),
-                                    by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).blockUser(req.userID(),
+                                                      in: req.objectUUID(),
+                                                      by: currentUser.requireID())
         return .ok
     }
     
     func unblockUserInChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.unblockUser(req.userID(),
-                                      in: req.objectUUID(),
-                                      by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).unblockUser(req.userID(),
+                                                        in: req.objectUUID(),
+                                                        by: currentUser.requireID())
         return .ok
     }
     
     func blockedUsersInChat(_ req: Request) async throws -> [UserInfo] {
-        try await service.blockedUsersInChat(req.objectUUID(),
-                                             with: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).blockedUsersInChat(req.objectUUID(),
+                                                                      with: currentUser.requireID())
     }
     
     func messages(_ req: Request) async throws -> [MessageInfo] {
-        try await service.messages(from: req.objectUUID(),
-                                   for: req.currentUser().requireID(),
-                                   before: req.idFromQuery("before"),
-                                   count: req.query["count"])
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).messages(from: req.objectUUID(),
+                                                            for: currentUser.requireID(),
+                                                            before: req.idFromQuery("before"),
+                                                            count: req.query["count"])
     }
     
     func postMessage(_ req: Request) async throws -> MessageInfo {
-        try await service.postMessage(to: req.objectUUID(),
-                                      with: req.content.decode(PostMessageRequest.self),
-                                      by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).postMessage(to: req.objectUUID(),
+                                                               with: req.content.decode(PostMessageRequest.self),
+                                                               by: currentUser.requireID())
     }
     
     func updateMessage(_ req: Request) async throws -> MessageInfo {
-        try await service.updateMessage(req.messageID(),
-                                        with: req.content.decode(UpdateMessageRequest.self),
-                                        by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).updateMessage(req.messageID(),
+                                                                 with: req.content.decode(UpdateMessageRequest.self),
+                                                                 by: currentUser.requireID())
     }
     
     func readMessage(_ req: Request) async throws -> HTTPStatus {
-        try await service.readMessage(req.messageID(), by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).readMessage(req.messageID(), by: currentUser.requireID())
         return .ok
     }
     
     func deleteMessage(_ req: Request) async throws -> MessageInfo {
-        try await service.deleteMessage(req.messageID(), by: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).deleteMessage(req.messageID(), by: currentUser.requireID())
     }
     
     func notifyChat(_ req: Request) async throws -> HTTPStatus {
-        try await service.notifyChat(req.objectUUID(),
-                                     with: req.content.decode(ChatNotificationRequest.self),
-                                     from: req.currentUser().requireID())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).notifyChat(req.objectUUID(),
+                                                       with: req.content.decode(ChatNotificationRequest.self),
+                                                       from: currentUser.requireID())
         return .ok
     }
 }

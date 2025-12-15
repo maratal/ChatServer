@@ -19,15 +19,18 @@ struct ContactsController: RouteCollection {
     }
     
     func contacts(_ req: Request) async throws -> [ContactInfo] {
-        try await service.contacts(of: req.currentUser())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).contacts(of: currentUser)
     }
     
     func addContact(_ req: Request) async throws -> ContactInfo {
-        try await service.addContact(req.content.decode(ContactInfo.self), to: req.currentUser())
+        let currentUser = try await req.requireCurrentUser()
+        return try await service.with(currentUser).addContact(req.content.decode(ContactInfo.self), to: currentUser)
     }
     
     func deleteContact(_ req: Request) async throws -> HTTPStatus {
-        try await service.deleteContact(try req.objectUUID(), from: req.currentUser())
+        let currentUser = try await req.requireCurrentUser()
+        try await service.with(currentUser).deleteContact(try req.objectUUID(), from: currentUser)
         return .ok
     }
 }

@@ -3,7 +3,7 @@
  */
 import Foundation
 
-protocol ChatServiceProtocol: Sendable {
+protocol ChatServiceProtocol: LoggedIn {
 
     /// Returns all chats where `userId` is participant.
     /// Doesn't include chats where user is blocked and chats that were removed on users devices.
@@ -85,10 +85,16 @@ actor ChatService: ChatServiceProtocol {
 
     private let core: CoreService
     let repo: ChatsRepository
+    var currentUser: User?
     
     init(core: CoreService, repo: ChatsRepository) {
         self.core = core
         self.repo = repo
+    }
+    
+    func with(_ currentUser: User?) -> ChatService {
+        self.currentUser = currentUser
+        return self
     }
     
     func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatInfo] {
