@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - ChatServer</title>
+    <link rel="stylesheet" href="/css/register.css">
+</head>
+<body>
+    <div class="register-container">
+        <div class="logo">
+            <h1>ChatServer</h1>
+            <p>Create your account</p>
+        </div>
+        
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+        
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">
+                    Password
+                    <span class="info-button" id="password-info">i</span>
+                    <div class="password-requirements-tooltip">
+                        <strong>Password requirements:</strong>
+                        <ul>
+                            <li>At least 8 characters long</li>
+                            <li>Contains at least one uppercase letter</li>
+                            <li>Contains at least one lowercase letter</li>
+                            <li>Contains at least one number</li>
+                        </ul>
+                    </div>
+                </label>
+                <input type="password" id="password" name="password" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <button type="submit" class="register-button">Create Account</button>
+        </form>
+        
+        <div class="divider">
+            <span>or</span>
+        </div>
+        
+        <div class="login-link">
+            <a href="/login">Already have an account? Sign in</a>
+        </div>
+    </div>
+    
+    <script src="/js/register.js"></script>
+</body>
+</html>
