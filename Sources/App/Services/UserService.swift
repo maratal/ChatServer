@@ -194,7 +194,7 @@ actor UserService: UserServiceProtocol {
     }
     
     func users(from userID: UserID?, count: Int) async throws -> [UserInfo] {
-        let users = try await repo.all(from: userID ?? 1, count: count)
+        let users = try await repo.all(from: userID ?? 0, count: count)
         return users.map { $0.info() }
     }
     

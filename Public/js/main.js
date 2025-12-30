@@ -1268,7 +1268,7 @@ async function loadUsers() {
     isLoadingUsers = true;
     
     try {
-        const response = await fetch(`/users/all?id=${lastUserId || 1}&limit=20`, {
+        const response = await fetch(`/users/all?id=${lastUserId || ''}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`
