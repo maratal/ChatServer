@@ -1513,8 +1513,8 @@ function displayUserInfo(user) {
     const name = user.name || user.username || 'Unknown User';
     const username = user.username || 'unknown';
     const about = user.about || '';
-    const lastAccess = user.lastAccess ? formatLastAccess(user.lastAccess) : null;
-    const isOnline = user.lastAccess ? isUserOnline(user.lastAccess) : false;
+    const lastSeen = user.lastSeen ? formatLastSeen(user.lastSeen) : null;
+    const isOnline = user.lastSeen ? isUserOnline(user.lastSeen) : false;
     
     // Get user photo if available
     const photoUrl = user.photos && user.photos.length > 0 
@@ -1537,7 +1537,7 @@ function displayUserInfo(user) {
             <div class="user-info-section-title">Status</div>
             <div class="user-info-status">
                 <span class="user-info-status-indicator ${isOnline ? '' : 'offline'}"></span>
-                <span>${isOnline ? 'Online' : lastAccess ? `Last seen ${lastAccess}` : 'Offline'}</span>
+                <span>${isOnline ? 'Online' : lastSeen ? `Last seen ${lastSeen}` : 'Offline'}</span>
             </div>
         </div>
     `;
@@ -1566,13 +1566,13 @@ function displayUserInfo(user) {
                     </svg>
                     <span>User ID: ${user.id || 'N/A'}</span>
                 </div>
-                ${lastAccess ? `
+                ${lastSeen ? `
                 <div class="user-info-meta-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
-                    <span>Last access: ${lastAccess}</span>
+                    <span>Last seen: ${lastSeen}</span>
                 </div>
                 ` : ''}
             </div>
@@ -1591,7 +1591,7 @@ function closeUserInfo() {
     }, 300);
 }
 
-function formatLastAccess(dateString) {
+function formatLastSeen(dateString) {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now - date;
@@ -1612,12 +1612,12 @@ function formatLastAccess(dateString) {
     }
 }
 
-function isUserOnline(lastAccess) {
-    const date = new Date(lastAccess);
+function isUserOnline(lastSeen) {
+    const date = new Date(lastSeen);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
-    // Consider online if last access was within 5 minutes
+    // Consider online if lastSeen was within 5 minutes
     return diffMins < 5;
 }
 

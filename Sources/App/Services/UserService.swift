@@ -149,7 +149,6 @@ actor UserService: UserServiceProtocol {
         if let about = info.about {
             user.about = about
         }
-        user.lastAccess = Date()
         try await repo.save(user)
         return user.fullInfo()
     }
@@ -202,7 +201,13 @@ actor UserService: UserServiceProtocol {
         guard let user = try await repo.find(id: id) else {
             throw ServiceError(.notFound)
         }
-        return fullInfo && isLoggedIn ? user.fullInfo() : user.info()
+        if fullInfo && isLoggedIn {
+            // TODO: improve privacy - check if the current user is not blocked by the userID and has recent incoming messages
+            try await repo.loadSessions(of: user)
+            return user.fullInfo()
+        } else {
+            return user.info()
+        }
     }
     
     func search(_ s: String) async throws -> [UserInfo] {

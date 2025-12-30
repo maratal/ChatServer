@@ -16,9 +16,6 @@ final class User: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     @Field(key: "about")
     var about: String?
     
-    @Field(key: "last_access")
-    var lastAccess: Date?
-    
     @Field(key: "password_hash")
     var passwordHash: String
     
@@ -52,7 +49,6 @@ final class User: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
         self.passwordHash = passwordHash
         self.accountKeyHash = accountKeyHash
         self.about = nil
-        self.lastAccess = nil
     }
 }
 
@@ -63,7 +59,7 @@ extension User {
         var name: String?
         var username: String
         var about: String?
-        var lastAccess: Date?
+        var lastSeen: Date?
         var photos: [MediaInfo]?
         
         init(from user: User, fullInfo: Bool) {
@@ -75,7 +71,12 @@ extension User {
             }
             if fullInfo {
                 self.about = user.about
-                self.lastAccess = user.lastAccess
+                // Calculate lastSeen from device sessions' updatedAt
+                if user.$deviceSessions.value != nil && !user.deviceSessions.isEmpty {
+                    self.lastSeen = user.deviceSessions.map { $0.updatedAt ?? Date.distantPast }.max()
+                } else {
+                    self.lastSeen = nil
+                }
             }
         }
     }
