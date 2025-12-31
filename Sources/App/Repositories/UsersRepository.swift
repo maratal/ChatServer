@@ -12,7 +12,7 @@ protocol UsersRepository: Sendable {
     func findPhoto(_ id: ResourceID) async throws -> MediaResource?
     func savePhoto(_ photo: MediaResource) async throws
     func deletePhoto(_ photo: MediaResource) async throws
-    func reloadPhotos(for user: User) async throws
+    func reloadPhotos(of user: User) async throws
     
     func saveSession(_ session: DeviceSession) async throws
     func deleteSession(of user: User) async throws
@@ -82,7 +82,7 @@ actor UsersDatabaseRepository: DatabaseRepository, UsersRepository {
         try await photo.delete(on: database)
     }
     
-    func reloadPhotos(for user: User) async throws {
+    func reloadPhotos(of user: User) async throws {
         _ = try await user.$photos.get(reload: true, on: database)
     }
     

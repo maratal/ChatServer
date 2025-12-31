@@ -66,8 +66,11 @@ extension User {
             self.id = user.id
             self.name = user.name
             self.username = user.username
-            if user.$photos.value != nil {
-                self.photos = user.photos.map { $0.info() }
+            if user.$photos.value != nil && !user.photos.isEmpty {
+                let photos = user.photos.map { $0.info() }
+                self.photos = photos.sorted {
+                    ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) // newest first
+                }
             }
             if fullInfo {
                 self.about = user.about

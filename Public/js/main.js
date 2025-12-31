@@ -513,6 +513,7 @@ function createMessageElement(message) {
     const author = chat?.allUsers.find(user => user.id === message.authorId);
     const authorName = author ? author.name : 'Unknown';
     const authorInitials = author ? getInitials(author.name) : '?';
+    const authorMainPhoto = mainPhotoForUser(author);
     
     // Add grouping class if it exists
     if (message.groupPosition) {
@@ -545,9 +546,13 @@ function createMessageElement(message) {
         ? `data-author-id="${avatarAuthorId}" data-clickable="true"` 
         : '';
     
+    const avatarContent = authorMainPhoto 
+        ? `<img src="/files/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+        : `<span class="message-avatar-initials">${authorInitials}</span>`;
+    
     messageDiv.innerHTML = `
         <span class="message-avatar-small" ${avatarDataAttrs}>
-            <span class="message-avatar-initials">${authorInitials}</span>
+            ${avatarContent}
         </span>
         <div class="message-content-wrapper">
             ${(isGroupChat && !isOwnMessage) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
@@ -568,6 +573,13 @@ function createMessageElement(message) {
 function getInitials(name) {
     if (!name) return '?';
     return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
+}
+
+function mainPhotoForUser(user) {
+    if (!user || !user.photos || !Array.isArray(user.photos) || user.photos.length === 0) return null;
+    const firstPhoto = user.photos[0];
+    if (!firstPhoto || !firstPhoto.id || !firstPhoto.fileType) return null;
+    return firstPhoto;
 }
 
 function truncateText(text, maxLength) {
@@ -624,8 +636,23 @@ function updateCurrentUserDisplay() {
     // Update sidebar current user avatar
     const sidebarAvatar = document.getElementById('sidebarCurrentUserAvatarContent');
     if (sidebarAvatar) {
-        const initials = getInitials(userName);
-        sidebarAvatar.textContent = initials;
+        const mainPhoto = mainPhotoForUser(currentUser.info);
+        
+        if (mainPhoto) {
+            // Clear and add image
+            sidebarAvatar.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = `/files/${mainPhoto.id}.${mainPhoto.fileType}`;
+            img.alt = '';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            sidebarAvatar.appendChild(img);
+        } else {
+            const initials = getInitials(userName);
+            sidebarAvatar.textContent = initials;
+        }
     }
 }
 
@@ -1506,6 +1533,10 @@ async function showUserInfo(userId) {
     }
 }
 
+// User info avatar state
+let userInfoPhotos = [];
+let userInfoCurrentPhotoIndex = 0;
+
 function displayUserInfo(user) {
     const body = document.getElementById('userInfoBody');
     
@@ -1516,16 +1547,45 @@ function displayUserInfo(user) {
     const lastSeen = user.lastSeen ? formatLastSeen(user.lastSeen) : null;
     const isOnline = user.lastSeen ? isUserOnline(user.lastSeen) : false;
     
-    // Get user photo if available
-    const photoUrl = user.photos && user.photos.length > 0 
-        ? `/files/${user.photos[0].id}` 
-        : null;
+    // Store photos globally
+    userInfoPhotos = user.photos || [];
+    userInfoCurrentPhotoIndex = 0;
+    
+    // Get current photo
+    const currentPhoto = userInfoPhotos.length > 0 ? userInfoPhotos[userInfoCurrentPhotoIndex] : null;
+    const photoUrl = currentPhoto ? `/files/${currentPhoto.id}.${currentPhoto.fileType}` : null;
+    const hasMultiplePhotos = userInfoPhotos.length > 1;
     
     let html = `
         <div class="user-info-avatar-container">
-            <div class="user-info-avatar">
-                ${photoUrl ? `<img src="${photoUrl}" alt="${escapeHtml(name)}">` : initials}
+            <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
+                ${hasMultiplePhotos ? `
+                <button class="user-profile-avatar-chevron user-profile-avatar-chevron-left" onclick="event.stopPropagation(); navigateUserInfoPhoto(-1)" title="Previous photo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m15 18-6-6 6-6"></path>
+                    </svg>
+                </button>
+                ` : ''}
+                <div class="user-info-avatar" id="userInfoAvatar" style="cursor: ${photoUrl ? 'pointer' : 'default'};">
+                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : initials}
+                </div>
+                ${hasMultiplePhotos ? `
+                <button class="user-profile-avatar-chevron user-profile-avatar-chevron-right" onclick="event.stopPropagation(); navigateUserInfoPhoto(1)" title="Next photo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m9 18 6-6-6-6"></path>
+                    </svg>
+                </button>
+                ` : ''}
             </div>
+            ${hasMultiplePhotos ? `
+            <div class="user-profile-avatar-pagination">
+                ${userInfoPhotos.map((photo, index) => `
+                    <button class="user-profile-avatar-pagination-dot ${index === userInfoCurrentPhotoIndex ? 'active' : ''}" 
+                            onclick="event.stopPropagation(); switchUserInfoPhoto(${index})" 
+                            title="Photo ${index + 1}"></button>
+                `).join('')}
+            </div>
+            ` : ''}
         </div>
         <div class="user-info-name">${escapeHtml(name)}</div>
         <div class="user-info-username">@${escapeHtml(username)}</div>
@@ -1580,6 +1640,75 @@ function displayUserInfo(user) {
     `;
     
     body.innerHTML = html;
+    
+    // Add click handler to avatar after HTML is inserted
+    const avatar = document.getElementById('userInfoAvatar');
+    if (avatar && photoUrl) {
+        avatar.addEventListener('click', function(event) {
+            // Don't open viewer if clicking on chevrons
+            if (event.target.closest('.user-profile-avatar-chevron')) {
+                return;
+            }
+            openUserInfoViewer();
+        });
+    }
+}
+
+function navigateUserInfoPhoto(direction) {
+    if (userInfoPhotos.length <= 1) return;
+    
+    userInfoCurrentPhotoIndex += direction;
+    if (userInfoCurrentPhotoIndex < 0) {
+        userInfoCurrentPhotoIndex = userInfoPhotos.length - 1;
+    } else if (userInfoCurrentPhotoIndex >= userInfoPhotos.length) {
+        userInfoCurrentPhotoIndex = 0;
+    }
+    
+    updateUserInfoAvatarDisplay();
+}
+
+function switchUserInfoPhoto(index) {
+    if (index < 0 || index >= userInfoPhotos.length) return;
+    userInfoCurrentPhotoIndex = index;
+    updateUserInfoAvatarDisplay();
+}
+
+function updateUserInfoAvatarDisplay() {
+    const avatar = document.getElementById('userInfoAvatar');
+    const avatarImg = document.getElementById('userInfoAvatarImg');
+    const currentPhoto = userInfoPhotos[userInfoCurrentPhotoIndex];
+    
+    if (!avatar) return;
+    
+    if (currentPhoto && avatarImg) {
+        avatarImg.src = `/files/${currentPhoto.id}.${currentPhoto.fileType}`;
+    } else if (currentPhoto) {
+        const img = document.createElement('img');
+        img.src = `/files/${currentPhoto.id}.${currentPhoto.fileType}`;
+        img.alt = '';
+        img.id = 'userInfoAvatarImg';
+        avatar.innerHTML = '';
+        avatar.appendChild(img);
+    }
+    
+    // Update pagination dots
+    const dots = document.querySelectorAll('#userInfoBody .user-profile-avatar-pagination-dot');
+    dots.forEach((dot, index) => {
+        if (index === userInfoCurrentPhotoIndex) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    });
+}
+
+function openUserInfoViewer() {
+    if (userInfoPhotos.length === 0) return;
+    
+    openMediaViewer(userInfoPhotos, userInfoCurrentPhotoIndex, (newIndex) => {
+        userInfoCurrentPhotoIndex = newIndex;
+        updateUserInfoAvatarDisplay();
+    });
 }
 
 function closeUserInfo() {
@@ -1648,6 +1777,11 @@ document.addEventListener('click', function(event) {
     }
     
     // Close user info modal when clicking outside
+    // Don't close if viewer is open
+    const viewer = document.getElementById('mediaViewer');
+    if (viewer && (viewer === event.target || viewer.contains(event.target))) {
+        return;
+    }
     const modal = document.getElementById('userInfoModal');
     const content = document.querySelector('.user-info-content');
     if (modal && modal.classList.contains('show') && content && !content.contains(event.target)) {
@@ -1658,7 +1792,15 @@ document.addEventListener('click', function(event) {
 // Close user info modal on Escape key
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        closeUserInfo();
+        // Don't close user info panel if viewer is open
+        const viewer = document.getElementById('mediaViewer');
+        if (viewer) {
+            return; // Viewer will handle Escape key
+        }
+        const modal = document.getElementById('userInfoModal');
+        if (modal && modal.classList.contains('show')) {
+            closeUserInfo();
+        }
     }
-});
+}, true); // Use capture phase
 

@@ -93,6 +93,7 @@ actor UserService: UserServiceProtocol {
                                           deviceToken: deviceInfo.token,
                                           pushTransport: deviceInfo.transport.rawValue)
         try await repo.saveSession(deviceSession)
+        try await repo.reloadPhotos(of: user)
         try await repo.loadSessions(of: user)
         return user.privateInfo()
     }
@@ -102,6 +103,7 @@ actor UserService: UserServiceProtocol {
     }
     
     func current(_ user: User) async throws -> User.PrivateInfo {
+        try await repo.reloadPhotos(of: user)
         try await repo.loadSessions(of: user)
         return user.privateInfo()
     }
@@ -177,7 +179,7 @@ actor UserService: UserServiceProtocol {
                                   previewWidth: info.photo?.previewWidth ?? 100,
                                   previewHeight: info.photo?.previewHeight ?? 100)
         try await repo.savePhoto(photo)
-        try await repo.reloadPhotos(for: user)
+        try await repo.reloadPhotos(of: user)
         return user.fullInfo()
     }
     
@@ -188,8 +190,12 @@ actor UserService: UserServiceProtocol {
         guard user.id == resource.photoOf?.id else {
             throw ServiceError(.forbidden)
         }
-        try core.removeFiles(for: resource)
         try await repo.deletePhoto(resource)
+        do {
+            try core.removeFiles(for: resource)
+        } catch {
+            core.logger.warning("Couldn't remove files for photo:\n\(error)")
+        }
     }
     
     func users(from userID: UserID?, count: Int) async throws -> [UserInfo] {

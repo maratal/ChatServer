@@ -96,7 +96,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
                 chat.with(\.$lastMessage)
                 chat.with(\.$images)
                 if (fullInfo) {
-                    chat.with(\.$users)
+                    chat.with(\.$users) { user in
+                        user.with(\.$photos)
+                    }
                 }
             }
             .all()
