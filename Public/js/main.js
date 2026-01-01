@@ -75,6 +75,12 @@ async function checkAuth() {
         await initializeChat();
         initializeMessageInput();
         
+        // Initialize attachment file input
+        const attachmentInput = document.getElementById('attachmentInput');
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', handleAttachmentFileSelect);
+        }
+        
         // Initialize WebSocket if device session ID is available
         if (deviceSessionId) {
             initializeWebSocket();
@@ -413,8 +419,15 @@ function displayMessages(messages) {
         const sameDateAsNext = nextMessage && 
             new Date(nextMessage.createdAt).toDateString() === messageDate.toDateString();
         
-        const shouldGroupWithPrev = sameAuthorAsPrev && closeTimeToPrev && sameDateAsPrev;
-        const shouldGroupWithNext = sameAuthorAsNext && closeTimeToNext && sameDateAsNext;
+        // Don't group if current message or adjacent messages have attachments
+        const currentHasAttachments = message.attachments && message.attachments.length > 0;
+        const prevHasAttachments = prevMessage && prevMessage.attachments && prevMessage.attachments.length > 0;
+        const nextHasAttachments = nextMessage && nextMessage.attachments && nextMessage.attachments.length > 0;
+        
+        const shouldGroupWithPrev = sameAuthorAsPrev && closeTimeToPrev && sameDateAsPrev && 
+            !currentHasAttachments && !prevHasAttachments;
+        const shouldGroupWithNext = sameAuthorAsNext && closeTimeToNext && sameDateAsNext && 
+            !currentHasAttachments && !nextHasAttachments;
         
         let groupPosition;
         if (!shouldGroupWithPrev && !shouldGroupWithNext) {
@@ -550,14 +563,77 @@ function createMessageElement(message) {
         ? `<img src="/files/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
         : `<span class="message-avatar-initials">${authorInitials}</span>`;
     
+    // Handle attachments
+    const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
+    const hasMultipleAttachments = hasAttachments && message.attachments.length > 1;
+    const messageId = message.id || message.localId;
+    
+    let attachmentHTML = '';
+    if (hasAttachments) {
+        // Filter out invalid attachments (must have id and fileType)
+        const validAttachments = message.attachments.filter(att => att && att.id && att.fileType);
+        
+        if (validAttachments.length === 0) {
+            console.warn('No valid attachments found for message:', messageId, 'attachments:', message.attachments);
+        } else {
+            const firstAttachment = validAttachments[0];
+            const hasMultipleValidAttachments = validAttachments.length > 1;
+            
+            const isImage = firstAttachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
+            const isVideo = firstAttachment.fileType.match(/^(mp4|webm|mov)$/i);
+            
+            if (!isImage && !isVideo) {
+                console.warn('Unknown attachment type:', firstAttachment.fileType, 'for message:', messageId);
+            }
+            
+            attachmentHTML = `
+                <div class="message-attachment-container" data-message-id="${messageId}" onclick="openMessageAttachmentViewer('${messageId}')" style="cursor: pointer;">
+                    ${hasMultipleValidAttachments ? `
+                    <button class="message-attachment-chevron message-attachment-chevron-left" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', -1)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m15 18-6-6 6-6"></path>
+                        </svg>
+                    </button>
+                    ` : ''}
+                    ${isImage ? `
+                    <img class="message-attachment-image" src="/files/${firstAttachment.id}.${firstAttachment.fileType}" alt="Attachment">
+                    ` : isVideo ? `
+                    <video class="message-attachment-video" controls onclick="event.stopPropagation();">
+                        <source src="/files/${firstAttachment.id}.${firstAttachment.fileType}" type="video/${firstAttachment.fileType}">
+                    </video>
+                    ` : ''}
+                    ${hasMultipleValidAttachments ? `
+                    <button class="message-attachment-chevron message-attachment-chevron-right" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', 1)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"></path>
+                        </svg>
+                    </button>
+                    ` : ''}
+                    ${hasMultipleValidAttachments ? `
+                    <div class="message-attachment-pagination" onclick="event.stopPropagation();">
+                        ${validAttachments.map((att, index) => `
+                            <button class="message-attachment-pagination-dot ${index === 0 ? 'active' : ''}" 
+                                    onclick="event.stopPropagation(); switchMessageAttachment('${messageId}', ${index})"></button>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Store valid attachments for navigation
+            messageDiv.dataset.attachments = JSON.stringify(validAttachments);
+        }
+    }
+    
     messageDiv.innerHTML = `
         <span class="message-avatar-small" ${avatarDataAttrs}>
             ${avatarContent}
         </span>
         <div class="message-content-wrapper">
             ${(isGroupChat && !isOwnMessage) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
-            <div class="message-content">
-                <p class="message-text">${convertLinksToClickable(message.text || '[Media]')}</p>
+            <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
+                ${hasAttachments ? attachmentHTML : ''}
+                ${message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : ''}
                 <div class="message-timestamp-area">
                     <span class="message-time">${messageTime}</span>
                     ${statusIcon}
@@ -566,7 +642,107 @@ function createMessageElement(message) {
         </div>
     `;
     
+    // Store attachment data for navigation (already set above if valid attachments exist)
+    if (hasAttachments && messageDiv.dataset.attachments) {
+        messageDiv.dataset.currentAttachmentIndex = '0';
+    }
+    
     return messageDiv;
+}
+
+// Navigate message attachments
+function navigateMessageAttachment(messageId, direction) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-bubble');
+    if (!messageDiv) return;
+    
+    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
+    if (attachments.length <= 1) return;
+    
+    let currentIndex = parseInt(messageDiv.dataset.currentAttachmentIndex || '0');
+    currentIndex += direction;
+    
+    if (currentIndex < 0) {
+        currentIndex = attachments.length - 1;
+    } else if (currentIndex >= attachments.length) {
+        currentIndex = 0;
+    }
+    
+    switchMessageAttachment(messageId, currentIndex);
+}
+
+// Switch message attachment
+function switchMessageAttachment(messageId, index) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-bubble');
+    if (!messageDiv) return;
+    
+    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
+    if (index < 0 || index >= attachments.length) return;
+    
+    const attachment = attachments[index];
+    const container = messageDiv.querySelector('.message-attachment-container');
+    if (!container) return;
+    
+    const isImage = attachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
+    const isVideo = attachment.fileType.match(/^(mp4|webm|mov)$/i);
+    
+    // Find and replace the current image/video element
+    const currentMedia = container.querySelector('.message-attachment-image, .message-attachment-video');
+    if (currentMedia) {
+        if (isImage) {
+            const img = document.createElement('img');
+            img.className = 'message-attachment-image';
+            img.src = `/files/${attachment.id}.${attachment.fileType}`;
+            img.alt = 'Attachment';
+            currentMedia.replaceWith(img);
+        } else if (isVideo) {
+            const video = document.createElement('video');
+            video.className = 'message-attachment-video';
+            video.controls = true;
+            const source = document.createElement('source');
+            source.src = `/files/${attachment.id}.${attachment.fileType}`;
+            source.type = `video/${attachment.fileType}`;
+            video.appendChild(source);
+            currentMedia.replaceWith(video);
+        }
+    }
+    
+    // Update pagination dots
+    const dots = container.querySelectorAll('.message-attachment-pagination-dot');
+    dots.forEach((dot, i) => {
+        if (i === index) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    });
+    
+    messageDiv.dataset.currentAttachmentIndex = index.toString();
+}
+
+// Open media viewer for message attachments
+function openMessageAttachmentViewer(messageId) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-bubble');
+    if (!messageDiv) return;
+    
+    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
+    if (attachments.length === 0) return;
+    
+    const currentIndex = parseInt(messageDiv.dataset.currentAttachmentIndex || '0');
+    
+    // Get message text
+    const messageTextElement = messageDiv.querySelector('.message-text');
+    const messageText = messageTextElement ? messageTextElement.textContent.trim() : null;
+    
+    // Convert attachments to media viewer format (with createdAt from message)
+    const messageCreatedAt = messageDiv.dataset.createdAt;
+    const mediaPhotos = attachments.map(att => ({
+        id: att.id,
+        fileType: att.fileType,
+        createdAt: messageCreatedAt // Use message creation date for all attachments
+    }));
+    
+    // Open media viewer with text
+    openMediaViewer(mediaPhotos, currentIndex, null, messageText);
 }
 
 // Utility functions
@@ -673,13 +849,212 @@ document.addEventListener('click', function(event) {
     }
 });
 
+// Attachment management
+let selectedAttachments = [];
+let attachmentUploads = new Map(); // Map of attachmentId -> { xhr, file, progress }
+
+// Open attachment file dialog
+function openAttachmentDialog() {
+    const input = document.getElementById('attachmentInput');
+    if (input) {
+        input.click();
+    }
+}
+
+// Handle attachment file selection
+function handleAttachmentFileSelect(event) {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+    
+    // Filter only images and videos
+    const mediaFiles = files.filter(file => 
+        file.type.startsWith('image/') || file.type.startsWith('video/')
+    );
+    
+    if (mediaFiles.length === 0) {
+        alert('Please select image or video files');
+        return;
+    }
+    
+    // Limit to 3 attachments total
+    const remainingSlots = 3 - selectedAttachments.length;
+    if (remainingSlots <= 0) {
+        alert('Maximum 3 attachments allowed');
+        return;
+    }
+    
+    const filesToAdd = mediaFiles.slice(0, remainingSlots);
+    
+    filesToAdd.forEach(file => {
+        const attachmentId = crypto.randomUUID();
+        selectedAttachments.push({
+            id: attachmentId,
+            file: file,
+            preview: null,
+            uploaded: false,
+            uploadProgress: 0
+        });
+    });
+    
+    updateAttachmentPreview();
+    updateSendButtonState();
+    
+    // Reset input
+    event.target.value = '';
+}
+
+// Update attachment preview area
+function updateAttachmentPreview() {
+    const previewArea = document.getElementById('attachmentPreviewArea');
+    if (!previewArea) return;
+    
+    if (selectedAttachments.length === 0) {
+        previewArea.style.display = 'none';
+        return;
+    }
+    
+    previewArea.style.display = 'block';
+    previewArea.innerHTML = '<div class="attachment-preview-container"></div>';
+    const container = previewArea.querySelector('.attachment-preview-container');
+    
+    selectedAttachments.forEach((attachment, index) => {
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'attachment-preview-item';
+        attachmentDiv.dataset.attachmentId = attachment.id;
+        
+        const isImage = attachment.file.type.startsWith('image/');
+        const isVideo = attachment.file.type.startsWith('video/');
+        
+        // Create close button first
+        const closeButton = document.createElement('button');
+        closeButton.className = 'attachment-close-button';
+        closeButton.onclick = () => removeAttachment(attachment.id);
+        closeButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"></path>
+                <path d="M6 6l12 12"></path>
+            </svg>
+        `;
+        
+        if (attachment.preview) {
+            const img = document.createElement('img');
+            img.className = 'attachment-preview-image';
+            img.src = attachment.preview;
+            img.alt = 'Preview';
+            attachmentDiv.appendChild(img);
+        } else if (isImage) {
+            // Create loading div
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'attachment-preview-loading';
+            loadingDiv.textContent = 'Loading...';
+            attachmentDiv.appendChild(loadingDiv);
+            
+            // Create img element (hidden initially)
+            const img = document.createElement('img');
+            img.className = 'attachment-preview-image';
+            img.alt = 'Preview';
+            img.style.display = 'none';
+            attachmentDiv.appendChild(img);
+            
+            // Load preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                attachment.preview = e.target.result;
+                img.src = e.target.result;
+                img.style.display = 'block';
+                loadingDiv.style.display = 'none';
+            };
+            reader.readAsDataURL(attachment.file);
+        } else if (isVideo) {
+            const videoIcon = document.createElement('div');
+            videoIcon.className = 'attachment-preview-video-icon';
+            videoIcon.textContent = '🎥';
+            attachmentDiv.appendChild(videoIcon);
+        }
+        
+        // Add progress indicator if uploading
+        if (attachment.uploadProgress > 0 && attachment.uploadProgress < 100) {
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'attachment-upload-progress';
+            progressDiv.innerHTML = `
+                <svg class="attachment-progress-circle" viewBox="0 0 50 50">
+                    <circle class="attachment-progress-bg" cx="25" cy="25" r="20"></circle>
+                    <circle class="attachment-progress-bar" cx="25" cy="25" r="20"></circle>
+                </svg>
+            `;
+            attachmentDiv.appendChild(progressDiv);
+        }
+        
+        // Add close button
+        attachmentDiv.appendChild(closeButton);
+        
+        container.appendChild(attachmentDiv);
+        
+        // Update progress if uploading
+        if (attachment.uploadProgress > 0 && attachment.uploadProgress < 100) {
+            updateAttachmentProgress(attachment.id, attachment.uploadProgress);
+        }
+    });
+    
+    // Add Plus button if less than 3 attachments
+    if (selectedAttachments.length < 3) {
+        const plusButton = document.createElement('button');
+        plusButton.className = 'attachment-preview-item attachment-plus-button';
+        plusButton.onclick = openAttachmentDialog;
+        plusButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="M12 5v14"></path>
+            </svg>
+        `;
+        container.appendChild(plusButton);
+    }
+}
+
+// Remove attachment
+function removeAttachment(attachmentId) {
+    const attachment = selectedAttachments.find(a => a.id === attachmentId);
+    if (!attachment) return;
+    
+    // Cancel upload if in progress
+    const upload = attachmentUploads.get(attachmentId);
+    if (upload && upload.xhr) {
+        upload.xhr.abort();
+        attachmentUploads.delete(attachmentId);
+    }
+    
+    selectedAttachments = selectedAttachments.filter(a => a.id !== attachmentId);
+    updateAttachmentPreview();
+    updateSendButtonState();
+}
+
+// Update attachment upload progress
+function updateAttachmentProgress(attachmentId, progress) {
+    const attachment = selectedAttachments.find(a => a.id === attachmentId);
+    if (!attachment) return;
+    
+    attachment.uploadProgress = progress;
+    
+    const attachmentDiv = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
+    if (!attachmentDiv) return;
+    
+    const progressBar = attachmentDiv.querySelector('.attachment-progress-bar');
+    if (progressBar) {
+        const circumference = 2 * Math.PI * 20;
+        const offset = circumference - (progress / 100) * circumference;
+        progressBar.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressBar.style.strokeDashoffset = offset;
+    }
+}
+
 // Update send button state
 function updateSendButtonState() {
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
     if (messageInput && sendButton) {
         const hasText = messageInput.value.trim().length > 0;
-        if (hasText) {
+        const hasAttachments = selectedAttachments.length > 0;
+        if (hasText || hasAttachments) {
             sendButton.classList.remove('hidden');
             sendButton.classList.add('visible');
         } else {
@@ -730,7 +1105,14 @@ async function sendMessage() {
     const messageInput = document.getElementById('messageInput');
     const text = messageInput.value.trim();
     
-    if (!text || !currentChatId || !currentUser || !currentUser.info.id) return;
+    if (!text && selectedAttachments.length === 0) return;
+    if (!currentChatId || !currentUser || !currentUser.info.id) return;
+    
+    // If there are attachments, upload them first
+    if (selectedAttachments.length > 0) {
+        await uploadAndSendAttachments(text);
+        return;
+    }
     
     const localId = generateLocalId();
     
@@ -766,6 +1148,199 @@ async function sendMessage() {
     
     // Send to server using the shared function
     await sendMessageToServer(message);
+}
+
+// Upload attachments and send message
+async function uploadAndSendAttachments(text) {
+    const localId = generateLocalId();
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        console.error('No access token available');
+        return;
+    }
+    
+    // Disable plus button during upload
+    const plusButton = document.querySelector('.attachment-plus-button');
+    if (plusButton) {
+        plusButton.disabled = true;
+    }
+    
+    const uploadedAttachments = [];
+    
+    try {
+        // Upload all attachments
+        for (const attachment of selectedAttachments) {
+            if (attachment.uploaded) {
+                uploadedAttachments.push(attachment);
+                continue;
+            }
+            
+            const fileId = crypto.randomUUID();
+            const fileExtension = attachment.file.name.split('.').pop().toLowerCase() || 
+                (attachment.file.type.startsWith('image/') ? 'jpg' : 'mp4');
+            
+            // Start upload with progress tracking
+            let uploadXhr = null;
+            const uploadPromise = uploadFileWithProgress(
+                '/uploads',
+                attachment.file,
+                fileId,
+                attachment.file.type,
+                (progress) => {
+                    updateAttachmentProgress(attachment.id, progress);
+                },
+                (xhr) => {
+                    uploadXhr = xhr;
+                }
+            );
+            
+            attachmentUploads.set(attachment.id, {
+                xhr: uploadXhr,
+                file: attachment.file,
+                progress: 0
+            });
+            
+            const response = await uploadPromise;
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Upload failed: ${response.status} ${errorText}`);
+            }
+            
+            const uploadedFileName = await response.text();
+            const uploadedFileId = uploadedFileName.split('.').slice(0, -1).join('.');
+            
+            // Get image dimensions for preview
+            let previewWidth = 300;
+            let previewHeight = 200;
+            
+            if (attachment.file.type.startsWith('image/')) {
+                const dimensions = await getImageDimensions(attachment.file);
+                previewWidth = dimensions.width;
+                previewHeight = dimensions.height;
+            }
+            
+            attachment.uploaded = true;
+            attachment.uploadProgress = 100;
+            attachment.uploadedId = uploadedFileId;
+            attachment.uploadedFileType = fileExtension;
+            attachment.previewWidth = previewWidth;
+            attachment.previewHeight = previewHeight;
+            
+            uploadedAttachments.push(attachment);
+            updateAttachmentProgress(attachment.id, 100);
+        }
+        
+        // Create message with all attachments
+        const message = {
+            localId: localId,
+            chatId: currentChatId,
+            authorId: currentUser.info.id,
+            text: text || null,
+            createdAt: new Date().toISOString(),
+            isVisible: true,
+            attachments: uploadedAttachments.map(a => ({
+                id: a.uploadedId,
+                fileType: a.uploadedFileType,
+                fileSize: a.file.size,
+                previewWidth: a.previewWidth,
+                previewHeight: a.previewHeight
+            })),
+            readMarks: [],
+            isPending: true
+        };
+        
+        // Clear attachments and input
+        selectedAttachments = [];
+        attachmentUploads.clear();
+        const messageInput = document.getElementById('messageInput');
+        messageInput.value = '';
+        messageInput.style.height = '38px';
+        updateAttachmentPreview();
+        updateSendButtonState();
+        
+        // Add message to pending list
+        pendingMessages.set(localId, message);
+        
+        // Display message immediately with sending state
+        addMessageToChat(message, true);
+        
+        // Update chat list with new message
+        updateChatListWithMessage(message);
+        
+        // Send to server
+        await sendMessageToServer(message);
+        
+    } catch (error) {
+        console.error('Error uploading attachments:', error);
+        alert('Failed to upload attachments: ' + error.message);
+    } finally {
+        if (plusButton) {
+            plusButton.disabled = false;
+        }
+    }
+}
+
+// Get image dimensions
+function getImageDimensions(file) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve({ width: img.width, height: img.height });
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve({ width: 300, height: 200 });
+        };
+        img.src = url;
+    });
+}
+
+// Upload file with progress tracking
+function uploadFileWithProgress(url, file, fileName, contentType, onProgress, onXhrCreated = null) {
+    return new Promise((resolve, reject) => {
+        const accessToken = getAccessToken();
+        const xhr = new XMLHttpRequest();
+        
+        if (onXhrCreated) {
+            onXhrCreated(xhr);
+        }
+        
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                onProgress(percentComplete);
+            }
+        });
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve({
+                    ok: true,
+                    text: () => Promise.resolve(xhr.responseText)
+                });
+            } else {
+                reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Upload failed'));
+        });
+        
+        xhr.addEventListener('abort', () => {
+            reject(new Error('Upload aborted'));
+        });
+        
+        xhr.open('POST', url);
+        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+        xhr.setRequestHeader('File-Name', fileName);
+        xhr.setRequestHeader('Content-Type', contentType);
+        
+        xhr.send(file);
+    });
 }
 
 // Add message to chat with animation
@@ -903,9 +1478,16 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
         timeGapWithNext = timeDiff > 10;
     }
     
-    // Messages should be grouped if same author AND within 10 minutes
-    const shouldGroupWithPrev = sameAuthorAsPrev && !timeGapWithPrev;
-    const shouldGroupWithNext = sameAuthorAsNext && !timeGapWithNext;
+    // Check if messages have attachments (by checking for attachment container in DOM)
+    const currentHasAttachments = messageElement.querySelector('.message-attachment-container') !== null;
+    const prevHasAttachments = prevElement && prevElement.querySelector('.message-attachment-container') !== null;
+    const nextHasAttachments = nextElement && nextElement.querySelector('.message-attachment-container') !== null;
+    
+    // Messages should be grouped if same author AND within 10 minutes AND no attachments
+    const shouldGroupWithPrev = sameAuthorAsPrev && !timeGapWithPrev && 
+        !currentHasAttachments && !prevHasAttachments;
+    const shouldGroupWithNext = sameAuthorAsNext && !timeGapWithNext && 
+        !currentHasAttachments && !nextHasAttachments;
     
     let groupPosition;
     if (!shouldGroupWithPrev && !shouldGroupWithNext) {
@@ -1033,17 +1615,30 @@ async function sendMessageToServer(message) {
             return;
         }
         
+        const requestBody = {
+            localId: message.localId,
+            text: message.text || null,
+            isVisible: true
+        };
+        
+        // Add attachments if present
+        if (message.attachments && message.attachments.length > 0) {
+            requestBody.attachments = message.attachments.map(att => ({
+                id: att.id,
+                fileType: att.fileType,
+                fileSize: att.fileSize,
+                previewWidth: att.previewWidth,
+                previewHeight: att.previewHeight
+            }));
+        }
+        
         const response = await fetch(`/chats/${message.chatId}/messages`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                localId: message.localId,
-                text: message.text,
-                isVisible: true
-            })
+            body: JSON.stringify(requestBody)
         });
         
         if (response.ok) {

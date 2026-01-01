@@ -352,9 +352,11 @@ actor ChatService: ChatServiceProtocol {
             throw ServiceError(.badRequest, reason: "Malformed message data.")
         }
         
-        if let attachment = info.attachment {
-            guard attachment.fileSize > 0 && !attachment.fileType.isEmpty else {
-                throw ServiceError(.badRequest, reason: "Malformed message data.")
+        if let attachments = info.attachments {
+            for attachment in attachments {
+                guard attachment.fileSize > 0 && !attachment.fileType.isEmpty else {
+                    throw ServiceError(.badRequest, reason: "Malformed message data.")
+                }
             }
         }
         
@@ -376,13 +378,16 @@ actor ChatService: ChatServiceProtocol {
         
         var attachmentsToSave: [any RepositoryItem] = []
         
-        if let attachment = info.attachment {
-            let resource = MediaResource(attachmentOf: message.id!,
-                                         fileType: attachment.fileType,
-                                         fileSize: attachment.fileSize,
-                                         previewWidth: attachment.previewWidth ?? 300,
-                                         previewHeight: attachment.previewHeight ?? 200)
-            attachmentsToSave.append(resource)
+        if let attachments = info.attachments {
+            for attachment in attachments {
+                let resource = MediaResource(id: attachment.id,
+                                             attachmentOf: message.id!,
+                                             fileType: attachment.fileType,
+                                             fileSize: attachment.fileSize,
+                                             previewWidth: attachment.previewWidth ?? 300,
+                                             previewHeight: attachment.previewHeight ?? 200)
+                attachmentsToSave.append(resource)
+            }
         }
         
         var itemsToSave: [any RepositoryItem] = [chat]
@@ -555,6 +560,6 @@ actor ChatService: ChatServiceProtocol {
 
 extension PostMessageRequest {
     var isEmpty: Bool {
-        attachment == nil && text == nil
+        (attachments == nil || attachments!.isEmpty) && text == nil
     }
 }

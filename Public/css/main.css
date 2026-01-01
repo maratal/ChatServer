@@ -277,6 +277,8 @@ input[type="text"], textarea {
 
 /* Message Input Container Border */
 #messageInputContainer {
+    display: flex;
+    flex-direction: column;
     border-top: 1px solid hsl(0 0% 92%) !important;
     background-color: hsl(var(--card));
     padding-top: 10px;
@@ -1275,7 +1277,7 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 /* Full Screen Avatar Viewer */
-.user-profile-avatar-viewer {
+.media-viewer {
     position: fixed;
     top: 0;
     left: 0;
@@ -1289,18 +1291,18 @@ input[type="text"]:disabled, textarea:disabled {
     cursor: pointer;
 }
 
-.user-profile-avatar-viewer-content {
+.media-viewer-content {
     position: relative;
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     cursor: default;
 }
 
-.user-profile-avatar-viewer-header {
+.media-viewer-header {
     position: absolute;
     top: 0;
     left: 0;
@@ -1312,13 +1314,13 @@ input[type="text"]:disabled, textarea:disabled {
     z-index: 10001;
 }
 
-.user-profile-avatar-viewer-title {
+.media-viewer-title {
     color: white;
     font-size: 1.125rem;
     font-weight: 500;
 }
 
-.user-profile-avatar-viewer-close {
+.media-viewer-close {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -1332,28 +1334,29 @@ input[type="text"]:disabled, textarea:disabled {
     transition: background-color 0.2s ease;
 }
 
-.user-profile-avatar-viewer-close:hover {
+.media-viewer-close:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-.user-profile-avatar-viewer-image-container {
+.media-viewer-image-container {
     position: relative;
     width: 100%;
-    height: 100%;
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 5rem 2rem;
+    padding: 5rem 2rem 2rem 2rem;
+    min-height: 0;
 }
 
-.user-profile-avatar-viewer-image {
+.media-viewer-image {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
     border-radius: 0.5rem;
 }
 
-.user-profile-avatar-viewer-chevron {
+.media-viewer-chevron {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -1371,32 +1374,29 @@ input[type="text"]:disabled, textarea:disabled {
     transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
-.user-profile-avatar-viewer-chevron:hover {
+.media-viewer-chevron:hover {
     background-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-50%) scale(1.1);
 }
 
-.user-profile-avatar-viewer-chevron-left {
+.media-viewer-chevron-left {
     left: 2rem;
 }
 
-.user-profile-avatar-viewer-chevron-right {
+.media-viewer-chevron-right {
     right: 2rem;
 }
 
-.user-profile-avatar-viewer-pagination {
-    position: absolute;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
+.media-viewer-pagination {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 7.5px;
+    padding: 1rem 0;
     z-index: 10001;
 }
 
-.user-profile-avatar-viewer-pagination-dot {
+.media-viewer-pagination-dot {
     width: 7.5px;
     height: 7.5px;
     border-radius: 50%;
@@ -1407,12 +1407,27 @@ input[type="text"]:disabled, textarea:disabled {
     padding: 0;
 }
 
-.user-profile-avatar-viewer-pagination-dot:hover {
+.media-viewer-pagination-dot:hover {
     background-color: rgba(255, 255, 255, 0.5);
 }
 
-.user-profile-avatar-viewer-pagination-dot.active {
+.media-viewer-pagination-dot.active {
     background-color: white;
+}
+
+.media-viewer-text {
+    width: 100%;
+    padding: 2rem;
+    color: white;
+    font-size: 1rem;
+    line-height: 1.5;
+    text-align: center;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
+    z-index: 10000;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 30%;
+    overflow-y: auto;
 }
 
 .user-profile-section {
@@ -1896,7 +1911,7 @@ input[type="text"]:disabled, textarea:disabled {
 .message-content-wrapper {
     display: flex;
     flex-direction: column;
-    max-width: 70%;
+    max-width: 45%;
 }
 
 .message-bubble.own .message-content-wrapper {
@@ -1929,14 +1944,13 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-content {
-    border-radius: 10px; /* Default radius for single messages */
     padding: 2px; /* Even smaller padding - 4px all around */
     background-color: hsl(var(--chat-bubble-received));
     color: hsl(var(--chat-bubble-received-foreground));
     box-shadow: var(--shadow-soft);
     display: flex;
     align-items: flex-end;
-    gap: 0.5rem;
+    gap: 2px;
 }
 
 .message-bubble.own .message-content {
@@ -1990,12 +2004,15 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-text {
-    font-size: 0.875rem;
     white-space: pre-wrap;
     word-wrap: break-word;
-    flex: 1;
-    margin: 0;
     align-self: flex-start; /* Align text to top of bubble */
+    font-size: 1rem;
+    margin: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
 }
 
 .message-timestamp-area {
@@ -2079,18 +2096,6 @@ input[type="text"]:disabled, textarea:disabled {
 
 .message.own.group-single .message-content {
     border-radius: 16px 16px 16px 16px !important;
-}
-
-.message-text {
-    font-size: 0.9rem;
-    line-height: 1.4;
-    margin: 0;
-    word-wrap: break-word;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    padding: 6px 10px;
-    padding-right: 4px;
 }
 
 .message-text a {
@@ -2206,4 +2211,240 @@ input[type="text"]:disabled, textarea:disabled {
         width: 100%;
         max-width: 100%;
     }
+}
+
+/* Attachment Preview Area */
+#messageInputContainer {
+    display: flex;
+    flex-direction: column;
+}
+
+#attachmentPreviewArea {
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+    width: 100%;
+}
+
+.attachment-preview-container {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.attachment-preview-item {
+    position: relative;
+    max-width: 150px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    border-radius: 5px;
+    overflow: hidden;
+    background-color: hsl(var(--muted));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attachment-preview-item img {
+    max-width: 150px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.attachment-preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.attachment-preview-loading {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+}
+
+.attachment-preview-video-icon {
+    font-size: 2rem;
+}
+
+.attachment-close-button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: hsl(var(--background) / 0.9);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--foreground));
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s;
+}
+
+.attachment-close-button:hover {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+}
+
+.attachment-plus-button {
+    border: 2px dashed hsl(var(--border));
+    background-color: transparent;
+    cursor: pointer;
+    color: hsl(var(--muted-foreground));
+    transition: all 0.2s;
+}
+
+.attachment-plus-button:hover:not(:disabled) {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    border-color: hsl(var(--accent));
+}
+
+.attachment-plus-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.attachment-upload-progress {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    z-index: 10;
+}
+
+.attachment-progress-circle {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.attachment-progress-bg {
+    fill: none;
+    stroke: hsl(var(--background) / 0.3);
+    stroke-width: 3;
+}
+
+.attachment-progress-bar {
+    fill: none;
+    stroke: white;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 125.6;
+    stroke-dashoffset: 125.6;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    transition: stroke-dashoffset 0.1s linear;
+}
+
+/* Message Attachments */
+.message-content.has-attachment {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+}
+
+.message-attachment-container {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 300px;
+    background-color: hsl(var(--muted));
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: block;
+}
+
+.message-attachment-image {
+    width: 100%;
+    height: auto;
+    max-height: 296px;
+    object-fit: cover;
+    display: block;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.message-attachment-video {
+    width: 100%;
+    height: auto;
+    max-height: 296px;
+    display: block;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.message-attachment-chevron {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background-color: hsl(var(--background) / 0.5);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--foreground));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.2s, opacity 0.2s;
+    z-index: 10;
+}
+
+.message-attachment-chevron svg {
+    width: 18px;
+    height: 18px;
+}
+
+.message-attachment-chevron-left {
+    left: 8px;
+}
+
+.message-attachment-chevron-right {
+    right: 8px;
+}
+
+.message-attachment-chevron:hover {
+    background-color: hsl(var(--background) / 0.95);
+    opacity: 1;
+}
+
+.message-attachment-pagination {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+}
+
+.message-attachment-pagination-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: none;
+    background-color: hsl(var(--background) / 0.5);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding: 0;
+}
+
+.message-attachment-pagination-dot:hover {
+    background-color: hsl(var(--background) / 0.7);
+}
+
+.message-attachment-pagination-dot.active {
+    background-color: hsl(var(--background));
 }

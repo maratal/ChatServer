@@ -4,32 +4,33 @@ let mediaViewerPhotoIndex = 0;
 let mediaViewerPhotos = [];
 let mediaViewerCurrentIndex = 0;
 let mediaViewerUpdateCallback = null;
+let mediaViewerText = null;
 
-function createMediaViewerHTML(photos, currentIndex, viewerId = 'mediaViewer') {
+function createMediaViewerHTML(photos, currentIndex, viewerId = 'mediaViewer', text = null) {
     const hasMultiplePhotos = photos.length > 1;
     
     return `
-        <div class="user-profile-avatar-viewer-content">
-            <div class="user-profile-avatar-viewer-header">
-                <div class="user-profile-avatar-viewer-title" id="${viewerId}Title"></div>
-                <button class="user-profile-avatar-viewer-close" onclick="closeMediaViewer()">
+        <div class="media-viewer-content">
+            <div class="media-viewer-header">
+                <div class="media-viewer-title" id="${viewerId}Title"></div>
+                <button class="media-viewer-close" onclick="closeMediaViewer()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"></path>
                         <path d="M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
-            <div class="user-profile-avatar-viewer-image-container">
+            <div class="media-viewer-image-container">
                 ${hasMultiplePhotos ? `
-                <button class="user-profile-avatar-viewer-chevron user-profile-avatar-viewer-chevron-left" onclick="navigateMediaViewerPhoto(-1)">
+                <button class="media-viewer-chevron media-viewer-chevron-left" onclick="navigateMediaViewerPhoto(-1)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m15 18-6-6 6-6"></path>
                     </svg>
                 </button>
                 ` : ''}
-                <img class="user-profile-avatar-viewer-image" id="${viewerId}Image" src="" alt="">
+                <img class="media-viewer-image" id="${viewerId}Image" src="" alt="">
                 ${hasMultiplePhotos ? `
-                <button class="user-profile-avatar-viewer-chevron user-profile-avatar-viewer-chevron-right" onclick="navigateMediaViewerPhoto(1)">
+                <button class="media-viewer-chevron media-viewer-chevron-right" onclick="navigateMediaViewerPhoto(1)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m9 18 6-6-6-6"></path>
                     </svg>
@@ -37,29 +38,33 @@ function createMediaViewerHTML(photos, currentIndex, viewerId = 'mediaViewer') {
                 ` : ''}
             </div>
             ${hasMultiplePhotos ? `
-            <div class="user-profile-avatar-viewer-pagination">
+            <div class="media-viewer-pagination">
                 ${photos.map((photo, index) => `
-                    <button class="user-profile-avatar-viewer-pagination-dot ${index === currentIndex ? 'active' : ''}" 
+                    <button class="media-viewer-pagination-dot ${index === currentIndex ? 'active' : ''}" 
                             onclick="switchMediaViewerPhoto(${index})"></button>
                 `).join('')}
             </div>
+            ` : ''}
+            ${text ? `
+            <div class="media-viewer-text" id="${viewerId}Text"></div>
             ` : ''}
         </div>
     `;
 }
 
-function openMediaViewer(photos, currentIndex, updateCallback = null) {
+function openMediaViewer(photos, currentIndex, updateCallback = null, text = null) {
     if (!photos || photos.length === 0) return;
     
     mediaViewerPhotos = photos;
     mediaViewerCurrentIndex = currentIndex;
     mediaViewerPhotoIndex = currentIndex;
     mediaViewerUpdateCallback = updateCallback;
+    mediaViewerText = text;
     
     const viewer = document.createElement('div');
-    viewer.className = 'user-profile-avatar-viewer';
+    viewer.className = 'media-viewer';
     viewer.id = 'mediaViewer';
-    viewer.innerHTML = createMediaViewerHTML(photos, currentIndex);
+    viewer.innerHTML = createMediaViewerHTML(photos, currentIndex, 'mediaViewer', text);
     
     document.body.appendChild(viewer);
     updateMediaViewer();
@@ -67,12 +72,12 @@ function openMediaViewer(photos, currentIndex, updateCallback = null) {
     // Close on background click (but not on content elements)
     viewer.addEventListener('click', (e) => {
         // Don't close if clicking on interactive elements
-        if (e.target.closest('button') || e.target.closest('img') || e.target.closest('.user-profile-avatar-viewer-header')) {
+        if (e.target.closest('button') || e.target.closest('img') || e.target.closest('.media-viewer-header') || e.target.closest('.media-viewer-text')) {
             return;
         }
         
         // Close if clicking on viewer background or empty space in image container
-        const imageContainer = viewer.querySelector('.user-profile-avatar-viewer-image-container');
+        const imageContainer = viewer.querySelector('.media-viewer-image-container');
         if (e.target === viewer || (imageContainer && e.target === imageContainer)) {
             closeMediaViewer();
         }
@@ -85,6 +90,7 @@ function openMediaViewer(photos, currentIndex, updateCallback = null) {
 function updateMediaViewer() {
     const viewerImg = document.getElementById('mediaViewerImage');
     const viewerTitle = document.getElementById('mediaViewerTitle');
+    const viewerText = document.getElementById('mediaViewerText');
     const currentPhoto = mediaViewerPhotos[mediaViewerPhotoIndex];
     
     if (!viewerImg || !currentPhoto) return;
@@ -104,8 +110,13 @@ function updateMediaViewer() {
         viewerTitle.textContent = formattedDate;
     }
     
+    // Update text if present
+    if (viewerText && mediaViewerText) {
+        viewerText.textContent = mediaViewerText;
+    }
+    
     // Update pagination dots
-    const dots = document.querySelectorAll('.user-profile-avatar-viewer-pagination-dot');
+    const dots = document.querySelectorAll('.media-viewer-pagination-dot');
     dots.forEach((dot, index) => {
         if (index === mediaViewerPhotoIndex) {
             dot.classList.add('active');
@@ -148,6 +159,7 @@ function closeMediaViewer() {
     }
     document.removeEventListener('keydown', handleMediaViewerKeyboard);
     mediaViewerUpdateCallback = null;
+    mediaViewerText = null;
 }
 
 function handleMediaViewerKeyboard(e) {

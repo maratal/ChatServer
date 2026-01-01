@@ -454,7 +454,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID().uuidString, attachment: MediaInfo(fileType: fileType, fileSize: 1))
+                PostMessageRequest(localId: UUID().uuidString, attachments: [MediaInfo(fileType: fileType, fileSize: 1)])
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
