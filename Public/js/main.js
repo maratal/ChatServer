@@ -1359,6 +1359,36 @@ function addMessageToChat(message, animated = true) {
         noMessages.remove();
     }
     
+    // Check if we need to add a date header before this message
+    const messageDate = new Date(message.createdAt);
+    const messageDateString = messageDate.toDateString();
+    
+    // Get the last message element to check the date
+    const allChildren = Array.from(messagesContainer.children);
+    let lastMessage = null;
+    for (let i = allChildren.length - 1; i >= 0; i--) {
+        const child = allChildren[i];
+        if (child.classList.contains('message-bubble')) {
+            lastMessage = child;
+            break;
+        }
+    }
+    
+    // Check if we need to add a date header
+    // Only add if there's a previous message and the date is different
+    let needsDateHeader = false;
+    if (lastMessage) {
+        const lastMessageDate = new Date(lastMessage.dataset.createdAt);
+        const lastMessageDateString = lastMessageDate.toDateString();
+        needsDateHeader = lastMessageDateString !== messageDateString;
+    }
+    
+    // Add date header if needed
+    if (needsDateHeader) {
+        const dateHeader = createDateHeader(formatDateHeader(messageDate));
+        messagesContainer.appendChild(dateHeader);
+    }
+    
     // For now, just add the message with 'single' grouping
     // The regrouping will happen after
     const messageWithGrouping = {
