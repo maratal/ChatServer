@@ -17,7 +17,7 @@ struct FileHandlerOutputStream: TextOutputStream {
                 throw FileHandlerOutputStream.couldNotCreateFile
             }
         }
-        print("Log file: \(url.path)")
+//        print("Log file: \(url.path)")
         
         let fileHandle = try FileHandle(forWritingTo: url)
         fileHandle.seekToEndOfFile()
