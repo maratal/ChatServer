@@ -414,7 +414,7 @@ final class UserTests: AppTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let users = try res.content.decode([UserInfo].self).sorted(by: { $0.id! < $1.id! })
             XCTAssertEqual(users.compactMap { $0.name }, ["Demo 1", "Demo 2"])
-            XCTAssertEqual(users.first?.photos?.count, 0)
+            XCTAssertEqual(users.first?.photos?.count ?? 0, 0)
             XCTAssertEqual(users.last?.photos?.count, 1)
             try service.removeFiles(for: photo)
         })
