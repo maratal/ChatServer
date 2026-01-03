@@ -716,7 +716,7 @@ function switchMessageAttachment(messageId, index) {
         }
     });
     
-    messageDiv.dataset.currentAttachmentIndex = index.toString();
+    messageDiv.dataset.currentAttachmentIndex = index;
 }
 
 // Open media viewer for message attachments
@@ -905,17 +905,16 @@ function handleAttachmentFileSelect(event) {
 
 // Update attachment preview area
 function updateAttachmentPreview() {
-    const previewArea = document.getElementById('attachmentPreviewArea');
-    if (!previewArea) return;
+    const previewContainer = document.getElementById('attachmentPreviewContainer');
+    if (!previewContainer) return;
     
     if (selectedAttachments.length === 0) {
-        previewArea.style.display = 'none';
+        previewContainer.style.display = 'none';
         return;
     }
     
-    previewArea.style.display = 'block';
-    previewArea.innerHTML = '<div class="attachment-preview-container"></div>';
-    const container = previewArea.querySelector('.attachment-preview-container');
+    previewContainer.style.display = 'flex';
+    previewContainer.innerHTML = '';
     
     selectedAttachments.forEach((attachment, index) => {
         const attachmentDiv = document.createElement('div');
@@ -988,7 +987,7 @@ function updateAttachmentPreview() {
         // Add close button
         attachmentDiv.appendChild(closeButton);
         
-        container.appendChild(attachmentDiv);
+        previewContainer.appendChild(attachmentDiv);
         
         // Update progress if uploading
         if (attachment.uploadProgress > 0 && attachment.uploadProgress < 100) {
@@ -1007,7 +1006,7 @@ function updateAttachmentPreview() {
                 <path d="M12 5v14"></path>
             </svg>
         `;
-        container.appendChild(plusButton);
+        previewContainer.appendChild(plusButton);
     }
 }
 
