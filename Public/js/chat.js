@@ -53,6 +53,67 @@ function scrollMessagesToBottom(instant = false) {
     }
 }
 
+// Update grouping for a single message based on its neighbors
+function updateSingleMessageGrouping(messageElement, index, allMessageElements) {
+    const prevElement = index > 0 ? allMessageElements[index - 1] : null;
+    const nextElement = index < allMessageElements.length - 1 ? allMessageElements[index + 1] : null;
+    
+    const currentAuthorId = messageElement.dataset.authorId;
+    const currentCreatedAt = messageElement.dataset.createdAt;
+    
+    // Check if messages should be grouped
+    const sameAuthorAsPrev = prevElement && prevElement.dataset.authorId === currentAuthorId;
+    const sameAuthorAsNext = nextElement && nextElement.dataset.authorId === currentAuthorId;
+    
+    // Check time difference (10 minute rule)
+    let timeGapWithPrev = false;
+    let timeGapWithNext = false;
+    
+    if (prevElement && prevElement.dataset.createdAt && currentCreatedAt) {
+        const prevTime = new Date(prevElement.dataset.createdAt);
+        const currentTime = new Date(currentCreatedAt);
+        const timeDiff = Math.abs(currentTime - prevTime) / (1000 * 60); // minutes
+        timeGapWithPrev = timeDiff > 10;
+    }
+    
+    if (nextElement && nextElement.dataset.createdAt && currentCreatedAt) {
+        const nextTime = new Date(nextElement.dataset.createdAt);
+        const currentTime = new Date(currentCreatedAt);
+        const timeDiff = Math.abs(nextTime - currentTime) / (1000 * 60); // minutes
+        timeGapWithNext = timeDiff > 10;
+    }
+    
+    // Check if messages have attachments (by checking for attachment container in DOM)
+    const currentHasAttachments = messageElement.querySelector('.message-attachment-container') !== null;
+    const prevHasAttachments = prevElement && prevElement.querySelector('.message-attachment-container') !== null;
+    const nextHasAttachments = nextElement && nextElement.querySelector('.message-attachment-container') !== null;
+    
+    // Messages should be grouped if same author AND within 10 minutes AND no attachments
+    const shouldGroupWithPrev = sameAuthorAsPrev && !timeGapWithPrev && 
+        !currentHasAttachments && !prevHasAttachments;
+    const shouldGroupWithNext = sameAuthorAsNext && !timeGapWithNext && 
+        !currentHasAttachments && !nextHasAttachments;
+    
+    let groupPosition;
+    if (!shouldGroupWithPrev && !shouldGroupWithNext) {
+        groupPosition = 'single';
+    } else if (!shouldGroupWithPrev && shouldGroupWithNext) {
+        groupPosition = 'first';
+    } else if (shouldGroupWithPrev && shouldGroupWithNext) {
+        groupPosition = 'middle';
+    } else if (shouldGroupWithPrev && !shouldGroupWithNext) {
+        groupPosition = 'last';
+    }
+    
+    // Remove existing group classes
+    messageElement.classList.remove('group-single', 'group-first', 'group-middle', 'group-last');
+    
+    // Add new group class
+    messageElement.classList.add(`group-${groupPosition}`);
+    
+    console.log(`Message ${index}: author=${currentAuthorId}, groupPosition=${groupPosition}`);
+}
+
 // Display messages in the chat area
 function displayMessages(messages) {
     const messagesContainer = document.getElementById('messagesContainer');
@@ -66,84 +127,30 @@ function displayMessages(messages) {
     // Reverse messages to show oldest first
     messages.reverse();
     
-    // Group messages by author, time, and date
-    const messagesWithGrouping = [];
+    // Add date headers and render messages
     let currentDate = null;
     
-    messages.forEach((message, index) => {
+    messages.forEach((message) => {
         const messageDate = new Date(message.createdAt);
         const messageDateString = messageDate.toDateString();
         
         // Add date header if date changed
         if (currentDate !== messageDateString) {
             // Add date header (including for the first message)
-            messagesWithGrouping.push({
-                type: 'date-header',
-                date: messageDate,
-                dateString: formatDateHeader(messageDate)
-            });
+            const dateHeader = createDateHeader(formatDateHeader(messageDate), messageDate);
+            messagesContainer.appendChild(dateHeader);
             currentDate = messageDateString;
         }
         
-        const prevMessage = index > 0 ? messages[index - 1] : null;
-        const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
-        
-        // Check if messages should be grouped
-        const sameAuthorAsPrev = prevMessage && prevMessage.authorId === message.authorId;
-        const sameAuthorAsNext = nextMessage && nextMessage.authorId === message.authorId;
-        
-        // Check time difference (10 minutes = 600000 milliseconds)
-        const timeDiffWithPrev = prevMessage ? 
-            Math.abs(new Date(message.createdAt) - new Date(prevMessage.createdAt)) : Infinity;
-        const timeDiffWithNext = nextMessage ? 
-            Math.abs(new Date(nextMessage.createdAt) - new Date(message.createdAt)) : Infinity;
-        
-        const closeTimeToPrev = timeDiffWithPrev <= 600000; // 10 minutes
-        const closeTimeToNext = timeDiffWithNext <= 600000; // 10 minutes
-        
-        // Check if dates are the same
-        const sameDateAsPrev = prevMessage && 
-            new Date(prevMessage.createdAt).toDateString() === messageDate.toDateString();
-        const sameDateAsNext = nextMessage && 
-            new Date(nextMessage.createdAt).toDateString() === messageDate.toDateString();
-        
-        // Don't group if current message or adjacent messages have attachments
-        const currentHasAttachments = message.attachments && message.attachments.length > 0;
-        const prevHasAttachments = prevMessage && prevMessage.attachments && prevMessage.attachments.length > 0;
-        const nextHasAttachments = nextMessage && nextMessage.attachments && nextMessage.attachments.length > 0;
-        
-        const shouldGroupWithPrev = sameAuthorAsPrev && closeTimeToPrev && sameDateAsPrev && 
-            !currentHasAttachments && !prevHasAttachments;
-        const shouldGroupWithNext = sameAuthorAsNext && closeTimeToNext && sameDateAsNext && 
-            !currentHasAttachments && !nextHasAttachments;
-        
-        let groupPosition;
-        if (!shouldGroupWithPrev && !shouldGroupWithNext) {
-            groupPosition = 'single';
-        } else if (!shouldGroupWithPrev && shouldGroupWithNext) {
-            groupPosition = 'first';
-        } else if (shouldGroupWithPrev && shouldGroupWithNext) {
-            groupPosition = 'middle';
-        } else if (shouldGroupWithPrev && !shouldGroupWithNext) {
-            groupPosition = 'last';
-        }
-        
-        messagesWithGrouping.push({ 
-            ...message, 
-            groupPosition, 
-            type: 'message'
-        });
+        // Render message without groupPosition (will be set after rendering)
+        const messageElement = createMessageElement(message);
+        messagesContainer.appendChild(messageElement);
     });
     
-    // Render messages and date headers
-    messagesWithGrouping.forEach(item => {
-        if (item.type === 'date-header') {
-            const dateHeader = createDateHeader(item.dateString, item.date);
-            messagesContainer.appendChild(dateHeader);
-        } else {
-            const messageElement = createMessageElement(item);
-            messagesContainer.appendChild(messageElement);
-        }
+    // Apply grouping to all rendered messages
+    const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-bubble'));
+    messageElements.forEach((messageElement, index) => {
+        updateSingleMessageGrouping(messageElement, index, messageElements);
     });
     
     // Scroll to bottom instantly when loading messages
@@ -230,14 +237,6 @@ function createMessageElement(message) {
     const authorName = author ? author.name : 'Unknown';
     const authorInitials = author ? getInitials(author.name) : '?';
     const authorMainPhoto = mainPhotoForUser(author);
-    
-    // Add grouping class if it exists
-    if (message.groupPosition) {
-        messageDiv.classList.add(`group-${message.groupPosition}`);
-        console.log(`Applied class: group-${message.groupPosition} to message from ${authorName}`);
-    } else {
-        console.log(`No groupPosition for message from ${authorName}`);
-    }
     
     // Format time
     const messageDate = new Date(message.createdAt);
@@ -1014,15 +1013,7 @@ function addMessageToChat(message, animated = true) {
         messagesContainer.appendChild(dateHeader);
     }
     
-    // For now, just add the message with 'single' grouping
-    // The regrouping will happen after
-    const messageWithGrouping = {
-        ...message,
-        groupPosition: 'single',
-        type: 'message'
-    };
-    
-    const messageElement = createMessageElement(messageWithGrouping);
+    const messageElement = createMessageElement(message);
     
     if (message.isPending) {
         messageElement.classList.add('sending');
@@ -1096,67 +1087,6 @@ function updateMessageGroupingIncremental(newMessageElement) {
     messagesToUpdate.forEach(({ element, index }) => {
         updateSingleMessageGrouping(element, index, messageElements);
     });
-}
-
-// Update grouping for a single message based on its neighbors
-function updateSingleMessageGrouping(messageElement, index, allMessageElements) {
-    const prevElement = index > 0 ? allMessageElements[index - 1] : null;
-    const nextElement = index < allMessageElements.length - 1 ? allMessageElements[index + 1] : null;
-    
-    const currentAuthorId = messageElement.dataset.authorId;
-    const currentCreatedAt = messageElement.dataset.createdAt;
-    
-    // Check if messages should be grouped
-    const sameAuthorAsPrev = prevElement && prevElement.dataset.authorId === currentAuthorId;
-    const sameAuthorAsNext = nextElement && nextElement.dataset.authorId === currentAuthorId;
-    
-    // Check time difference (10 minute rule)
-    let timeGapWithPrev = false;
-    let timeGapWithNext = false;
-    
-    if (prevElement && prevElement.dataset.createdAt && currentCreatedAt) {
-        const prevTime = new Date(prevElement.dataset.createdAt);
-        const currentTime = new Date(currentCreatedAt);
-        const timeDiff = Math.abs(currentTime - prevTime) / (1000 * 60); // minutes
-        timeGapWithPrev = timeDiff > 10;
-    }
-    
-    if (nextElement && nextElement.dataset.createdAt && currentCreatedAt) {
-        const nextTime = new Date(nextElement.dataset.createdAt);
-        const currentTime = new Date(currentCreatedAt);
-        const timeDiff = Math.abs(nextTime - currentTime) / (1000 * 60); // minutes
-        timeGapWithNext = timeDiff > 10;
-    }
-    
-    // Check if messages have attachments (by checking for attachment container in DOM)
-    const currentHasAttachments = messageElement.querySelector('.message-attachment-container') !== null;
-    const prevHasAttachments = prevElement && prevElement.querySelector('.message-attachment-container') !== null;
-    const nextHasAttachments = nextElement && nextElement.querySelector('.message-attachment-container') !== null;
-    
-    // Messages should be grouped if same author AND within 10 minutes AND no attachments
-    const shouldGroupWithPrev = sameAuthorAsPrev && !timeGapWithPrev && 
-        !currentHasAttachments && !prevHasAttachments;
-    const shouldGroupWithNext = sameAuthorAsNext && !timeGapWithNext && 
-        !currentHasAttachments && !nextHasAttachments;
-    
-    let groupPosition;
-    if (!shouldGroupWithPrev && !shouldGroupWithNext) {
-        groupPosition = 'single';
-    } else if (!shouldGroupWithPrev && shouldGroupWithNext) {
-        groupPosition = 'first';
-    } else if (shouldGroupWithPrev && shouldGroupWithNext) {
-        groupPosition = 'middle';
-    } else if (shouldGroupWithPrev && !shouldGroupWithNext) {
-        groupPosition = 'last';
-    }
-    
-    // Remove existing group classes
-    messageElement.classList.remove('group-single', 'group-first', 'group-middle', 'group-last');
-    
-    // Add new group class
-    messageElement.classList.add(`group-${groupPosition}`);
-    
-    console.log(`Message ${index}: author=${currentAuthorId}, groupPosition=${groupPosition}`);
 }
 
 // Update existing message
