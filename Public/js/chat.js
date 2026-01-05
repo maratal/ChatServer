@@ -1045,12 +1045,7 @@ function addMessageToChat(message, animated = true) {
     }
     
     // Re-calculate grouping for the new message and potentially the previous one
-    console.log('About to recalculate grouping for newly added message');
-    // Add a small delay to ensure DOM is fully rendered
-    setTimeout(() => {
-        updateMessageGroupingIncremental(messageElement);
-        console.log('Finished incremental grouping update');
-    }, 10);
+    updateMessageGroupingIncremental(messageElement);
     
     // Scroll to bottom
     setTimeout(() => {
@@ -1162,19 +1157,6 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
     messageElement.classList.add(`group-${groupPosition}`);
     
     console.log(`Message ${index}: author=${currentAuthorId}, groupPosition=${groupPosition}`);
-}
-
-// Recalculate message grouping for all messages in container (used for initial load)
-function recalculateMessageGrouping() {
-    const messagesContainer = document.getElementById('messagesContainer');
-    const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-bubble'));
-    
-    console.log('Recalculating grouping for', messageElements.length, 'messages');
-    
-    // Use the single message grouping function for each message
-    messageElements.forEach((messageElement, index) => {
-        updateSingleMessageGrouping(messageElement, index, messageElements);
-    });
 }
 
 // Update existing message
