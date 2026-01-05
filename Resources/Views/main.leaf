@@ -198,6 +198,7 @@
     </div>
     
     <script src="/js/main.js"></script>
+    <script src="/js/chat.js"></script>
     <script src="/js/emoji-picker.js"></script>
     <script src="/js/media-viewer.js"></script>
     <script src="/js/user-profile.js"></script>
