@@ -71,12 +71,10 @@
             </header>
 
             <!-- Messages Container -->
-            <div class="relative overflow-hidden flex-1">
-                <div class="h-full w-full rounded-[inherit]" style="overflow-x:hidden;overflow-y:auto">
-                    <div class="messages-container space-y-2" id="messagesContainer">
-                        <div class="no-chat-selected">
-                            Select a chat to start messaging
-                        </div>
+            <div class="relative overflow-x-hidden overflow-y-auto flex-1">
+                <div class="messages-container" id="messagesContainer">
+                    <div class="no-chat-selected">
+                        Select a chat to start messaging
                     </div>
                 </div>
             </div>

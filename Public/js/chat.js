@@ -76,14 +76,12 @@ function displayMessages(messages) {
         
         // Add date header if date changed
         if (currentDate !== messageDateString) {
-            if (currentDate !== null) {
-                // Add date header (except for the first message)
-                messagesWithGrouping.push({
-                    type: 'date-header',
-                    date: messageDate,
-                    dateString: formatDateHeader(messageDate)
-                });
-            }
+            // Add date header (including for the first message)
+            messagesWithGrouping.push({
+                type: 'date-header',
+                date: messageDate,
+                dateString: formatDateHeader(messageDate)
+            });
             currentDate = messageDateString;
         }
         
