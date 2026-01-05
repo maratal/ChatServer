@@ -502,10 +502,10 @@ function handleAttachmentFileSelect(event) {
         return;
     }
     
-    // Limit to 3 attachments total
-    const remainingSlots = 3 - selectedAttachments.length;
+    // Limit to MAX_ATTACHMENTS total
+    const remainingSlots = MAX_ATTACHMENTS - selectedAttachments.length;
     if (remainingSlots <= 0) {
-        alert('Maximum 3 attachments allowed');
+        alert(`Maximum ${MAX_ATTACHMENTS} attachments allowed`);
         return;
     }
     
@@ -513,13 +513,17 @@ function handleAttachmentFileSelect(event) {
     
     filesToAdd.forEach(file => {
         const attachmentId = crypto.randomUUID();
-        selectedAttachments.push({
+        const attachment = {
             id: attachmentId,
             file: file,
-            preview: null,
             uploaded: false,
-            uploadProgress: 0
-        });
+            uploadProgress: 0,
+            uploading: false
+        };
+        selectedAttachments.push(attachment);
+        
+        // Start upload immediately
+        uploadAttachment(attachment);
     });
     
     updateAttachmentPreview();
@@ -608,8 +612,8 @@ function updateAttachmentPreview() {
         }
     });
     
-    // Add Plus button if less than 3 attachments
-    if (selectedAttachments.length < 3) {
+    // Add Plus button if less than MAX_ATTACHMENTS
+    if (selectedAttachments.length < MAX_ATTACHMENTS) {
         const plusButton = document.createElement('button');
         plusButton.className = 'attachment-preview-item attachment-plus-button';
         plusButton.onclick = openAttachmentDialog;
@@ -623,8 +627,96 @@ function updateAttachmentPreview() {
     }
 }
 
+// Upload a single attachment
+async function uploadAttachment(attachment) {
+    if (attachment.uploading || attachment.uploaded) return;
+    
+    attachment.uploading = true;
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        console.error('No access token available');
+        attachment.uploading = false;
+        return;
+    }
+    
+    const fileId = crypto.randomUUID();
+    const fileType = attachment.file.name.split('.').pop().toLowerCase()
+    
+    try {
+        // Start upload with progress tracking
+        let uploadXhr = null;
+        const uploadPromise = uploadFileWithProgress(
+            '/uploads',
+            attachment.file,
+            fileId,
+            attachment.file.type,
+            (progress) => {
+                updateAttachmentProgress(attachment.id, progress);
+            },
+            (xhr) => {
+                uploadXhr = xhr;
+            }
+        );
+        
+        attachmentUploads.set(attachment.id, {
+            xhr: uploadXhr,
+            file: attachment.file,
+            progress: 0
+        });
+        
+        const response = await uploadPromise;
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Upload failed: ${response.status} ${errorText}`);
+        }
+        
+        const uploadedFileName = await response.text();
+        const uploadedFileNameParts = uploadedFileName.split('.');
+        const uploadedFileId = uploadedFileNameParts.slice(0, -1).join('.');
+        const uploadedFileType = uploadedFileNameParts.slice(-1)[0];
+        
+        // Get image dimensions for preview
+        let previewWidth = 300;
+        let previewHeight = 200;
+        
+        if (attachment.file.type.startsWith('image/')) {
+            const dimensions = await getImageDimensions(attachment.file);
+            previewWidth = dimensions.width;
+            previewHeight = dimensions.height;
+        }
+        
+        // Animate the last 25% (from 75% to 100%) smoothly
+        const animationDuration = 500; // ms - slow animation for last 25%
+        const startProgress = 75;
+        animateAttachmentProgressToComplete(attachment.id, startProgress, animationDuration);
+        
+        // Wait for animation to complete before marking as uploaded
+        await new Promise(resolve => {
+            setTimeout(() => {
+                attachment.uploaded = true;
+                attachment.uploading = false;
+                attachment.uploadProgress = 100;
+                attachment.uploadedId = uploadedFileId;
+                attachment.fileType = uploadedFileType;
+                attachment.previewWidth = previewWidth;
+                attachment.previewHeight = previewHeight;
+                attachmentUploads.delete(attachment.id);
+                showUploadedCheckmark(attachment.id);
+                updateSendButtonState();
+                resolve();
+            }, animationDuration + 300);
+        });
+        
+    } catch (error) {
+        console.error('Error uploading attachment:', error);
+        attachment.uploading = false;
+        attachmentUploads.delete(attachment.id);
+    }
+}
+
 // Remove attachment
-function removeAttachment(attachmentId) {
+async function removeAttachment(attachmentId) {
     const attachment = selectedAttachments.find(a => a.id === attachmentId);
     if (!attachment) return;
     
@@ -640,6 +732,24 @@ function removeAttachment(attachmentId) {
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         attachmentAnimationFrames.delete(attachmentId);
+    }
+    
+    // If attachment is uploaded, delete it from server
+    if (attachment.uploaded && attachment.uploadedId && attachment.fileType) {
+        try {
+            const accessToken = getAccessToken();
+            if (accessToken) {
+                const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
+                await fetch(`/uploads/${encodeURIComponent(fileName)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error deleting uploaded file:', error);
+        }
     }
     
     selectedAttachments = selectedAttachments.filter(a => a.id !== attachmentId);
@@ -692,15 +802,33 @@ function updateAttachmentProgressVisual(attachmentId, progress) {
         `;
     }
     
-    // Hide progress indicator when complete
+    // Hide progress indicator when complete and show checkmark
     if (progress >= 100 && progressDiv) {
-        setTimeout(() => {
-            const div = attachmentDiv.querySelector('.attachment-upload-progress');
-            if (div && div.parentNode) {
-                div.remove();
-            }
-        }, 300); // Wait a bit after animation completes
+        const div = attachmentDiv.querySelector('.attachment-upload-progress');
+        if (div && div.parentNode) {
+            div.remove();
+        }
+        showUploadedCheckmark(attachmentId);
+        updateSendButtonState(); // Update send button state when progress completes
     }
+}
+
+function showUploadedCheckmark(attachmentId) {
+    const attachmentDiv = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
+    if (!attachmentDiv) return;
+    
+    // Don't add checkmark if it already exists
+    if (attachmentDiv.querySelector('.attachment-upload-checkmark')) return;
+    
+    // Create checkmark indicator
+    const checkmarkDiv = document.createElement('div');
+    checkmarkDiv.className = 'attachment-upload-checkmark';
+    checkmarkDiv.innerHTML = `
+        <svg viewBox="0 0 24 24" width="24" height="24">
+            <path d="M7 12l3 3 7-7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+        </svg>
+    `;
+    attachmentDiv.appendChild(checkmarkDiv);
 }
 
 // Update attachment upload progress (capped at 75% during real upload)
@@ -765,8 +893,10 @@ function updateSendButtonState() {
     const sendButton = document.getElementById('sendButton');
     if (messageInput && sendButton) {
         const hasText = messageInput.value.trim().length > 0;
-        const hasAttachments = selectedAttachments.length > 0;
-        if (hasText || hasAttachments) {
+        const allAttachmentsUploaded = selectedAttachments.length > 0 && selectedAttachments.every(a => a.uploaded);
+        
+        // Show send button if text is present OR all attachments are uploaded
+        if (hasText || allAttachmentsUploaded) {
             sendButton.classList.remove('hidden');
             sendButton.classList.add('visible');
         } else {
@@ -820,11 +950,11 @@ async function sendMessage() {
     if (!text && selectedAttachments.length === 0) return;
     if (!currentChatId || !currentUser || !currentUser.info.id) return;
     
-    // If there are attachments, upload them first
-    if (selectedAttachments.length > 0) {
-        await uploadAndSendAttachments(text);
-        return;
-    }
+    // Get uploaded attachments (only send those that are ready)
+    const uploadedAttachments = selectedAttachments.filter(a => a.uploaded);
+    
+    // Determine if we should send only text (attachments exist but not all uploaded)
+    const shouldSendAttachments = uploadedAttachments.length > 0 && uploadedAttachments.length === selectedAttachments.length;
     
     const localId = generateLocalId();
     
@@ -836,14 +966,29 @@ async function sendMessage() {
         text: text,
         createdAt: new Date().toISOString(),
         isVisible: true,
-        attachments: [],
+        attachments: shouldSendAttachments ? uploadedAttachments.map(a => ({
+            id: a.uploadedId,
+            fileType: a.fileType,
+            fileSize: a.file.size,
+            previewWidth: a.previewWidth,
+            previewHeight: a.previewHeight
+        })) : [],
         readMarks: [],
         isPending: true
     };
     
-    // Clear input and update send button state
-    messageInput.value = '';
-    messageInput.style.height = '38px'; // Reset to initial height
+    // Clear attachments and input (only clear attachments if we're going to send them)
+    if (shouldSendAttachments) {
+        selectedAttachments = [];
+        attachmentUploads.clear();
+        updateAttachmentPreview();
+    }
+    
+    if (text) {
+        messageInput.value = '';
+        messageInput.style.height = '38px';
+    }
+    
     updateSendButtonState();
     
     // Restore focus to input after sending
@@ -860,147 +1005,6 @@ async function sendMessage() {
     
     // Send to server using the shared function
     await sendMessageToServer(message);
-}
-
-// Upload attachments and send message
-async function uploadAndSendAttachments(text) {
-    const localId = generateLocalId();
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-        console.error('No access token available');
-        return;
-    }
-    
-    // Disable plus button during upload
-    const plusButton = document.querySelector('.attachment-plus-button');
-    if (plusButton) {
-        plusButton.disabled = true;
-    }
-    
-    const uploadedAttachments = [];
-    
-    try {
-        // Upload all attachments
-        for (const attachment of selectedAttachments) {
-            if (attachment.uploaded) {
-                uploadedAttachments.push(attachment);
-                continue;
-            }
-            
-            const fileId = crypto.randomUUID();
-            const fileExtension = attachment.file.name.split('.').pop().toLowerCase() || 
-                (attachment.file.type.startsWith('image/') ? 'jpg' : 'mp4');
-            
-            // Start upload with progress tracking
-            let uploadXhr = null;
-            const uploadPromise = uploadFileWithProgress(
-                '/uploads',
-                attachment.file,
-                fileId,
-                attachment.file.type,
-                (progress) => {
-                    updateAttachmentProgress(attachment.id, progress);
-                },
-                (xhr) => {
-                    uploadXhr = xhr;
-                }
-            );
-            
-            attachmentUploads.set(attachment.id, {
-                xhr: uploadXhr,
-                file: attachment.file,
-                progress: 0
-            });
-            
-            const response = await uploadPromise;
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Upload failed: ${response.status} ${errorText}`);
-            }
-            
-            const uploadedFileName = await response.text();
-            const uploadedFileId = uploadedFileName.split('.').slice(0, -1).join('.');
-            
-            // Get image dimensions for preview
-            let previewWidth = 300;
-            let previewHeight = 200;
-            
-            if (attachment.file.type.startsWith('image/')) {
-                const dimensions = await getImageDimensions(attachment.file);
-                previewWidth = dimensions.width;
-                previewHeight = dimensions.height;
-            }
-            
-            // Animate the last 25% (from 75% to 100%) smoothly
-            const animationDuration = 1000; // ms - slow animation for last 25%
-            const startProgress = 75;
-            animateAttachmentProgressToComplete(attachment.id, startProgress, animationDuration);
-            
-            // Wait for animation to complete before marking as uploaded
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    attachment.uploaded = true;
-                    attachment.uploadProgress = 100;
-                    attachment.uploadedId = uploadedFileId;
-                    attachment.uploadedFileType = fileExtension;
-                    attachment.previewWidth = previewWidth;
-                    attachment.previewHeight = previewHeight;
-                    
-                    uploadedAttachments.push(attachment);
-                    resolve();
-                }, animationDuration + 300); // Wait a bit longer than the animation duration
-            });
-        }
-        
-        // Create message with all attachments
-        const message = {
-            localId: localId,
-            chatId: currentChatId,
-            authorId: currentUser.info.id,
-            text: text || null,
-            createdAt: new Date().toISOString(),
-            isVisible: true,
-            attachments: uploadedAttachments.map(a => ({
-                id: a.uploadedId,
-                fileType: a.uploadedFileType,
-                fileSize: a.file.size,
-                previewWidth: a.previewWidth,
-                previewHeight: a.previewHeight
-            })),
-            readMarks: [],
-            isPending: true
-        };
-        
-        // Clear attachments and input
-        selectedAttachments = [];
-        attachmentUploads.clear();
-        const messageInput = document.getElementById('messageInput');
-        messageInput.value = '';
-        messageInput.style.height = '38px';
-        updateAttachmentPreview();
-        updateSendButtonState();
-        
-        // Add message to pending list
-        pendingMessages.set(localId, message);
-        
-        // Display message immediately with sending state
-        addMessageToChat(message, true);
-        
-        // Update chat list with new message
-        updateChatListWithMessage(message);
-        
-        // Send to server
-        await sendMessageToServer(message);
-        
-    } catch (error) {
-        console.error('Error uploading attachments:', error);
-        alert('Failed to upload attachments: ' + error.message);
-    } finally {
-        if (plusButton) {
-            plusButton.disabled = false;
-        }
-    }
 }
 
 // Get image dimensions

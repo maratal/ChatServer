@@ -1834,7 +1834,7 @@ input[type="text"]:disabled, textarea:disabled {
 /* Message Bubble Styles */
 .message-bubble {
     display: flex;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
 .message-bubble.own {
@@ -2231,7 +2231,6 @@ input[type="text"]:disabled, textarea:disabled {
 
 .attachment-preview-item {
     position: relative;
-    max-width: 150px;
     height: 130px;
     border-radius: 5px;
     overflow: hidden;
@@ -2239,13 +2238,6 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .attachment-preview-item img {
-    max-width: 150px;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.attachment-preview-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -2311,6 +2303,23 @@ input[type="text"]:disabled, textarea:disabled {
     height: 24px;
     z-index: 10;
     pointer-events: none;
+}
+
+.attachment-upload-checkmark {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    z-index: 10;
+    pointer-events: none;
+    stroke: white;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.attachment-upload-checkmark svg {
+    width: 100%;
+    height: 100%;
 }
 
 .attachment-progress-circle {

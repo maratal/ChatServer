@@ -8,6 +8,7 @@ struct UploadController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let uploads = routes.grouped("uploads").grouped(DeviceSession.authenticator())
         uploads.on(.POST, body: .stream, use: upload)
+        uploads.delete(.catchall, use: deleteUpload)
     }
     
     func upload(_ req: Request) async throws -> some AsyncResponseEncodable {
@@ -70,6 +71,28 @@ struct UploadController: RouteCollection {
         }
         logger.info("File '\(fileName)' saved successfully.")
         return fileName
+    }
+    
+    func deleteUpload(_ req: Request) async throws -> HTTPStatus {
+        let logger = Logger(label: "\(UploadController.self)")
+        
+        // Get filename from path (everything after /uploads/)
+        let pathComponents = req.url.path.split(separator: "/")
+        guard pathComponents.count >= 2 else {
+            throw Abort(.badRequest, reason: "Invalid file path")
+        }
+        
+        let fileName = String(pathComponents[1])
+        let filePath = req.application.uploadPath(for: fileName)
+        
+        if FileManager.default.fileExists(atPath: filePath) {
+            try? FileManager.default.removeItem(atPath: filePath)
+            logger.info("File '\(fileName)' deleted successfully.")
+        } else {
+            logger.warning("File '\(fileName)' not found for deletion.")
+        }
+        
+        return .ok
     }
 }
 
