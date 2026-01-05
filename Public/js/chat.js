@@ -2,6 +2,7 @@
 let pendingMessages = new Map(); // Track messages being sent
 let selectedAttachments = [];
 let attachmentUploads = new Map(); // Map of attachmentId -> { xhr, file, progress }
+let attachmentAnimationFrames = new Map(); // Map of attachmentId -> animationFrameId
 
 // Load messages for a chat
 async function loadMessages(chatId) {
@@ -13,7 +14,7 @@ async function loadMessages(chatId) {
     }
     
     try {
-        const response = await fetch(`/chats/${chatId}/messages?count=20`, {
+        const response = await fetch(`/chats/${chatId}/messages?count=50`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`
@@ -596,27 +597,14 @@ function updateAttachmentPreview() {
             attachmentDiv.appendChild(videoIcon);
         }
         
-        // Add progress indicator if uploading
-        if (attachment.uploadProgress > 0 && attachment.uploadProgress < 100) {
-            const progressDiv = document.createElement('div');
-            progressDiv.className = 'attachment-upload-progress';
-            progressDiv.innerHTML = `
-                <svg class="attachment-progress-circle" viewBox="0 0 50 50">
-                    <circle class="attachment-progress-bg" cx="25" cy="25" r="20"></circle>
-                    <circle class="attachment-progress-bar" cx="25" cy="25" r="20"></circle>
-                </svg>
-            `;
-            attachmentDiv.appendChild(progressDiv);
-        }
-        
         // Add close button
         attachmentDiv.appendChild(closeButton);
         
         previewContainer.appendChild(attachmentDiv);
         
-        // Update progress if uploading
-        if (attachment.uploadProgress > 0 && attachment.uploadProgress < 100) {
-            updateAttachmentProgress(attachment.id, attachment.uploadProgress);
+        // Update progress if uploading (this will create the progress indicator if needed)
+        if (attachment.uploadProgress > 0) {
+            updateAttachmentProgressVisual(attachment.id, attachment.uploadProgress);
         }
     });
     
@@ -647,28 +635,128 @@ function removeAttachment(attachmentId) {
         attachmentUploads.delete(attachmentId);
     }
     
+    // Cancel any animation in progress
+    const animationFrameId = attachmentAnimationFrames.get(attachmentId);
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        attachmentAnimationFrames.delete(attachmentId);
+    }
+    
     selectedAttachments = selectedAttachments.filter(a => a.id !== attachmentId);
     updateAttachmentPreview();
     updateSendButtonState();
 }
 
-// Update attachment upload progress
+// Update attachment upload progress visually
+function updateAttachmentProgressVisual(attachmentId, progress) {
+    const attachmentDiv = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
+    if (!attachmentDiv) return;
+    
+    // Ensure progress indicator exists if uploading
+    let progressDiv = attachmentDiv.querySelector('.attachment-upload-progress');
+    if (!progressDiv && progress > 0) {
+        progressDiv = document.createElement('div');
+        progressDiv.className = 'attachment-upload-progress';
+        attachmentDiv.appendChild(progressDiv);
+    }
+    
+    if (progressDiv) {
+        // Create filled pie chart SVG
+        const size = 24;
+        const center = size / 2;
+        const radius = center - 2;
+        const progressAngle = (progress / 100) * 360 - 90; // Start from top, convert to degrees
+        
+        // Calculate end point of arc
+        const endX = center + radius * Math.cos(progressAngle * Math.PI / 180);
+        const endY = center + radius * Math.sin(progressAngle * Math.PI / 180);
+        
+        // Determine if we need to use large arc flag (for > 180 degrees)
+        const largeArcFlag = progress > 50 ? 1 : 0;
+        
+        // Create path for pie slice
+        let pathData;
+        if (progress === 0) {
+            // No progress - show empty circle
+            pathData = '';
+        } else {
+            // Partial pie slice
+            pathData = `M ${center} ${center} L ${center} ${center - radius} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+        }
+        
+        progressDiv.innerHTML = `
+            <svg class="attachment-progress-circle" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+                <circle class="attachment-progress-bg" cx="${center}" cy="${center}" r="${radius}" fill="hsl(var(--background) / 0.5)"></circle>
+                ${pathData ? `<path class="attachment-progress-bar" d="${pathData}" fill="white" filter="drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))"></path>` : ''}
+            </svg>
+        `;
+    }
+    
+    // Hide progress indicator when complete
+    if (progress >= 100 && progressDiv) {
+        setTimeout(() => {
+            const div = attachmentDiv.querySelector('.attachment-upload-progress');
+            if (div && div.parentNode) {
+                div.remove();
+            }
+        }, 300); // Wait a bit after animation completes
+    }
+}
+
+// Update attachment upload progress (capped at 75% during real upload)
 function updateAttachmentProgress(attachmentId, progress) {
     const attachment = selectedAttachments.find(a => a.id === attachmentId);
     if (!attachment) return;
     
-    attachment.uploadProgress = progress;
+    // Cap progress at 75% during real upload
+    const cappedProgress = Math.min(progress, 75);
+    attachment.uploadProgress = cappedProgress;
     
-    const attachmentDiv = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
-    if (!attachmentDiv) return;
-    
-    const progressBar = attachmentDiv.querySelector('.attachment-progress-bar');
-    if (progressBar) {
-        const circumference = 2 * Math.PI * 20;
-        const offset = circumference - (progress / 100) * circumference;
-        progressBar.style.strokeDasharray = `${circumference} ${circumference}`;
-        progressBar.style.strokeDashoffset = offset;
+    updateAttachmentProgressVisual(attachmentId, cappedProgress);
+}
+
+// Animate attachment upload progress from current value to 100%
+function animateAttachmentProgressToComplete(attachmentId, startProgress, duration) {
+    // Cancel any existing animation for this attachment
+    const existingFrameId = attachmentAnimationFrames.get(attachmentId);
+    if (existingFrameId) {
+        cancelAnimationFrame(existingFrameId);
     }
+    
+    const startTime = Date.now();
+    const endProgress = 100;
+    const progressRange = endProgress - startProgress;
+    
+    const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        
+        // Use ease-out easing for smooth animation
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        const currentProgressValue = startProgress + (progressRange * easedProgress);
+        
+        updateAttachmentProgressVisual(attachmentId, currentProgressValue);
+        
+        // Update stored progress
+        const attachment = selectedAttachments.find(a => a.id === attachmentId);
+        if (attachment) {
+            attachment.uploadProgress = currentProgressValue;
+        }
+        
+        if (progress < 1) {
+            const frameId = requestAnimationFrame(animate);
+            attachmentAnimationFrames.set(attachmentId, frameId);
+        } else {
+            // Animation complete
+            attachmentAnimationFrames.delete(attachmentId);
+            if (attachment) {
+                attachment.uploadProgress = 100;
+            }
+        }
+    };
+    
+    const frameId = requestAnimationFrame(animate);
+    attachmentAnimationFrames.set(attachmentId, frameId);
 }
 
 // Update send button state
@@ -844,15 +932,25 @@ async function uploadAndSendAttachments(text) {
                 previewHeight = dimensions.height;
             }
             
-            attachment.uploaded = true;
-            attachment.uploadProgress = 100;
-            attachment.uploadedId = uploadedFileId;
-            attachment.uploadedFileType = fileExtension;
-            attachment.previewWidth = previewWidth;
-            attachment.previewHeight = previewHeight;
+            // Animate the last 25% (from 75% to 100%) smoothly
+            const animationDuration = 1000; // ms - slow animation for last 25%
+            const startProgress = 75;
+            animateAttachmentProgressToComplete(attachment.id, startProgress, animationDuration);
             
-            uploadedAttachments.push(attachment);
-            updateAttachmentProgress(attachment.id, 100);
+            // Wait for animation to complete before marking as uploaded
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    attachment.uploaded = true;
+                    attachment.uploadProgress = 100;
+                    attachment.uploadedId = uploadedFileId;
+                    attachment.uploadedFileType = fileExtension;
+                    attachment.previewWidth = previewWidth;
+                    attachment.previewHeight = previewHeight;
+                    
+                    uploadedAttachments.push(attachment);
+                    resolve();
+                }, animationDuration + 300); // Wait a bit longer than the animation duration
+            });
         }
         
         // Create message with all attachments
