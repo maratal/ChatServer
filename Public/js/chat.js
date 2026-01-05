@@ -138,7 +138,7 @@ function displayMessages(messages) {
     // Render messages and date headers
     messagesWithGrouping.forEach(item => {
         if (item.type === 'date-header') {
-            const dateHeader = createDateHeader(item.dateString);
+            const dateHeader = createDateHeader(item.dateString, item.date);
             messagesContainer.appendChild(dateHeader);
         } else {
             const messageElement = createMessageElement(item);
@@ -153,10 +153,11 @@ function displayMessages(messages) {
 }
 
 // Create date header element
-function createDateHeader(dateString) {
+function createDateHeader(dateString, date) {
     const headerDiv = document.createElement('div');
     headerDiv.className = 'date-header';
-    headerDiv.innerHTML = `<span class="date-header-text">${dateString}</span>`;
+    const fullDateTime = formatFullDateTime(date);
+    headerDiv.innerHTML = `<span class="date-header-text" title="${escapeHtml(fullDateTime)}">${dateString}</span>`;
     return headerDiv;
 }
 
@@ -182,6 +183,20 @@ function formatDateHeader(date) {
             day: 'numeric' 
         });
     }
+}
+
+// Format full date and time for tooltips
+function formatFullDateTime(date) {
+    const dateObj = new Date(date);
+    return dateObj.toLocaleString([], {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
 }
 
 // Create a message element
@@ -225,10 +240,12 @@ function createMessageElement(message) {
     }
     
     // Format time
-    const messageTime = new Date(message.createdAt).toLocaleTimeString([], {
+    const messageDate = new Date(message.createdAt);
+    const messageTime = messageDate.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit'
     });
+    const fullDateTime = formatFullDateTime(message.createdAt);
     
     // Check if this is a group chat (show author names only for group chats)
     const isGroupChat = chat && !chat.isPersonal;
@@ -323,7 +340,7 @@ function createMessageElement(message) {
                 ${hasAttachments ? attachmentHTML : ''}
                 ${message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : ''}
                 <div class="message-timestamp-area">
-                    <span class="message-time">${messageTime}</span>
+                    <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
                     ${statusIcon}
                 </div>
             </div>
@@ -993,7 +1010,7 @@ function addMessageToChat(message, animated = true) {
     
     // Add date header if needed
     if (needsDateHeader) {
-        const dateHeader = createDateHeader(formatDateHeader(messageDate));
+        const dateHeader = createDateHeader(formatDateHeader(messageDate), messageDate);
         messagesContainer.appendChild(dateHeader);
     }
     
