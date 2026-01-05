@@ -2332,39 +2332,31 @@ input[type="text"]:disabled, textarea:disabled {
 .message-content.has-attachment {
     flex-direction: column;
     align-items: stretch;
-    width: 100%;
-    min-width: 0;
 }
 
 .message-attachment-container {
     position: relative;
     border-radius: 8px;
     overflow: hidden;
-    max-height: 300px;
-    background-color: hsl(var(--muted));
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
     box-sizing: border-box;
     display: block;
+    background-color: hsl(var(--muted));
 }
 
 .message-attachment-image {
     width: 100%;
-    height: auto;
-    max-height: 296px;
+    height: 300px;
     object-fit: cover;
     display: block;
-    min-width: 0;
+    min-width: 200px;
     box-sizing: border-box;
 }
 
 .message-attachment-video {
     width: 100%;
-    height: auto;
-    max-height: 296px;
+    height: 300px;
     display: block;
-    min-width: 0;
+    min-width: 200px;
     box-sizing: border-box;
 }
 
