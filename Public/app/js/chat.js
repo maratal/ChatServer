@@ -149,7 +149,7 @@ function displayMessages(messages) {
     });
     
     // Apply grouping to all rendered messages
-    const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-bubble'));
+    const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-row'));
     messageElements.forEach((messageElement, index) => {
         updateSingleMessageGrouping(messageElement, index, messageElements);
     });
@@ -210,7 +210,7 @@ function formatFullDateTime(date) {
 // Create a message element
 function createMessageElement(message) {
     const messageDiv = document.createElement('div');
-    messageDiv.className = 'message-bubble';
+    messageDiv.className = 'message-row';
     
     // Set the author ID, timestamp, and IDs as data attributes
     messageDiv.dataset.authorId = message.authorId || '';
@@ -334,7 +334,7 @@ function createMessageElement(message) {
         <span class="message-avatar-small" ${avatarDataAttrs}>
             ${avatarContent}
         </span>
-        <div class="message-content-wrapper">
+        <div class="message-bubble">
             ${(isGroupChat && !isOwnMessage) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
             <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
                 ${hasAttachments ? attachmentHTML : ''}
@@ -357,7 +357,7 @@ function createMessageElement(message) {
 
 // Navigate message attachments
 function navigateMessageAttachment(messageId, direction) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-bubble');
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row');
     if (!messageDiv) return;
     
     const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
@@ -377,7 +377,7 @@ function navigateMessageAttachment(messageId, direction) {
 
 // Switch message attachment
 function switchMessageAttachment(messageId, index) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-bubble');
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row');
     if (!messageDiv) return;
     
     const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
@@ -426,7 +426,7 @@ function switchMessageAttachment(messageId, index) {
 
 // Open media viewer for message attachments
 function openMessageAttachmentViewer(messageId) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-bubble');
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row');
     if (!messageDiv) return;
     
     const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
@@ -1094,7 +1094,7 @@ function addMessageToChat(message, animated = true) {
     let lastMessage = null;
     for (let i = allChildren.length - 1; i >= 0; i--) {
         const child = allChildren[i];
-        if (child.classList.contains('message-bubble')) {
+        if (child.classList.contains('message-row')) {
             lastMessage = child;
             break;
         }
@@ -1148,7 +1148,7 @@ function addMessageToChat(message, animated = true) {
 // Update message grouping incrementally for newly added message
 function updateMessageGroupingIncremental(newMessageElement) {
     const messagesContainer = document.getElementById('messagesContainer');
-    const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-bubble'));
+    const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-row'));
     
     // Find the index of the new message
     const newMessageIndex = messageElements.indexOf(newMessageElement);

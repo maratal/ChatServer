@@ -1816,42 +1816,42 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 /* Override space-y-2 utility class for message spacing */
-#messagesContainer > .message-bubble {
+#messagesContainer > .message-row {
     margin-top: 12px !important; /* Default gap between groups */
     margin-bottom: 0 !important;
 }
 
-#messagesContainer > .message-bubble:first-child {
+#messagesContainer > .message-row:first-child {
     margin-top: 0 !important;
 }
 
 /* Tighter spacing for connected bubbles within groups */
-#messagesContainer > .message-bubble.group-middle,
-#messagesContainer > .message-bubble.group-last {
+#messagesContainer > .message-row.group-middle,
+#messagesContainer > .message-row.group-last {
     margin-top: 3px !important; /* Small gap within group */
 }
 
-/* Message Bubble Styles */
-.message-bubble {
+/* Message Row Styles */
+.message-row {
     display: flex;
     gap: 8px;
 }
 
-.message-bubble.own {
+.message-row.own {
     flex-direction: row-reverse;
 }
 
 /* Spacing for message groups */
-.message-bubble.group-first {
+.message-row.group-first {
     margin-top: 1rem; /* Space before new group starts */
 }
 
-.message-bubble.group-single {
+.message-row.group-single {
     margin-top: 1rem; /* Space before single message */
     margin-bottom: 1rem; /* Space after single message */
 }
 
-.message-bubble.group-last {
+.message-row.group-last {
     margin-bottom: 1rem; /* Space after group ends */
 }
 
@@ -1892,29 +1892,29 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 /* Avatar visibility: show only for first message in group */
-.message-bubble .message-avatar-small {
+.message-row .message-avatar-small {
     visibility: visible; /* Default visible */
 }
 
 /* Hide avatar for middle and last messages in group */
-.message-bubble.group-middle .message-avatar-small,
-.message-bubble.group-last .message-avatar-small {
+.message-row.group-middle .message-avatar-small,
+.message-row.group-last .message-avatar-small {
     visibility: hidden !important;
 }
 
 /* Explicitly ensure first and single messages show avatar */
-.message-bubble.group-first .message-avatar-small,
-.message-bubble.group-single .message-avatar-small {
+.message-row.group-first .message-avatar-small,
+.message-row.group-single .message-avatar-small {
     visibility: visible !important;
 }
 
-.message-content-wrapper {
+.message-bubble {
     display: flex;
     flex-direction: column;
     max-width: 45%;
 }
 
-.message-bubble.own .message-content-wrapper {
+.message-row.own .message-bubble {
     align-items: flex-end;
 }
 
@@ -1927,19 +1927,19 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 /* Author name visibility: show only for first message in group */
-.message-bubble .message-author-name {
+.message-row .message-author-name {
     display: block; /* Default visible */
 }
 
 /* Hide author name for middle and last messages in group */
-.message-bubble.group-middle .message-author-name,
-.message-bubble.group-last .message-author-name {
+.message-row.group-middle .message-author-name,
+.message-row.group-last .message-author-name {
     display: none;
 }
 
 /* Explicitly ensure first and single messages show author name */
-.message-bubble.group-first .message-author-name,
-.message-bubble.group-single .message-author-name {
+.message-row.group-first .message-author-name,
+.message-row.group-single .message-author-name {
     display: block;
 }
 
@@ -1953,7 +1953,7 @@ input[type="text"]:disabled, textarea:disabled {
     gap: 2px;
 }
 
-.message-bubble.own .message-content {
+.message-row.own .message-content {
     background-color: hsl(var(--chat-bubble-sent));
     color: hsl(var(--chat-bubble-sent-foreground));
 }
@@ -1962,43 +1962,43 @@ input[type="text"]:disabled, textarea:disabled {
 /* Border-radius order: top-left, top-right, bottom-right, bottom-left */
 
 /* Regular messages (left side - avatar on left) */
-.message-bubble.group-first .message-content {
+.message-row.group-first .message-content {
     /* First in group: normal top corners, small bottom corner near avatar (connects to next message) */
     border-radius: 10px 10px 10px 5px !important;
 }
 
-.message-bubble.group-middle .message-content {
+.message-row.group-middle .message-content {
     /* Middle: small corners near avatar (connects to prev/next), normal far corners */
     border-radius: 5px 10px 10px 5px !important;
 }
 
-.message-bubble.group-last .message-content {
+.message-row.group-last .message-content {
     /* Last in group: small top corner near avatar (connects to prev), normal bottom corners */
     border-radius: 5px 10px 10px 10px !important;
 }
 
-.message-bubble.group-single .message-content {
+.message-row.group-single .message-content {
     /* Single message: all corners normal */
     border-radius: 10px 10px 10px 10px !important;
 }
 
 /* Own messages (right side - avatar on right) */
-.message-bubble.own.group-first .message-content {
+.message-row.own.group-first .message-content {
     /* First in group: normal top corners, small bottom corner near avatar (connects to next message) */
     border-radius: 10px 10px 5px 10px !important;
 }
 
-.message-bubble.own.group-middle .message-content {
+.message-row.own.group-middle .message-content {
     /* Middle: small corners near avatar (connects to prev/next), normal far corners */
     border-radius: 10px 5px 5px 10px !important;
 }
 
-.message-bubble.own.group-last .message-content {
+.message-row.own.group-last .message-content {
     /* Last in group: small top corner near avatar (connects to prev), normal bottom corners */
     border-radius: 10px 5px 10px 10px !important;
 }
 
-.message-bubble.own.group-single .message-content {
+.message-row.own.group-single .message-content {
     /* Single message: all corners normal */
     border-radius: 10px 10px 10px 10px !important;
 }
@@ -2031,7 +2031,7 @@ input[type="text"]:disabled, textarea:disabled {
     text-align: right;
 }
 
-.message-bubble.own .message-time {
+.message-row.own .message-time {
     color: hsl(var(--chat-bubble-sent-foreground) / 0.7);
 }
 
@@ -2042,7 +2042,7 @@ input[type="text"]:disabled, textarea:disabled {
     padding-right: 4px;
 }
 
-.message-bubble.own .message-status-icon {
+.message-row.own .message-status-icon {
     color: hsl(var(--chat-bubble-sent-foreground) / 0.8);
 }
 
