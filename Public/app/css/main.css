@@ -1738,7 +1738,7 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .messages-container {
-    padding: 0px 10px 15px 10px;
+    padding-bottom: 15px;
 }
 
 .message {
@@ -1835,6 +1835,11 @@ input[type="text"]:disabled, textarea:disabled {
 .message-row {
     display: flex;
     gap: 8px;
+    transition: background-color 0.15s ease;
+}
+
+.message-row.menu-active {
+    background-color: hsl(var(--muted));
 }
 
 .message-row.own {
@@ -1865,6 +1870,14 @@ input[type="text"]:disabled, textarea:disabled {
     width: 2rem;
     flex-shrink: 0;
     margin: 2px; /* Add margin to prevent shadow clipping */
+}
+
+.message-avatar-small.incoming {
+    margin-left: 10px;
+}
+
+.message-avatar-small.outgoing {
+    margin-right: 10px;
 }
 
 .message-avatar-small[data-clickable="true"] {
@@ -2044,6 +2057,65 @@ input[type="text"]:disabled, textarea:disabled {
 
 .message-row.own .message-status-icon {
     color: hsl(var(--chat-bubble-sent-foreground) / 0.8);
+}
+
+/* Message Context Menu */
+.message-context-menu {
+    position: fixed;
+    background-color: hsl(var(--popover));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px;
+    z-index: 1000;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-context-menu-separator {
+    height: 1px;
+    background-color: hsl(var(--border));
+    margin: 4px 0;
+}
+
+.message-context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    color: hsl(var(--popover-foreground));
+    font-size: 0.875rem;
+    transition: background-color 0.15s ease;
+}
+
+.message-context-menu-item:hover {
+    background-color: hsl(var(--accent));
+}
+
+.message-context-menu-item svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: hsl(var(--popover-foreground));
+}
+
+.message-context-menu-item span {
+    flex: 1;
+}
+
+.message-context-menu-item[data-action="delete"] {
+    color: hsl(var(--destructive));
+}
+
+.message-context-menu-item[data-action="delete"]:hover {
+    background-color: hsl(var(--destructive) / 0.1);
+}
+
+.message-context-menu-item[data-action="delete"] svg {
+    color: hsl(var(--destructive));
 }
 
 /* Date Header Styles */
@@ -2433,4 +2505,51 @@ input[type="text"]:disabled, textarea:disabled {
 
 .message-attachment-pagination-dot.active {
     background-color: hsl(var(--background));
+}
+
+/* Message Context Menu */
+.message-context-menu {
+    position: fixed;
+    background-color: hsl(var(--popover));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px;
+    z-index: 1000;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-context-menu-separator {
+    height: 1px;
+    background-color: hsl(var(--border));
+    margin: 4px 0;
+}
+
+.message-context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    color: hsl(var(--popover-foreground));
+    font-size: 0.875rem;
+    transition: background-color 0.15s ease;
+}
+
+.message-context-menu-item:hover {
+    background-color: hsl(var(--accent));
+}
+
+.message-context-menu-item svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: hsl(var(--popover-foreground));
+}
+
+.message-context-menu-item span {
+    flex: 1;
 }
