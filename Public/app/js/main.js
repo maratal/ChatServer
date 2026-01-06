@@ -186,12 +186,10 @@ function createChatItem(chat) {
     const unreadCount = 0; // This would come from the API
     
     item.innerHTML = `
-        <div class="chat-avatar">
-            <span class="chat-avatar-container">
-                <span class="chat-avatar-initials">${escapeHtml(avatarContent)}</span>
-                ${hasOnlineStatus ? '<span class="chat-status-indicator"></span>' : ''}
-            </span>
-        </div>
+        <span class="avatar-small">
+            <span class="avatar-initials">${escapeHtml(avatarContent)}</span>
+            ${hasOnlineStatus ? '<span class="chat-status-indicator"></span>' : ''}
+        </span>
         <div class="chat-info">
             <div class="chat-header-row">
                 <h3 class="chat-name">${escapeHtml(chatName)}</h3>
@@ -346,24 +344,15 @@ function updateCurrentUserDisplay() {
     console.log('Updating display with:', userName);
     
     // Update sidebar current user avatar
-    const sidebarAvatar = document.getElementById('sidebarCurrentUserAvatarContent');
+    const sidebarAvatar = document.getElementById('sidebarCurrentUserAvatar');
     if (sidebarAvatar) {
         const mainPhoto = mainPhotoForUser(currentUser.info);
         
         if (mainPhoto) {
-            // Clear and add image
-            sidebarAvatar.innerHTML = '';
-            const img = document.createElement('img');
-            img.src = `/uploads/${mainPhoto.id}.${mainPhoto.fileType}`;
-            img.alt = '';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.borderRadius = '50%';
-            img.style.objectFit = 'cover';
-            sidebarAvatar.appendChild(img);
+            sidebarAvatar.innerHTML = `<img src="/uploads/${mainPhoto.id}.${mainPhoto.fileType}" alt="">`;
         } else {
             const initials = getInitials(userName);
-            sidebarAvatar.textContent = initials;
+            sidebarAvatar.innerHTML = `<span class="avatar-initials">${initials}</span>`;
         }
     }
 }
@@ -705,7 +694,7 @@ function displayUsers() {
         const userInitials = getInitials(user.name || user.username || '?');
         html += `
             <div class="user-item" onclick="selectUser(${user.id})">
-                <div class="user-item-avatar">${userInitials}</div>
+                <div class="avatar-small"><span class="avatar-initials">${userInitials}</span></div>
                 <div class="user-item-info">
                     <div class="user-item-name">${escapeHtml(user.name || user.username || 'Unknown User')}</div>
                     <div class="user-item-username">@${escapeHtml(user.username || 'unknown')}</div>
@@ -1079,16 +1068,16 @@ function isUserOnline(lastSeen) {
 // Handle avatar clicks using event delegation
 document.addEventListener('click', function(event) {
     // Check if clicked element is a message avatar or inside it
-    let avatar = event.target.closest('.message-avatar-small[data-clickable="true"]');
+    let avatar = event.target.closest('.message-row .avatar-small[data-clickable="true"]');
     
     // Also check if the clicked element itself is the avatar
-    if (!avatar && event.target.classList.contains('message-avatar-small') && event.target.dataset.clickable === 'true') {
+    if (!avatar && event.target.classList.contains('avatar-small') && event.target.dataset.clickable === 'true') {
         avatar = event.target;
     }
     
     // Also check if clicked inside avatar initials
-    if (!avatar && event.target.closest('.message-avatar-initials')) {
-        avatar = event.target.closest('.message-avatar-small[data-clickable="true"]');
+    if (!avatar && event.target.closest('.avatar-initials')) {
+        avatar = event.target.closest('.avatar-small[data-clickable="true"]');
     }
     
     if (avatar && avatar.dataset.authorId) {

@@ -265,8 +265,8 @@ function createMessageElement(message) {
         : '';
     
     const avatarContent = authorMainPhoto 
-        ? `<img src="/uploads/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
-        : `<span class="message-avatar-initials">${authorInitials}</span>`;
+        ? `<img src="/uploads/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="">`
+        : `<span class="avatar-initials">${authorInitials}</span>`;
     
     // Handle attachments
     const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
@@ -330,7 +330,7 @@ function createMessageElement(message) {
         }
     }
     
-    const avatarClass = isOwnMessage ? 'message-avatar-small outgoing' : 'message-avatar-small incoming';
+    const avatarClass = isOwnMessage ? 'avatar-small outgoing' : 'avatar-small incoming';
     
     messageDiv.innerHTML = `
         <span class="${avatarClass}" ${avatarDataAttrs}>
@@ -358,7 +358,7 @@ function createMessageElement(message) {
     messageDiv.addEventListener('click', (e) => {
         // Check if click is outside message-bubble and avatar
         const clickedBubble = e.target.closest('.message-bubble');
-        const clickedAvatar = e.target.closest('.message-avatar-small');
+        const clickedAvatar = e.target.closest('.avatar-small');
         
         if (!clickedBubble && !clickedAvatar) {
             e.stopPropagation();

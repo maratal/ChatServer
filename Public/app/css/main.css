@@ -349,21 +349,98 @@ input[type="text"], textarea {
     min-width: 0 !important;
 }
 
-/* Add shadows to all avatars */
-.current-user-avatar,
-.user-item-avatar,
-.chat-avatar-container,
-.chat-header-avatar,
-.message-avatar,
-.message-avatar-small,
-#chatHeaderAvatar,
-#chatHeaderAvatarContainer {
+/* Unified Avatar Styles */
+.avatar-small {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
     box-shadow: var(--shadow-soft);
 }
 
+.avatar-small img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-initials {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+    font-weight: 600;
+}
+
+/* Avatar sizes by unique ID */
+#sidebarCurrentUserAvatar {
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+}
+
 #chatHeaderAvatarContainer {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+    overflow: visible; /* Allow status indicator to show */
+}
+
+/* Avatar sizes by container (repeatable) */
+.chat-item .avatar-small {
+    width: 3rem;
+    height: 3rem;
+    font-size: 0.875rem;
+    overflow: visible; /* Allow status indicator to show */
+}
+
+.user-item .avatar-small {
+    width: 3rem;
+    height: 3rem;
+    font-size: 0.875rem;
+}
+
+.message-row .avatar-small {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.75rem;
+    margin: 2px;
+}
+
+.message-row .avatar-small.incoming {
+    margin-left: 15px;
+}
+
+.message-row .avatar-small.outgoing {
+    margin-right: 15px;
+}
+
+.message-row .avatar-small[data-clickable="true"] {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Avatar visibility in message groups */
+.message-row .avatar-small {
+    visibility: visible;
+}
+
+.message-row.group-middle .avatar-small,
+.message-row.group-last .avatar-small {
+    visibility: hidden !important;
+}
+
+.message-row.group-first .avatar-small,
+.message-row.group-single .avatar-small {
+    visibility: visible !important;
 }
 
 /* Add shadow to date headers */
@@ -556,26 +633,6 @@ input[type="text"]:disabled, textarea:disabled {
     flex: 1;
 }
 
-.current-user-avatar {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background-color: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 12px;
-    flex-shrink: 0;
-}
-
-.current-user-avatar img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-}
 
 .current-user-details {
     flex: 1;
@@ -714,20 +771,6 @@ input[type="text"]:disabled, textarea:disabled {
     background-color: hsl(var(--sidebar-accent));
 }
 
-.user-item-avatar {
-    position: relative;
-    display: flex;
-    overflow: visible;
-    border-radius: 9999px;
-    height: 3rem;
-    width: 3rem;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    background-color: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    font-weight: 600;
-}
 
 .user-item-info {
     flex: 1 1 0%;
@@ -1519,39 +1562,6 @@ input[type="text"]:disabled, textarea:disabled {
     background-color: hsl(var(--sidebar-accent));
 }
 
-.chat-avatar {
-    position: relative;
-    flex-shrink: 0;
-}
-
-.chat-avatar-container {
-    position: relative;
-    display: flex;
-    overflow: visible; /* Allow status indicator to show outside bounds */
-    border-radius: 9999px;
-    height: 3rem;
-    width: 3rem;
-    flex-shrink: 0;
-}
-
-.chat-avatar-initials {
-    display: flex;
-    height: 100%;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    background-color: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    font-weight: 600;
-}
-
-.chat-avatar img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-}
 
 .chat-status-indicator {
     position: absolute;
@@ -1661,26 +1671,6 @@ input[type="text"]:disabled, textarea:disabled {
     gap: 12px;
 }
 
-.chat-header-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #666;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    flex-shrink: 0;
-    font-size: 16px;
-}
-
-.chat-header-avatar img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-}
 
 .chat-header-info {
     flex: 1;
@@ -1719,31 +1709,6 @@ input[type="text"]:disabled, textarea:disabled {
     margin-top: 10px;
 }
 
-.message-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #666;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    margin: 0 8px;
-    flex-shrink: 0;
-    font-size: 12px;
-}
-
-.message-avatar img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.personal-chat .message-avatar {
-    display: none;
-}
 
 .personal-chat .message-wrapper {
     margin-left: 0;
@@ -1824,66 +1789,6 @@ input[type="text"]:disabled, textarea:disabled {
     margin-bottom: 1rem; /* Space after group ends */
 }
 
-
-.message-avatar-small {
-    position: relative;
-    display: flex;
-    overflow: hidden;
-    border-radius: 9999px;
-    height: 2rem;
-    width: 2rem;
-    flex-shrink: 0;
-    margin: 2px; /* Add margin to prevent shadow clipping */
-}
-
-.message-avatar-small.incoming {
-    margin-left: 10px;
-}
-
-.message-avatar-small.outgoing {
-    margin-right: 10px;
-}
-
-.message-avatar-small[data-clickable="true"] {
-    cursor: pointer;
-    user-select: none;
-}
-
-.message-avatar-initials {
-    display: flex;
-    height: 100%;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    background-color: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    font-size: 0.75rem;
-}
-
-.message-avatar-small img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-/* Avatar visibility: show only for first message in group */
-.message-row .message-avatar-small {
-    visibility: visible; /* Default visible */
-}
-
-/* Hide avatar for middle and last messages in group */
-.message-row.group-middle .message-avatar-small,
-.message-row.group-last .message-avatar-small {
-    visibility: hidden !important;
-}
-
-/* Explicitly ensure first and single messages show avatar */
-.message-row.group-first .message-avatar-small,
-.message-row.group-single .message-avatar-small {
-    visibility: visible !important;
-}
 
 .message-bubble {
     display: flex;
@@ -2234,16 +2139,16 @@ input[type="text"]:disabled, textarea:disabled {
         max-width: 85%;
     }
     
-    .chat-avatar {
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
+    .chat-item .avatar-small {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 0.75rem;
     }
     
-    .message-avatar {
-        width: 28px;
-        height: 28px;
-        font-size: 11px;
+    .message-row .avatar-small {
+        width: 1.75rem;
+        height: 1.75rem;
+        font-size: 0.6875rem;
     }
     
     .user-selection-content {

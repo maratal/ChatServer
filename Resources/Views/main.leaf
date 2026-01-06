@@ -23,8 +23,7 @@
                                 <circle cx="9" cy="7" r="4"></circle>
                             </svg>
                         </button>
-                        <span class="relative flex overflow-visible rounded-full cursor-pointer" id="sidebarCurrentUserAvatar" onclick="openCurrentUserProfile()">
-                            <span class="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary/10 text-primary current-user-avatar" id="sidebarCurrentUserAvatarContent">?</span>
+                        <span class="avatar-small cursor-pointer" id="sidebarCurrentUserAvatar" onclick="openCurrentUserProfile()">                    
                         </span>
                     </div>
                 </div>
@@ -63,8 +62,8 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
-                    <span class="relative flex overflow-visible rounded-full" id="chatHeaderAvatarContainer">
-                        <span class="flex h-full w-full items-center justify-center rounded-full bg-primary/10 text-primary" id="chatHeaderAvatar">AJ</span>
+                    <span class="avatar-small" id="chatHeaderAvatarContainer">
+                        <span class="avatar-initials" id="chatHeaderAvatar">AJ</span>
                         <span class="chat-header-status-indicator" id="chatHeaderStatusIndicator" style="display: block;"></span>
                     </span>
                 </div>
