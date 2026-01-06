@@ -1206,7 +1206,7 @@ function updateMessageGroupingIncremental(newMessageElement) {
 
 // Toggle message context menu
 function toggleMessageContextMenu(event, messageElement, message) {
-    const existingMenu = document.querySelector('.message-context-menu');
+    const existingMenu = document.querySelector('.context-menu');
     
     // Check if menu is already visible for this message
     if (existingMenu) {
@@ -1231,7 +1231,7 @@ function toggleMessageContextMenu(event, messageElement, message) {
 // Show message context menu
 function showMessageContextMenu(event, messageElement, message) {
     // Remove any existing menu and its highlight
-    const existingMenu = document.querySelector('.message-context-menu');
+    const existingMenu = document.querySelector('.context-menu');
     if (existingMenu) {
         existingMenu.remove();
         // Remove highlight from previously highlighted message-row
@@ -1243,7 +1243,7 @@ function showMessageContextMenu(event, messageElement, message) {
     
     // Create menu
     const menu = document.createElement('div');
-    menu.className = 'message-context-menu';
+    menu.className = 'context-menu';
     menu.dataset.messageId = message.id || message.localId;
     
     const menuItems = [
@@ -1254,8 +1254,8 @@ function showMessageContextMenu(event, messageElement, message) {
     ];
     
     menu.innerHTML = menuItems.map(item => {
-        const separator = item.separator ? '<div class="message-context-menu-separator"></div>' : '';
-        return `${separator}<div class="message-context-menu-item" data-action="${item.id}">
+        const separator = item.separator ? '<div class="context-menu-separator"></div>' : '';
+        return `${separator}<div class="context-menu-item" data-action="${item.id}">
             ${item.icon}
             <span>${item.label}</span>
         </div>`;
@@ -1286,7 +1286,7 @@ function showMessageContextMenu(event, messageElement, message) {
     menu.style.top = `${top}px`;
     
     // Handle menu item clicks
-    menu.querySelectorAll('.message-context-menu-item').forEach(item => {
+    menu.querySelectorAll('.context-menu-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             const action = item.dataset.action;
