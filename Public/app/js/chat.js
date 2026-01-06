@@ -265,7 +265,7 @@ function createMessageElement(message) {
         : '';
     
     const avatarContent = authorMainPhoto 
-        ? `<img src="/files/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
+        ? `<img src="/uploads/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
         : `<span class="message-avatar-initials">${authorInitials}</span>`;
     
     // Handle attachments
@@ -301,10 +301,10 @@ function createMessageElement(message) {
                     </button>
                     ` : ''}
                     ${isImage ? `
-                    <img class="message-attachment-image" src="/files/${firstAttachment.id}.${firstAttachment.fileType}" alt="Attachment">
+                    <img class="message-attachment-image" src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}" alt="Attachment">
                     ` : isVideo ? `
                     <video class="message-attachment-video" controls onclick="event.stopPropagation();">
-                        <source src="/files/${firstAttachment.id}.${firstAttachment.fileType}" type="video/${firstAttachment.fileType}">
+                        <source src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}" type="video/${firstAttachment.fileType}">
                     </video>
                     ` : ''}
                     ${hasMultipleValidAttachments ? `
@@ -396,7 +396,7 @@ function switchMessageAttachment(messageId, index) {
         if (isImage) {
             const img = document.createElement('img');
             img.className = 'message-attachment-image';
-            img.src = `/files/${attachment.id}.${attachment.fileType}`;
+            img.src = `/uploads/${attachment.id}.${attachment.fileType}`;
             img.alt = 'Attachment';
             currentMedia.replaceWith(img);
         } else if (isVideo) {
@@ -404,7 +404,7 @@ function switchMessageAttachment(messageId, index) {
             video.className = 'message-attachment-video';
             video.controls = true;
             const source = document.createElement('source');
-            source.src = `/files/${attachment.id}.${attachment.fileType}`;
+            source.src = `/uploads/${attachment.id}.${attachment.fileType}`;
             source.type = `video/${attachment.fileType}`;
             video.appendChild(source);
             currentMedia.replaceWith(video);

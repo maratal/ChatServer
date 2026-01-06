@@ -75,7 +75,7 @@ function displayCurrentUserProfile(user) {
     
     // Get current photo
     const currentPhoto = userPhotos.length > 0 ? userPhotos[currentPhotoIndex] : null;
-    const photoUrl = currentPhoto ? `/files/${currentPhoto.id}.${currentPhoto.fileType}` : null;
+    const photoUrl = currentPhoto ? `/uploads/${currentPhoto.id}.${currentPhoto.fileType}` : null;
     const hasMultiplePhotos = userPhotos.length > 1;
     
     let html = `
@@ -600,10 +600,10 @@ function updateAvatarDisplay() {
     if (!avatar) return;
     
     if (currentPhoto && avatarImg) {
-        avatarImg.src = `/files/${currentPhoto.id}.${currentPhoto.fileType}`;
+        avatarImg.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
     } else if (currentPhoto) {
         const img = document.createElement('img');
-        img.src = `/files/${currentPhoto.id}.${currentPhoto.fileType}`;
+        img.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
         img.alt = '';
         img.id = 'userProfileAvatarImg';
         avatar.innerHTML = '';

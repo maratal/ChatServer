@@ -68,7 +68,7 @@ extension CoreService {
 extension Application {
     
     var uploadsDirectory: String {
-        directory.publicDirectory
+        directory.publicDirectory + "uploads/"
     }
     
     func uploadPath(for fileName: String) -> String {

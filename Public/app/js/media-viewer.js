@@ -95,7 +95,7 @@ function updateMediaViewer() {
     
     if (!viewerImg || !currentPhoto) return;
     
-    viewerImg.src = `/files/${currentPhoto.id}.${currentPhoto.fileType}`;
+    viewerImg.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
     
     // Format date and time
     if (currentPhoto.createdAt && viewerTitle) {

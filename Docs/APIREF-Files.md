@@ -17,6 +17,6 @@ Authorization: Bearer <token>
 File-Name: <name>               // prefer `UUID` to avoid a name clash with an existing file
 Content-Type: <file_type>       // a file extension such as `png`, `mp4` etc.
 ```
-__Response__: a name of the file from which a link can be constructed - `http://<your_server[:port]>/files/<file_name>.<file_type>`
+__Response__: a name of the file from which a link can be constructed - `http://<your_server[:port]>/uploads/<file_name>.<file_type>`
 
 See also: upload [test](../Tests/AppTests/UploadTests.swift) with an uploading client example.

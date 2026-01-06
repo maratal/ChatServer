@@ -30,7 +30,7 @@ ________________________________________________________________________________
 ### 2. Posting a message
 
 You can attach a picture/video with a preview to your message. Depending on how you want your client to behave you might want to upload you media first and using returned file name as an `id` for the message's attachment.
-Or vice versa - obtain attachment's `id` first (by posting a message) and then upload files with this attachment's `id` as a file name. You can upload multiple files and then construct their `URL`s as `http://<server[:port]>/files/<file_name>.<file_type>` and for example `http://<server[:port]>/files/<file_name>-preview.jpeg`
+Or vice versa - obtain attachment's `id` first (by posting a message) and then upload files with this attachment's `id` as a file name. You can upload multiple files and then construct their `URL`s as `http://<server[:port]>/uploads/<file_name>.<file_type>` and for example `http://<server[:port]>/uploads/<file_name>-preview.jpeg`
 <p>All participants will be notified about this event via websocket and push according to their settings.</p>
 
 See also:

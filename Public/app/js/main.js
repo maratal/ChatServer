@@ -354,7 +354,7 @@ function updateCurrentUserDisplay() {
             // Clear and add image
             sidebarAvatar.innerHTML = '';
             const img = document.createElement('img');
-            img.src = `/files/${mainPhoto.id}.${mainPhoto.fileType}`;
+            img.src = `/uploads/${mainPhoto.id}.${mainPhoto.fileType}`;
             img.alt = '';
             img.style.width = '100%';
             img.style.height = '100%';
@@ -879,7 +879,7 @@ function displayUserInfo(user) {
     
     // Get current photo
     const currentPhoto = userInfoPhotos.length > 0 ? userInfoPhotos[userInfoCurrentPhotoIndex] : null;
-    const photoUrl = currentPhoto ? `/files/${currentPhoto.id}.${currentPhoto.fileType}` : null;
+    const photoUrl = currentPhoto ? `/uploads/${currentPhoto.id}.${currentPhoto.fileType}` : null;
     const hasMultiplePhotos = userInfoPhotos.length > 1;
     
     let html = `
@@ -1007,10 +1007,10 @@ function updateUserInfoAvatarDisplay() {
     if (!avatar) return;
     
     if (currentPhoto && avatarImg) {
-        avatarImg.src = `/files/${currentPhoto.id}.${currentPhoto.fileType}`;
+        avatarImg.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
     } else if (currentPhoto) {
         const img = document.createElement('img');
-        img.src = `/files/${currentPhoto.id}.${currentPhoto.fileType}`;
+        img.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
         img.alt = '';
         img.id = 'userInfoAvatarImg';
         avatar.innerHTML = '';
