@@ -1100,9 +1100,8 @@ function addMessageToChat(message, animated = true) {
         }
     }
     
-    // Check if we need to add a date header
-    // Only add if there's a previous message and the date is different
-    let needsDateHeader = false;
+    // Check if we need to add a date header: if there's no previous message (first message) or if the date is different
+    let needsDateHeader = true;
     if (lastMessage) {
         const lastMessageDate = new Date(lastMessage.dataset.createdAt);
         const lastMessageDateString = lastMessageDate.toDateString();
