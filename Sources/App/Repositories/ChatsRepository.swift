@@ -98,6 +98,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
                 if (fullInfo) {
                     chat.with(\.$users) { user in
                         user.with(\.$photos)
+                        user.with(\.$deviceSessions)
                     }
                 }
             }

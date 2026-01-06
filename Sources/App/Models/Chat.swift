@@ -91,7 +91,7 @@ extension Chat {
             self.isArchived = relation.isArchived
             self.isBlocked = relation.isChatBlocked
             if fullInfo {
-                self.allUsers = chat.users.map { $0.info() }
+                self.allUsers = chat.users.map { $0.fullInfo() }
             }
         }
         

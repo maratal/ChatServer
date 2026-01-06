@@ -166,7 +166,8 @@ function createChatItem(chat) {
         } else {
             chatName = otherUser.name;
             avatarContent = getInitials(otherUser.name);
-            hasOnlineStatus = true; // Show online status for personal chats
+            // Show online status only if user is actually online
+            hasOnlineStatus = otherUser.lastSeen ? isUserOnline(otherUser.lastSeen) : false;
         }
     } else {
         // For group chats, show chat title
@@ -259,10 +260,12 @@ async function selectChat(chatId) {
             chatHeaderStatusIndicator.style.display = 'none'; // No status for self-chat
         } else {
             chatTitle.textContent = otherUser.name;
-            chatSubtitle.textContent = `Online`;
+            // Show last seen (status indicator shows if online)
+            const isOnline = otherUser.lastSeen ? isUserOnline(otherUser.lastSeen) : false;
+            const lastSeen = otherUser.lastSeen ? formatLastSeen(otherUser.lastSeen) : null;
+            chatSubtitle.textContent = lastSeen ? `Last seen ${lastSeen}` : '';
             chatHeaderAvatar.textContent = getInitials(otherUser.name);
-            console.log('Setting status indicator to visible for user:', otherUser.name);
-            chatHeaderStatusIndicator.style.display = 'block'; // Show status for other users
+            chatHeaderStatusIndicator.style.display = isOnline ? 'block' : 'none';
         }
     } else {
         messagesContainer.classList.remove('personal-chat');
