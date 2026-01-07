@@ -326,16 +326,14 @@ function createMessageElement(message) {
         messageDiv.dataset.currentAttachmentIndex = '0';
     }
     
-    // Add click handler for context menu
-    messageDiv.addEventListener('click', (e) => {
-        // Check if click is outside message-bubble and avatar
-        const clickedBubble = e.target.closest('.message-bubble');
-        const clickedAvatar = e.target.closest('.avatar-small');
-        
-        if (!clickedBubble && !clickedAvatar) {
-            e.stopPropagation();
-            toggleMessageContextMenu(e, messageDiv, message);
-        }
+    // Add long press handler for context menu
+    addLongPressHandler(messageDiv, {
+        onLongPress: (event, startPosition) => {
+            showMessageContextMenu(event, messageDiv, message);
+        },
+        excludeSelectors: ['.message-bubble', '.avatar-small'],
+        duration: 300,
+        maxMovement: 10
     });
     
     return messageDiv;
@@ -1151,48 +1149,8 @@ function updateMessageGroupingIncremental(newMessageElement) {
     });
 }
 
-// Toggle message context menu
-function toggleMessageContextMenu(event, messageElement, message) {
-    const existingMenu = document.querySelector('.context-menu');
-    
-    // Check if menu is already visible for this message
-    if (existingMenu) {
-        // Hide menu if clicking on the same message-row
-        console.log('Hiding menu');
-        event.stopPropagation();
-        existingMenu.remove();
-        // Remove highlight from message-row
-        const highlightedRow = document.querySelector('.message-row.menu-active');
-        if (highlightedRow) {
-            highlightedRow.classList.remove('menu-active');
-        }
-    } else {
-        // Show menu
-        console.log('Showing menu for message:', message.id || message.localId);
-        showMessageContextMenu(event, messageElement, message);
-        // Add highlight to message-row
-        messageElement.classList.add('menu-active');
-    }
-}
-
 // Show message context menu
 function showMessageContextMenu(event, messageElement, message) {
-    // Remove any existing menu and its highlight
-    const existingMenu = document.querySelector('.context-menu');
-    if (existingMenu) {
-        existingMenu.remove();
-        // Remove highlight from previously highlighted message-row
-        const highlightedRow = document.querySelector('.message-row.menu-active');
-        if (highlightedRow) {
-            highlightedRow.classList.remove('menu-active');
-        }
-    }
-    
-    // Create menu
-    const menu = document.createElement('div');
-    menu.className = 'context-menu';
-    menu.dataset.messageId = message.id || message.localId;
-    
     const menuItems = [
         { id: 'edit', label: 'Edit', icon: editIcon },
         { id: 'quote', label: 'Quote', icon: quoteIcon },
@@ -1200,66 +1158,16 @@ function showMessageContextMenu(event, messageElement, message) {
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true }
     ];
     
-    menu.innerHTML = menuItems.map(item => {
-        const separator = item.separator ? '<div class="context-menu-separator"></div>' : '';
-        return `${separator}<div class="context-menu-item" data-action="${item.id}">
-            ${item.icon}
-            <span>${item.label}</span>
-        </div>`;
-    }).join('');
-    
-    // Add to DOM first to get accurate dimensions
-    document.body.appendChild(menu);
-    
-    // Position menu
-    const x = event.clientX;
-    const y = event.clientY;
-    const menuRect = menu.getBoundingClientRect();
-    
-    // Adjust position to keep menu in viewport
-    let left = x;
-    let top = y;
-    
-    if (left + menuRect.width > window.innerWidth) {
-        left = window.innerWidth - menuRect.width - 10;
-    }
-    if (top + menuRect.height > window.innerHeight) {
-        top = window.innerHeight - menuRect.height - 10;
-    }
-    if (left < 10) left = 10;
-    if (top < 10) top = 10;
-    
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
-    
-    // Handle menu item clicks
-    menu.querySelectorAll('.context-menu-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = item.dataset.action;
+    showContextMenu({
+        items: menuItems,
+        x: event.clientX,
+        y: event.clientY,
+        highlightElement: messageElement,
+        highlightClass: 'menu-active',
+        onAction: (action) => {
             handleMessageContextAction(action, message, messageElement);
-            menu.remove();
-            // Remove highlight from message-row
-            messageElement.classList.remove('menu-active');
-        });
-    });
-    
-    // Close menu when clicking outside
-    const closeMenu = (e) => {
-        if (!menu.contains(e.target)) {
-            menu.remove();
-            document.removeEventListener('click', closeMenu);
-            // Remove highlight from message-row
-            const highlightedRow = document.querySelector('.message-row.menu-active');
-            if (highlightedRow) {
-                highlightedRow.classList.remove('menu-active');
-            }
         }
-    };
-    
-    setTimeout(() => {
-        document.addEventListener('click', closeMenu);
-    }, 0);
+    });
 }
 
 // Handle context menu actions
