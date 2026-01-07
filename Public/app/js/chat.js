@@ -878,11 +878,6 @@ function initializeMessageInput() {
     updateSendButtonState();
 }
 
-// Generate local ID for messages
-function generateLocalId() {
-    return `${currentUser.info.id}+${crypto.randomUUID()}`;
-}
-
 // Send message
 async function sendMessage() {
     const messageInput = document.getElementById('messageInput');
@@ -897,7 +892,7 @@ async function sendMessage() {
     // Determine if we should send only text (attachments exist but not all uploaded)
     const shouldSendAttachments = uploadedAttachments.length > 0 && uploadedAttachments.length === selectedAttachments.length;
     
-    const localId = generateLocalId();
+    const localId = generateMessageLocalId();
     
     // Create message object
     const message = {
@@ -949,23 +944,6 @@ async function sendMessage() {
 
     // Re-display chats to re-sort by latest message
     displayChats();
-}
-
-// Get image dimensions
-function getImageDimensions(file) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-            URL.revokeObjectURL(url);
-            resolve({ width: img.width, height: img.height });
-        };
-        img.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve({ width: 300, height: 200 });
-        };
-        img.src = url;
-    });
 }
 
 // Upload file with progress tracking

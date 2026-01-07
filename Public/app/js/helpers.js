@@ -1,5 +1,10 @@
 // Utility functions
 
+// Generate local ID for messages
+function generateMessageLocalId() {
+    return `${currentUser.info.id}+${crypto.randomUUID()}`;
+}
+
 function getInitials(name) {
     if (!name) return '?';
     return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
@@ -133,4 +138,21 @@ function formatLastSeen(dateString) {
     } else {
         return date.toLocaleDateString();
     }
+}
+
+// Get image dimensions
+function getImageDimensions(file) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve({ width: img.width, height: img.height });
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve({ width: 300, height: 200 });
+        };
+        img.src = url;
+    });
 }

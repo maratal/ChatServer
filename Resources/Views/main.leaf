@@ -63,7 +63,7 @@
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                     <span class="avatar-small cursor-pointer" id="chatHeaderAvatarContainer">
-                        <span class="avatar-initials" id="chatHeaderAvatar">AJ</span>
+                        <span class="avatar-initials" id="chatHeaderAvatar">?</span>
                         <span class="chat-header-status-indicator" id="chatHeaderStatusIndicator" style="display: block;"></span>
                     </span>
                 </div>

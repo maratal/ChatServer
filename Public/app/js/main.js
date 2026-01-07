@@ -288,8 +288,8 @@ async function selectChat(chatId) {
         if (!otherUser) {
             // Chat with oneself
             chatTitle.textContent = 'Personal Notes';
-            chatSubtitle.textContent = 'Notes to yourself';
             chatHeaderAvatar.textContent = '✏️';
+            chatSubtitle.textContent = '';
             chatHeaderStatusIndicator.style.display = 'none'; // No status for self-chat
         } else {
             chatTitle.textContent = otherUser.name;
@@ -356,23 +356,6 @@ function updateCurrentUserDisplay() {
         }
     }
 }
-
-// Profile menu functionality
-function toggleProfileMenu() {
-    const menu = document.getElementById('profileMenu');
-    const isVisible = menu.style.display === 'block';
-    menu.style.display = isVisible ? 'none' : 'block';
-}
-
-// Close menu when clicking outside
-document.addEventListener('click', function(event) {
-    const menu = document.getElementById('profileMenu');
-    const button = document.getElementById('profileMenuButton');
-    
-    if (menu && button && !menu.contains(event.target) && !button.contains(event.target)) {
-        menu.style.display = 'none';
-    }
-});
 
 // WebSocket functionality
 function initializeWebSocket() {
