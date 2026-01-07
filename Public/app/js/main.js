@@ -469,7 +469,7 @@ function handleWebSocketMessage(notification) {
                 updateMessageInChat(message.localId, message);
             } else {
                 // Add new message from others
-                addMessageToChat(message, true);
+                addMessageToChat(message);
             }
         }
         

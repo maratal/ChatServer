@@ -138,27 +138,12 @@ function displayMessages(messages) {
     // Reverse messages to show oldest first
     messages.reverse();
     
-    // Add date headers and render messages
-    let currentDate = null;
-    
+    // Add messages in bulk mode (no animation, grouping, or scrolling - we'll batch those)
     messages.forEach((message) => {
-        const messageDate = new Date(message.createdAt);
-        const messageDateString = messageDate.toDateString();
-        
-        // Add date header if date changed
-        if (currentDate !== messageDateString) {
-            // Add date header (including for the first message)
-            const dateHeader = createDateHeader(formatChatGroupingDate(messageDate), messageDate);
-            messagesContainer.appendChild(dateHeader);
-            currentDate = messageDateString;
-        }
-        
-        // Render message without groupPosition (will be set after rendering)
-        const messageElement = createMessageElement(message);
-        messagesContainer.appendChild(messageElement);
+        addMessageToChat(message, true);
     });
     
-    // Apply grouping to all rendered messages
+    // Apply grouping to all rendered messages at once (more efficient than incremental)
     const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-row'));
     messageElements.forEach((messageElement, index) => {
         updateSingleMessageGrouping(messageElement, index, messageElements);
@@ -166,7 +151,7 @@ function displayMessages(messages) {
     
     // Scroll to bottom instantly when loading messages
     setTimeout(() => {
-        scrollMessagesToBottom(true); // instant scroll for loading messages
+        scrollMessagesToBottom(true);
     }, 50);
 }
 
@@ -954,7 +939,7 @@ async function sendMessage() {
     pendingMessages.set(localId, message);
     
     // Display message immediately with sending state
-    addMessageToChat(message, true);
+    addMessageToChat(message);
     
     // Update chat list with new message
     updateChatListWithMessage(message);
@@ -1028,8 +1013,13 @@ function uploadFileWithProgress(url, file, fileName, contentType, onProgress, on
     });
 }
 
-// Add message to chat with animation
-function addMessageToChat(message, animated = true) {
+// Add message to chat
+// bulkAddition: when true, skips animation, grouping update, and scroll
+function addMessageToChat(message, bulkAddition = false) {
+    const animated = !bulkAddition;
+    const updateGrouping = !bulkAddition;
+    const scroll = !bulkAddition;
+    
     const messagesContainer = document.getElementById('messagesContainer');
     
     // Remove "no chat selected" message if present
@@ -1096,12 +1086,18 @@ function addMessageToChat(message, animated = true) {
     }
     
     // Re-calculate grouping for the new message and potentially the previous one
-    updateMessageGroupingIncremental(messageElement);
+    if (updateGrouping) {
+        updateMessageGroupingIncremental(messageElement);
+    }
     
     // Scroll to bottom
-    setTimeout(() => {
-        scrollMessagesToBottom();
-    }, animated ? 300 : 0);
+    if (scroll) {
+        setTimeout(() => {
+            scrollMessagesToBottom();
+        }, animated ? 300 : 0);
+    }
+    
+    return messageElement;
 }
 
 // Update message grouping incrementally for newly added message
