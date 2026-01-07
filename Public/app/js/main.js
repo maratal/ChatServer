@@ -12,6 +12,10 @@ let lastUserId = null;
 let isLoadingUsers = false;
 let hasMoreUsers = true;
 
+// User info avatar state
+let userInfoPhotos = [];
+let userInfoCurrentPhotoIndex = 0;
+
 // Enhanced authentication check to get current user
 async function checkAuth() {
     console.log('checkAuth called');
@@ -130,6 +134,29 @@ async function loadChats() {
     }
 }
 
+// Check if chat is Personal Notes (personal chat with only yourself)
+function isPersonalNotes(chat) {
+    return chat.isPersonal && chat.allUsers.length === 1 && chat.allUsers[0].id === currentUser?.info?.id;
+}
+
+// Get the date of the last message in a chat (for sorting)
+function getChatLastMessageDate(chat) {
+    if (!chat.lastMessage) return null;
+    
+    let dateObj = chat.lastMessage.updatedAt || chat.lastMessage.createdAt;
+    if (!dateObj) return null;
+    
+    if (typeof dateObj === 'string') {
+        dateObj = new Date(dateObj);
+    }
+    else if (typeof dateObj === 'number') {
+        // Server sends UNIX timestamps in seconds (since 1970)
+        dateObj = new Date(dateObj * 1000);
+    }
+    
+    return dateObj;
+}
+
 // Display chats in the sidebar
 function displayChats() {
     const chatItems = document.getElementById('chatItems');
@@ -140,10 +167,29 @@ function displayChats() {
         return;
     }
     
-    chats.forEach(chat => {
+    // Sort chats: Personal Notes first, then by lastMessage date (newest first)
+    const sortedChats = [...chats].sort((a, b) => {
+        // Personal Notes always on top
+        if (isPersonalNotes(a)) return -1;
+        if (isPersonalNotes(b)) return 1;
+        
+        // Sort by lastMessage date (newest first)
+        const aDate = getChatLastMessageDate(a) || new Date(0);
+        const bDate = getChatLastMessageDate(b) || new Date(0);
+        
+        return bDate - aDate;
+    });
+    
+    sortedChats.forEach(chat => {
         const chatItem = createChatItem(chat);
         chatItems.appendChild(chatItem);
     });
+
+    // Restore previously selected chat from localStorage
+    const savedChatId = localStorage.getItem('selectedChatId');
+    if (savedChatId && chats.some(c => c.id === savedChatId)) {
+        selectChat(savedChatId);
+    }
 }
 
 // Create a chat item element
@@ -180,8 +226,8 @@ function createChatItem(chat) {
         truncateText(chat.lastMessage.text || '[Media]', 30) : 
         'No messages yet';
     
-    const messageTime = chat.lastMessage ? 
-        formatMessageTime(new Date(chat.lastMessage.createdAt)) : '';
+    const messageDate = getChatLastMessageDate(chat);
+    const messageDateString = messageDate ? formatMessageTime(messageDate) : null;
     
     // Check if there are unread messages (placeholder for now)
     const unreadCount = 0; // This would come from the API
@@ -194,7 +240,7 @@ function createChatItem(chat) {
         <div class="chat-info">
             <div class="chat-header-row">
                 <h3 class="chat-name">${escapeHtml(chatName)}</h3>
-                ${messageTime ? `<span class="chat-time">${messageTime}</span>` : ''}
+                ${messageDateString ? `<span class="chat-time">${messageDateString}</span>` : ''}
             </div>
             <div class="chat-message-row">
                 <p class="chat-last-message">${escapeHtml(lastMessageText)}</p>
@@ -206,40 +252,27 @@ function createChatItem(chat) {
     return item;
 }
 
-// Format message time for chat list
-function formatMessageTime(date) {
-    const now = new Date();
-    const diff = now - date;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    if (days === 0) {
-        // Today - show time
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (days === 1) {
-        // Yesterday
-        return 'Yesterday';
-    } else if (days < 7) {
-        // This week - show day name
-        return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-        // Older - show date
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-}
-
 // Select a chat and load its messages
 async function selectChat(chatId) {
-    currentChatId = chatId;
-    
-    // Update active state
-    document.querySelectorAll('.chat-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    event.currentTarget.classList.add('active');
-    
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
     
+    // Update active state - find button by data-chatId
+    document.querySelectorAll('.chat-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.chatId === chatId) {
+            item.classList.add('active');
+        }
+    });
+    
+    if (currentChatId === chatId) {
+        return;
+    }
+    currentChatId = chatId;
+    
+    // Save selected chat ID to localStorage
+    localStorage.setItem('selectedChatId', chatId);
+
     // Update chat header
     const chatHeader = document.getElementById('chatHeader');
     const chatHeaderAvatar = document.getElementById('chatHeaderAvatar');
@@ -281,22 +314,11 @@ async function selectChat(chatId) {
     const chatHeaderAvatarContainer = document.getElementById('chatHeaderAvatarContainer');
     if (chatHeaderAvatarContainer) {
         if (chat.isPersonal) {
-            const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
-            if (otherUser) {
-                chatHeaderAvatarContainer.onclick = () => showUserInfo(otherUser.id);
-                chatHeaderAvatarContainer.style.cursor = 'pointer';
-            } else {
-                chatHeaderAvatarContainer.onclick = null;
-                chatHeaderAvatarContainer.style.cursor = 'default';
-            }
-        } else if (chat.isPersonalNotesChat) {
-            // For personal notes, don't make avatar clickable
-            chatHeaderAvatarContainer.onclick = null;
-            chatHeaderAvatarContainer.style.cursor = 'default';
+            const user = chat.allUsers.find(user => user.id !== currentUser?.info.id) || currentUser.info;
+            chatHeaderAvatarContainer.onclick = () => showUserInfo(user.id);
         } else {
             // For group chats, do nothing (yet)
             chatHeaderAvatarContainer.onclick = null;
-            chatHeaderAvatarContainer.style.cursor = 'pointer';
         }
     }
     
@@ -306,31 +328,6 @@ async function selectChat(chatId) {
     
     // Load messages
     await loadMessages(chatId);
-}
-
-
-// Utility functions
-function getInitials(name) {
-    if (!name) return '?';
-    return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
-}
-
-function mainPhotoForUser(user) {
-    if (!user || !user.photos || !Array.isArray(user.photos) || user.photos.length === 0) return null;
-    const firstPhoto = user.photos[0];
-    if (!firstPhoto || !firstPhoto.id || !firstPhoto.fileType) return null;
-    return firstPhoto;
-}
-
-function truncateText(text, maxLength) {
-    if (!text) return '';
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // Update current user display in chat list header
@@ -478,6 +475,7 @@ function handleWebSocketMessage(notification) {
         
         // Update chat list with new message
         updateChatListWithMessage(message);
+        displayChats();
     }
 }
 
@@ -727,6 +725,21 @@ async function selectUser(userId) {
     await createOrOpenPersonalChat(userId);
 }
 
+// Find personal chat by user ID or Personal Notes if userId is the current user
+function findPersonalChatByUserId(userId) {
+    return chats.find(chat => {
+        if (!chat.isPersonal) return false;
+        
+        if (currentUser?.info?.id === userId) {
+            // Personal Notes: chat with only yourself
+            return chat.allUsers.length === 1 && chat.allUsers[0].id === userId;
+        } else {
+            // Personal chat with another user: must have exactly 2 users including the target
+            return chat.allUsers.length === 2 && chat.allUsers.some(user => user.id === userId);
+        }
+    });
+}
+
 async function createOrOpenPersonalChat(userId) {
     const accessToken = getAccessToken();
     if (!accessToken) {
@@ -736,11 +749,7 @@ async function createOrOpenPersonalChat(userId) {
     }
     
     try {
-        // First, check if we already have a personal chat with this user
-        const existingChat = chats.find(chat => 
-            chat.isPersonal && 
-            chat.allUsers.some(user => user.id === userId)
-        );
+        const existingChat = findPersonalChatByUserId(userId);
         
         if (existingChat) {
             // Open existing chat
@@ -850,10 +859,6 @@ async function showUserInfo(userId) {
         body.innerHTML = `<div class="user-info-loading" style="color: #ef4444;">Error: ${error.message || 'Failed to load user information'}</div>`;
     }
 }
-
-// User info avatar state
-let userInfoPhotos = [];
-let userInfoCurrentPhotoIndex = 0;
 
 function displayUserInfo(user) {
     const body = document.getElementById('userInfoBody');
@@ -1036,27 +1041,6 @@ function closeUserInfo() {
     setTimeout(() => {
         modal.style.display = 'none';
     }, 300);
-}
-
-function formatLastSeen(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) {
-        return 'just now';
-    } else if (diffMins < 60) {
-        return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-    } else if (diffHours < 24) {
-        return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    } else if (diffDays < 7) {
-        return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    } else {
-        return date.toLocaleDateString();
-    }
 }
 
 function isUserOnline(lastSeen) {

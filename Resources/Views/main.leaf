@@ -62,7 +62,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
-                    <span class="avatar-small" id="chatHeaderAvatarContainer">
+                    <span class="avatar-small cursor-pointer" id="chatHeaderAvatarContainer">
                         <span class="avatar-initials" id="chatHeaderAvatar">AJ</span>
                         <span class="chat-header-status-indicator" id="chatHeaderStatusIndicator" style="display: block;"></span>
                     </span>
@@ -200,5 +200,6 @@
     <script src="/app/js/emoji-picker.js"></script>
     <script src="/app/js/media-viewer.js"></script>
     <script src="/app/js/user-profile.js"></script>
+    <script src="/app/js/utils.js"></script>
 </body>
 </html>

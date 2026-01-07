@@ -64,7 +64,7 @@ extension Request {
     
     func date(from param: String) -> Date? {
         if let ts: Double = query[param] {
-            return Date(timeIntervalSinceReferenceDate: ts)
+            return Date(timeIntervalSince1970: ts)
         }
         return nil
     }

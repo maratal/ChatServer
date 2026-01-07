@@ -46,9 +46,32 @@ extension JSON {
 
 extension Serializable {
     
+    /// Custom JSON encoder that uses UNIX timestamps (seconds since 1970) for dates
+    private static var jsonEncoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            // Convert to UNIX timestamp (seconds since January 1, 1970)
+            let timestamp = date.timeIntervalSince1970
+            var container = encoder.singleValueContainer()
+            try container.encode(timestamp)
+        }
+        return encoder
+    }
+    
+    /// Custom JSON decoder that reads UNIX timestamps (seconds since 1970) for dates
+    private static var jsonDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let timestamp = try container.decode(Double.self)
+            return Date(timeIntervalSince1970: timestamp)
+        }
+        return decoder
+    }
+    
     /// Converts an `Encodable` object to a raw data.
     func jsonData() throws -> Data {
-        try JSONEncoder().encode(self)
+        try Self.jsonEncoder.encode(self)
     }
     
     /// Converts an `Encodable` object to a JSON object or a [JSON] array.
@@ -58,7 +81,7 @@ extension Serializable {
     
     /// Converts a raw data to a `Encodable` object.
     static func fromData(_ data: Data) throws -> Self {
-        try JSONDecoder().decode(Self.self, from: data)
+        try jsonDecoder.decode(Self.self, from: data)
     }
 }
 

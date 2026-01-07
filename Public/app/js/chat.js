@@ -4,8 +4,16 @@ let selectedAttachments = [];
 let attachmentUploads = new Map(); // Map of attachmentId -> { xhr, file, progress }
 let attachmentAnimationFrames = new Map(); // Map of attachmentId -> animationFrameId
 
+// SVG icons for menu items
+const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+const quoteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path></svg>`;
+const bookmarkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>`;
+const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+
 // Load messages for a chat
 async function loadMessages(chatId) {
+    console.log(`Loading messages for chat ${chatId}...`);
+
     const accessToken = getAccessToken();
     if (!accessToken) {
         console.error('No access token available');
@@ -117,6 +125,8 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
 
 // Display messages in the chat area
 function displayMessages(messages) {
+    console.log(`Displaying ${messages.length} messages...`);
+
     const messagesContainer = document.getElementById('messagesContainer');
     messagesContainer.innerHTML = '';
     
@@ -138,7 +148,7 @@ function displayMessages(messages) {
         // Add date header if date changed
         if (currentDate !== messageDateString) {
             // Add date header (including for the first message)
-            const dateHeader = createDateHeader(formatDateHeader(messageDate), messageDate);
+            const dateHeader = createDateHeader(formatChatGroupingDate(messageDate), messageDate);
             messagesContainer.appendChild(dateHeader);
             currentDate = messageDateString;
         }
@@ -167,44 +177,6 @@ function createDateHeader(dateString, date) {
     const fullDateTime = formatFullDateTime(date);
     headerDiv.innerHTML = `<span class="date-header-text" title="${escapeHtml(fullDateTime)}">${dateString}</span>`;
     return headerDiv;
-}
-
-// Format date for header display
-function formatDateHeader(date) {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const diffTime = today - messageDate;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-        return 'Today';
-    } else if (diffDays === 1) {
-        return 'Yesterday';
-    } else if (diffDays < 7) {
-        return date.toLocaleDateString([], { weekday: 'long' });
-    } else {
-        return date.toLocaleDateString([], { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
-    }
-}
-
-// Format full date and time for tooltips
-function formatFullDateTime(date) {
-    const dateObj = new Date(date);
-    return dateObj.toLocaleString([], {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
 }
 
 // Create a message element
@@ -462,34 +434,6 @@ function openMessageAttachmentViewer(messageId) {
     
     // Open media viewer with text
     openMediaViewer(mediaPhotos, currentIndex, null, messageText);
-}
-
-// Convert links in text to clickable links
-function convertLinksToClickable(text) {
-    if (!text) return '';
-    
-    // First escape HTML to prevent XSS
-    const escapedText = escapeHtml(text);
-    
-    // URL regex pattern that matches http, https, and www links
-    const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
-    
-    return escapedText.replace(urlRegex, function(url) {
-        let href = url;
-        let displayUrl = url;
-        
-        // Add https:// prefix for www links
-        if (url.toLowerCase().startsWith('www.')) {
-            href = 'https://' + url;
-        }
-        
-        // Truncate display URL if it's too long
-        if (displayUrl.length > 50) {
-            displayUrl = displayUrl.substring(0, 47) + '...';
-        }
-        
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
-    });
 }
 
 // Attachment management
@@ -1019,6 +963,9 @@ async function sendMessage() {
     
     // Send to server using the shared function
     await sendMessageToServer(message);
+
+    // Re-display chats to re-sort by latest message
+    displayChats();
 }
 
 // Get image dimensions
@@ -1124,7 +1071,7 @@ function addMessageToChat(message, animated = true) {
     
     // Add date header if needed
     if (needsDateHeader) {
-        const dateHeader = createDateHeader(formatDateHeader(messageDate), messageDate);
+        const dateHeader = createDateHeader(formatChatGroupingDate(messageDate), messageDate);
         messagesContainer.appendChild(dateHeader);
     }
     
@@ -1314,12 +1261,6 @@ function showMessageContextMenu(event, messageElement, message) {
         document.addEventListener('click', closeMenu);
     }, 0);
 }
-
-// SVG icons for menu items
-const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
-const quoteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path></svg>`;
-const bookmarkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>`;
-const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
 
 // Handle context menu actions
 function handleMessageContextAction(action, message, messageElement) {
