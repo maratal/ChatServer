@@ -1147,7 +1147,7 @@ input[type="text"]:disabled, textarea:disabled {
     transition: stroke-dashoffset 0.3s ease-out;
 }
 
-.user-profile-avatar-menu {
+.user-profile-avatar-menu-button {
     position: absolute;
     bottom: 4px;
     right: 4px;
@@ -1168,16 +1168,16 @@ input[type="text"]:disabled, textarea:disabled {
     pointer-events: none;
 }
 
-.user-profile-avatar-wrapper:hover .user-profile-avatar-menu {
+.user-profile-avatar-wrapper:hover .user-profile-avatar-menu-button {
     opacity: 1;
     pointer-events: auto;
 }
 
-.user-profile-avatar-menu:hover {
+.user-profile-avatar-menu-button:hover {
     opacity: 0.7;
 }
 
-.user-profile-avatar-menu {
+.user-profile-avatar-menu-button {
     font-size: 1.5rem;
     line-height: 1;
     letter-spacing: -0.15rem;

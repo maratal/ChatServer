@@ -1,5 +1,9 @@
 // Current User Profile Functions
 
+// SVG icons for avatar menu
+const uploadIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>';
+const trashIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>';
+
 async function openCurrentUserProfile() {
     if (!currentUser || !currentUser.info || !currentUser.info.id) {
         console.error('Cannot open profile: currentUser is not set');
@@ -95,22 +99,9 @@ function displayCurrentUserProfile(user) {
                     <circle class="user-profile-avatar-progress-bg" cx="50" cy="50" r="48"></circle>
                     <circle class="user-profile-avatar-progress-bar" cx="50" cy="50" r="48" id="userProfileAvatarProgressBar"></circle>
                 </svg>
-                <button class="user-profile-avatar-menu" id="userProfileAvatarMenu" onclick="event.stopPropagation(); toggleAvatarMenu()" title="Avatar menu">
+                <button class="user-profile-avatar-menu-button" id="userProfileAvatarMenuButton" onclick="event.stopPropagation(); showAvatarMenu(event)" title="Avatar menu">
                     •••
                 </button>
-                <div class="context-menu" id="userProfileAvatarMenuDropdown" style="display: none;">
-                    <button class="context-menu-item" onclick="event.stopPropagation(); closeAvatarMenu(); openAvatarFileDialog();">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        <span>Upload</span>
-                    </button>
-                    ${userPhotos.length > 0 ? `
-                    <div class="context-menu-separator"></div>
-                    <button class="context-menu-item" data-action="delete" onclick="event.stopPropagation(); closeAvatarMenu(); deleteUserAvatar('${currentPhoto ? currentPhoto.id : ''}');">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                        <span>Delete</span>
-                    </button>
-                    ` : ''}
-                </div>
                 ${hasMultiplePhotos ? `
                 <button class="user-profile-avatar-chevron user-profile-avatar-chevron-right" onclick="event.stopPropagation(); navigateAvatarPhoto(1)" title="Next photo">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -157,13 +148,11 @@ function displayCurrentUserProfile(user) {
     
     // Add click handler to avatar after HTML is inserted
     const avatar = document.getElementById('userProfileAvatar');
-    const wrapper = document.getElementById('userProfileAvatarWrapper');
-    const menu = document.getElementById('userProfileAvatarMenu');
     
     if (avatar) {
         avatar.addEventListener('click', function(event) {
             // Don't open viewer if clicking on menu or chevrons
-            if (event.target.closest('.user-profile-avatar-menu') || 
+            if (event.target.closest('.user-profile-avatar-menu-button') || 
                 event.target.closest('.user-profile-avatar-chevron')) {
                 return;
             }
@@ -172,13 +161,6 @@ function displayCurrentUserProfile(user) {
             } else {
                 openAvatarFileDialog();
             }
-        });
-    }
-    
-    // Hide menu when mouse leaves wrapper
-    if (wrapper && menu) {
-        wrapper.addEventListener('mouseleave', () => {
-            closeAvatarMenu();
         });
     }
     
@@ -564,19 +546,34 @@ function retryAvatarUpload() {
     }
 }
 
-function toggleAvatarMenu() {
-    const menu = document.getElementById('userProfileAvatarMenuDropdown');
-    if (menu) {
-        const isVisible = menu.style.display !== 'none';
-        menu.style.display = isVisible ? 'none' : 'block';
+function showAvatarMenu(event) {
+    const menuButton = document.getElementById('userProfileAvatarMenuButton');
+    const rect = menuButton.getBoundingClientRect();
+    
+    const menuItems = [
+        { id: 'upload', label: 'Upload', icon: uploadIcon }
+    ];
+    
+    // Add delete option if there are photos
+    if (userPhotos.length > 0) {
+        menuItems.push({ id: 'delete', label: 'Delete', icon: trashIcon, separator: true });
     }
-}
-
-function closeAvatarMenu() {
-    const menu = document.getElementById('userProfileAvatarMenuDropdown');
-    if (menu) {
-        menu.style.display = 'none';
-    }
+    
+    showContextMenu({
+        items: menuItems,
+        x: rect.left,
+        y: rect.bottom + 5,
+        onAction: (action) => {
+            if (action === 'upload') {
+                openAvatarFileDialog();
+            } else if (action === 'delete') {
+                const currentPhoto = userPhotos[currentPhotoIndex];
+                if (currentPhoto) {
+                    deleteUserAvatar(currentPhoto.id);
+                }
+            }
+        }
+    });
 }
 
 function navigateAvatarPhoto(direction) {
@@ -629,11 +626,6 @@ function updateAvatarDisplay() {
         });
     }
     
-    // Update menu remove button
-    const menuRemoveBtn = document.querySelector('.context-menu-item[data-action="delete"]');
-    if (menuRemoveBtn && currentPhoto) {
-        menuRemoveBtn.setAttribute('onclick', `event.stopPropagation(); closeAvatarMenu(); deleteUserAvatar('${currentPhoto.id}');`);
-    }
 }
 
 function openAvatarViewer() {
