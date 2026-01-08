@@ -199,6 +199,7 @@
     <script src="/app/js/helpers.js"></script>
     <script src="/app/js/main.js"></script>
     <script src="/app/js/chat.js"></script>
+    <script src="/app/js/ws.js"></script>
     <script src="/app/js/emoji-picker.js"></script>
     <script src="/app/js/media-viewer.js"></script>
     <script src="/app/js/user-profile.js"></script>
