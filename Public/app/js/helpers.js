@@ -1,5 +1,79 @@
 // Utility functions
 
+// Avatar color generation - 20 distinct vivid colors
+const AVATAR_COLORS = (function() {
+    const colors = [];
+    for (let i = 0; i < 20; i++) {
+        const hue = (i * 18) % 360; // 360/20 = 18 degrees apart
+        colors.push({
+            text: `hsl(${hue}, 70%, 45%)`,           // Vivid text color
+            background: `hsl(${hue}, 60%, 92%)`      // Light background (almost white)
+        });
+    }
+    return colors;
+})();
+
+// Get or assign avatar color for a user
+function getAvatarColorForUser(userId) {
+    if (!userId) return AVATAR_COLORS[0];
+    
+    const storageKey = 'avatarColorAssignments';
+    
+    // Load existing assignments
+    let assignments = {};
+    try {
+        assignments = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch (e) {
+        assignments = {};
+    }
+    
+    // If user already has a color, return it
+    if (assignments[userId] !== undefined) {
+        return AVATAR_COLORS[assignments[userId]];
+    }
+    
+    // Extract used indices from assignments
+    const usedIndices = Object.values(assignments);
+    
+    // Find next available color index
+    let availableIndices = [];
+    for (let i = 0; i < 20; i++) {
+        if (!usedIndices.includes(i)) {
+            availableIndices.push(i);
+        }
+    }
+    
+    // If all colors used, reset the cycle
+    if (availableIndices.length === 0) {
+        availableIndices = Array.from({ length: 20 }, (_, i) => i);
+    }
+    
+    // Pick a random color from available ones
+    const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+    
+    // Save assignment
+    assignments[userId] = randomIndex;
+    localStorage.setItem(storageKey, JSON.stringify(assignments));
+    
+    return AVATAR_COLORS[randomIndex];
+}
+
+// Generate avatar initials HTML with color styling
+function getAvatarInitialsHtml(name, userId, extraClasses = '') {
+    const initials = getInitials(name);
+    const color = getAvatarColorForUser(userId);
+    const classes = extraClasses ? `avatar-initials ${extraClasses}` : 'avatar-initials';
+    return `<span class="${classes}" style="color: ${color.text}; background-color: ${color.background};">${initials}</span>`;
+}
+
+// Apply avatar color to an existing element
+function applyAvatarColor(element, name, userId) {
+    const color = getAvatarColorForUser(userId);
+    element.textContent = getInitials(name);
+    element.style.color = color.text;
+    element.style.backgroundColor = color.background;
+}
+
 // Generate local ID for messages
 function generateMessageLocalId() {
     return `${currentUser.info.id}+${crypto.randomUUID()}`;

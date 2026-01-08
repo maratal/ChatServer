@@ -223,7 +223,7 @@ function createMessageElement(message) {
     
     const avatarContent = authorMainPhoto 
         ? `<img src="/uploads/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="">`
-        : `<span class="avatar-initials">${authorInitials}</span>`;
+        : getAvatarInitialsHtml(authorName, message.authorId);
     
     // Handle attachments
     const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;

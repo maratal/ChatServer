@@ -62,8 +62,8 @@ async function openCurrentUserProfile() {
 function displayCurrentUserProfile(user) {
     const body = document.getElementById('userProfileBody');
     
-    const initials = getInitials(user.name || user.username || '?');
     const name = user.name || user.username || 'Unknown User';
+    const avatarColor = getAvatarColorForUser(user.id);
     const username = user.username || 'unknown';
     const about = user.about || '';
     
@@ -93,7 +93,7 @@ function displayCurrentUserProfile(user) {
                 </button>
                 ` : ''}
                 <div class="user-profile-avatar" id="userProfileAvatar" style="cursor: pointer;">
-                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userProfileAvatarImg">` : initials}
+                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userProfileAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(name)}</span>`}
                 </div>
                 <svg class="user-profile-avatar-progress" id="userProfileAvatarProgress" viewBox="0 0 100 100" style="display: none;">
                     <circle class="user-profile-avatar-progress-bg" cx="50" cy="50" r="48"></circle>

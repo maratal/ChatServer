@@ -200,25 +200,27 @@ function createChatItem(chat) {
     item.onclick = () => selectChat(chat.id);
     
     // Determine chat name and avatar
-    let chatName, avatarContent, hasOnlineStatus = false;
+    let chatName, avatarContent, avatarClass, hasOnlineStatus = false;
     
+    let avatarUserId = null;
     if (chat.isPersonal) {
         // For personal chats, show the other user's name
         const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
         if (!otherUser) {
             // Chat with oneself
             chatName = 'Personal Notes';
-            avatarContent = '✏️';
+            avatarContent = '️🗒️';
+            avatarClass = 'avatar-initials avatar-personal-notes-chat-list';
         } else {
             chatName = otherUser.name;
-            avatarContent = getInitials(otherUser.name);
+            avatarUserId = otherUser.id;
             // Show online status only if user is actually online
             hasOnlineStatus = otherUser.lastSeen ? isUserOnline(otherUser.lastSeen) : false;
         }
     } else {
         // For group chats, show chat title
         chatName = chat.title || 'Group Chat';
-        avatarContent = getInitials(chatName);
+        avatarUserId = `group_${chat.id}`; // Use chat id for group color
     }
     
     // Get last message preview and time
@@ -232,9 +234,18 @@ function createChatItem(chat) {
     // Check if there are unread messages (placeholder for now)
     const unreadCount = 0; // This would come from the API
     
+    // Generate avatar HTML
+    let avatarHtml;
+    if (avatarUserId) {
+        avatarHtml = getAvatarInitialsHtml(chatName, avatarUserId);
+    } else {
+        // Personal notes - use special class without colors
+        avatarHtml = `<span class="${avatarClass}">${escapeHtml(avatarContent)}</span>`;
+    }
+    
     item.innerHTML = `
         <span class="avatar-small">
-            <span class="avatar-initials">${escapeHtml(avatarContent)}</span>
+            ${avatarHtml}
             ${hasOnlineStatus ? '<span class="chat-status-indicator"></span>' : ''}
         </span>
         <div class="chat-info">
@@ -286,10 +297,12 @@ async function selectChat(chatId) {
         messagesContainer.classList.add('personal-chat');
         const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
         if (!otherUser) {
-            // Chat with oneself
+            // Chat with oneself - Personal Notes (no avatar color)
             chatTitle.textContent = 'Personal Notes';
-            chatHeaderAvatar.textContent = '✏️';
             chatSubtitle.textContent = '';
+            chatHeaderAvatar.textContent = '️🗒️';
+            chatHeaderAvatar.style.color = '';
+            chatHeaderAvatar.style.backgroundColor = '';
             chatHeaderStatusIndicator.style.display = 'none'; // No status for self-chat
         } else {
             chatTitle.textContent = otherUser.name;
@@ -297,14 +310,15 @@ async function selectChat(chatId) {
             const isOnline = otherUser.lastSeen ? isUserOnline(otherUser.lastSeen) : false;
             const lastSeen = otherUser.lastSeen ? formatLastSeen(otherUser.lastSeen) : null;
             chatSubtitle.textContent = lastSeen ? `Last seen ${lastSeen}` : '';
-            chatHeaderAvatar.textContent = getInitials(otherUser.name);
+            applyAvatarColor(chatHeaderAvatar, otherUser.name, otherUser.id);
             chatHeaderStatusIndicator.style.display = isOnline ? 'block' : 'none';
         }
     } else {
         messagesContainer.classList.remove('personal-chat');
-        chatTitle.textContent = chat.title || 'Group Chat';
+        const groupName = chat.title || 'Group Chat';
+        chatTitle.textContent = groupName;
         chatSubtitle.textContent = `${chat.allUsers.length} members`;
-        chatHeaderAvatar.textContent = getInitials(chat.title || 'Group Chat');
+        applyAvatarColor(chatHeaderAvatar, groupName, `group_${chat.id}`);
         chatHeaderStatusIndicator.style.display = 'none'; // No status for group chats
     }
     
@@ -351,8 +365,7 @@ function updateCurrentUserDisplay() {
         if (mainPhoto) {
             sidebarAvatar.innerHTML = `<img src="/uploads/${mainPhoto.id}.${mainPhoto.fileType}" alt="">`;
         } else {
-            const initials = getInitials(userName);
-            sidebarAvatar.innerHTML = `<span class="avatar-initials">${initials}</span>`;
+            sidebarAvatar.innerHTML = getAvatarInitialsHtml(userName, currentUser.info.id);
         }
     }
 }
@@ -675,10 +688,11 @@ function displayUsers() {
     
     let html = '';
     fetchedUsers.forEach(user => {
-        const userInitials = getInitials(user.name || user.username || '?');
+        const userName = user.name || user.username || '?';
+        const avatarHtml = getAvatarInitialsHtml(userName, user.id);
         html += `
             <div class="user-item" onclick="selectUser(${user.id})">
-                <div class="avatar-small"><span class="avatar-initials">${userInitials}</span></div>
+                <div class="avatar-small">${avatarHtml}</div>
                 <div class="user-item-info">
                     <div class="user-item-name">${escapeHtml(user.name || user.username || 'Unknown User')}</div>
                     <div class="user-item-username">@${escapeHtml(user.username || 'unknown')}</div>
@@ -846,12 +860,12 @@ async function showUserInfo(userId) {
 function displayUserInfo(user) {
     const body = document.getElementById('userInfoBody');
     
-    const initials = getInitials(user.name || user.username || '?');
     const name = user.name || user.username || 'Unknown User';
     const username = user.username || 'unknown';
     const about = user.about || '';
     const lastSeen = user.lastSeen ? formatLastSeen(user.lastSeen) : null;
     const isOnline = user.lastSeen ? isUserOnline(user.lastSeen) : false;
+    const avatarColor = getAvatarColorForUser(user.id);
     
     // Store photos globally
     userInfoPhotos = user.photos || [];
@@ -873,7 +887,7 @@ function displayUserInfo(user) {
                 </button>
                 ` : ''}
                 <div class="user-info-avatar" id="userInfoAvatar" style="cursor: ${photoUrl ? 'pointer' : 'default'};">
-                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : initials}
+                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(name)}</span>`}
                 </div>
                 ${hasMultiplePhotos ? `
                 <button class="user-profile-avatar-chevron user-profile-avatar-chevron-right" onclick="event.stopPropagation(); navigateUserInfoPhoto(1)" title="Next photo">

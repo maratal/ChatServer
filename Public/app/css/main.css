@@ -368,6 +368,18 @@ input[type="text"], textarea {
     object-fit: cover;
 }
 
+/* Avatar sizes by unique ID */
+#sidebarCurrentUserAvatar {
+    width: 34px;
+    height: 34px;
+}
+
+#chatHeaderAvatarContainer {
+    width: 34px;
+    height: 34px;
+    overflow: visible; /* Allow status indicator to show */
+}
+
 .avatar-initials {
     display: flex;
     width: 100%;
@@ -375,23 +387,30 @@ input[type="text"], textarea {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
+    /* Default colors - overridden by inline styles for user-specific colors */
     background-color: hsl(var(--primary) / 0.1);
     color: hsl(var(--primary));
     font-weight: 600;
+    font-size: 18pt;
+    font-family: 'Chalkduster';
 }
 
-/* Avatar sizes by unique ID */
-#sidebarCurrentUserAvatar {
-    width: 34px;
-    height: 34px;
-    font-size: 12px;
+.avatar-initials.avatar-personal-notes-chat-list {
+    font-size: 19pt;
+    background-color: hsl(var(--muted));
 }
 
-#chatHeaderAvatarContainer {
-    width: 34px;
-    height: 34px;
-    font-size: 12px;
-    overflow: visible; /* Allow status indicator to show */
+#sidebarCurrentUserAvatar .avatar-initials {
+    font-size: 13pt;
+}
+
+#chatHeaderAvatarContainer .avatar-initials {
+    font-size: 13pt;
+    background-color: hsl(var(--muted));
+}
+
+.message-row .avatar-initials {
+    font-size: 12pt;
 }
 
 /* Avatar sizes by container (repeatable) */
@@ -907,10 +926,10 @@ input[type="text"]:disabled, textarea:disabled {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    background-color: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    font-weight: 600;
-    font-size: 5rem;
+}
+
+.user-info-avatar .avatar-initials {
+    font-size: 86pt;
 }
 
 .user-info-avatar img {
@@ -1103,12 +1122,12 @@ input[type="text"]:disabled, textarea:disabled {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    background-color: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    font-weight: 600;
-    font-size: 5rem;
     box-shadow: none;
     transition: opacity 0.3s ease;
+}
+
+.user-profile-avatar .avatar-initials {
+    font-size: 86pt;
 }
 
 .user-profile-avatar img {
