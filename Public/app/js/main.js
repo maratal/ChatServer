@@ -74,20 +74,11 @@ async function checkAuth() {
 
 // Logout function
 async function logout() {
-    const accessToken = getAccessToken();
-    
-    if (accessToken) {
-        try {
-            // Call logout API
-            await fetch('/users/me/logout', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
-        } catch (error) {
-            console.error('Logout API error:', error);
-        }
+    try {
+        // Call logout API
+        await apiLogoutUser();
+    } catch (error) {
+        console.error('Logout API error:', error);
     }
     
     // Clear local storage
@@ -108,27 +99,9 @@ if (document.readyState === 'loading') {
 
 // Load chats from API
 async function loadChats() {
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-        console.error('No access token available');
-        window.location.href = '/';
-        return;
-    }
-    
     try {
-        const response = await fetch('/chats/?full=1', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        
-        if (response.ok) {
-            chats = await response.json();
-            displayChats();
-        } else {
-            console.error('Failed to load chats:', response.statusText);
-        }
+        chats = await apiGetChats(true);
+        displayChats();
     } catch (error) {
         console.error('Error loading chats:', error);
     }
@@ -363,7 +336,7 @@ function updateCurrentUserDisplay() {
         const mainPhoto = mainPhotoForUser(currentUser.info);
         
         if (mainPhoto) {
-            sidebarAvatar.innerHTML = `<img src="/uploads/${mainPhoto.id}.${mainPhoto.fileType}" alt="">`;
+            sidebarAvatar.innerHTML = `<img src="${getUploadUrl(mainPhoto.id, mainPhoto.fileType)}" alt="">`;
         } else {
             sidebarAvatar.innerHTML = getAvatarInitialsHtml(userName, currentUser.info.id);
         }
@@ -390,10 +363,6 @@ function updateChatListWithMessage(message) {
     }
 }
 
-// Get access token from current user session
-function getAccessToken() {
-    return currentUser.session.accessToken;
-}
 
 // Get device session ID from current user session
 function getDeviceSessionId() {
@@ -492,43 +461,24 @@ function setupUserScrollPagination() {
 async function loadUsers() {
     if (isLoadingUsers || !hasMoreUsers) return;
     
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-        console.error('No access token available');
-        showUsersError('Authentication required');
-        return;
-    }
-    
     isLoadingUsers = true;
     
     try {
-        const response = await fetch(`/users/all?id=${lastUserId || ''}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
+        const users = await apiGetAllUsers(lastUserId || null);
         
-        if (response.ok) {
-            const users = await response.json();
-            
-            // Add users to current users
-            if (users.length > 0) {
-                fetchedUsers = [...fetchedUsers, ...users];
-                // Update lastUserId to the ID of the last user for cursor-based pagination
-                lastUserId = users[users.length - 1].id;
-            }
-            
-            // Set hasMoreUsers to false if we got less than the requested amount (20)
-            if (users.length < 20) {
-                hasMoreUsers = false;
-            }
-            
-            displayUsers();
-        } else {
-            console.error('Failed to load users:', response.statusText);
-            showUsersError('Failed to load users');
+        // Add users to current users
+        if (users.length > 0) {
+            fetchedUsers = [...fetchedUsers, ...users];
+            // Update lastUserId to the ID of the last user for cursor-based pagination
+            lastUserId = users[users.length - 1].id;
         }
+        
+        // Set hasMoreUsers to false if we got less than the requested amount (20)
+        if (users.length < 20) {
+            hasMoreUsers = false;
+        }
+        
+        displayUsers();
     } catch (error) {
         console.error('Error loading users:', error);
         showUsersError('Error loading users');
@@ -538,35 +488,15 @@ async function loadUsers() {
 }
 
 async function searchUsers(query) {
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-        console.error('No access token available');
-        showUsersError('Authentication required');
-        return;
-    }
-    
     const usersList = document.getElementById('usersList');
     
     // Show loading
     usersList.innerHTML = '<div class="users-loading">Searching users...</div>';
     
     try {
-        const response = await fetch(`/users?s=${encodeURIComponent(query)}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        
-        if (response.ok) {
-            const users = await response.json();
-            
-            fetchedUsers = users;
-            displayUsers();
-        } else {
-            console.error('Failed to search users:', response.statusText);
-            showUsersError('Failed to search users');
-        }
+        const users = await apiSearchUsers(query);
+        fetchedUsers = users;
+        displayUsers();
     } catch (error) {
         console.error('Error searching users:', error);
         showUsersError('Error searching users');
@@ -633,13 +563,6 @@ function findPersonalChatByUserId(userId) {
 }
 
 async function createOrOpenPersonalChat(userId) {
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-        console.error('No access token available');
-        alert('Authentication required. Please refresh the page.');
-        return;
-    }
-    
     try {
         const existingChat = findPersonalChatByUserId(userId);
         
@@ -650,33 +573,16 @@ async function createOrOpenPersonalChat(userId) {
         }
         
         // Create new personal chat
-        const response = await fetch('/chats', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                isPersonal: true,
-                participants: [userId]
-            })
-        });
+        const newChat = await apiCreateChat(true, [userId]);
         
-        if (response.ok) {
-            const newChat = await response.json();
-            
-            // Add to chats list
-            chats.unshift(newChat);
-            
-            // Refresh chat display
-            displayChats();
-            
-            // Select the new chat
-            selectChat(newChat.id);
-        } else {
-            console.error('Failed to create chat:', response.statusText);
-            alert('Failed to create chat. Please try again.');
-        }
+        // Add to chats list
+        chats.unshift(newChat);
+        
+        // Refresh chat display
+        displayChats();
+        
+        // Select the new chat
+        selectChat(newChat.id);
     } catch (error) {
         console.error('Error creating chat:', error);
         alert('Error creating chat. Please try again.');
@@ -726,24 +632,9 @@ async function showUserInfo(userId) {
     });
     
     body.innerHTML = '<div class="user-info-loading">Loading user information...</div>';
-    
-    const accessToken = getAccessToken(); // optional in this request
 
     try {
-        const response = await fetch(`/users/${userId}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Failed to fetch user info:', response.status, errorText);
-            throw new Error(`Failed to fetch user info: ${response.status} ${errorText}`);
-        }
-        
-        const user = await response.json();
+        const user = await apiGetUser(userId);
         console.log('User data received:', user);
         displayUserInfo(user);
     } catch (error) {
@@ -768,7 +659,7 @@ function displayUserInfo(user) {
     
     // Get current photo
     const currentPhoto = userInfoPhotos.length > 0 ? userInfoPhotos[userInfoCurrentPhotoIndex] : null;
-    const photoUrl = currentPhoto ? `/uploads/${currentPhoto.id}.${currentPhoto.fileType}` : null;
+    const photoUrl = currentPhoto ? getUploadUrl(currentPhoto.id, currentPhoto.fileType) : null;
     const hasMultiplePhotos = userInfoPhotos.length > 1;
     
     let html = `
@@ -896,10 +787,10 @@ function updateUserInfoAvatarDisplay() {
     if (!avatar) return;
     
     if (currentPhoto && avatarImg) {
-        avatarImg.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
+        avatarImg.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
     } else if (currentPhoto) {
         const img = document.createElement('img');
-        img.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
+        img.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
         img.alt = '';
         img.id = 'userInfoAvatarImg';
         avatar.innerHTML = '';

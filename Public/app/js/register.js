@@ -8,32 +8,15 @@ function generateUUID() {
 
 // Centralized registration function
 async function performRegistration(name, username, password, deviceInfo) {
-    const response = await fetch('/users', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            name: name,
-            username: username,
-            password: password,
-            deviceInfo: deviceInfo
-        })
-    });
+    const data = await apiRegisterUser(name, username, password, deviceInfo);
     
-    const data = await response.json();
-    
-    if (response.ok) {
-        // Store user data with access token in currentUser
-        const currentUserData = {
-            info: data.info,
-            session: data.deviceSessions[0]
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUserData));
-        return { success: true, data: currentUserData };
-    } else {
-        return { success: false, error: data, status: response.status };
-    }
+    // Store user data with access token in currentUser
+    const currentUserData = {
+        info: data.info,
+        session: data.deviceSessions[0]
+    };
+    localStorage.setItem('currentUser', JSON.stringify(currentUserData));
+    return currentUserData;
 }
 
 // Get device info automatically
@@ -200,37 +183,38 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     }
     
     try {
-        const result = await performRegistration(formData.name, formData.username, formData.password, formData.deviceInfo);
+        await performRegistration(formData.name, formData.username, formData.password, formData.deviceInfo);
         
-        if (result.success) {
-            showStatus('Account created successfully! Redirecting...', 'success');
-            
-            // Redirect to main page
-            setTimeout(() => {
-                window.location.href = '/main';
-            }, 0);
-        } else {
-            // Handle specific error cases
-            const response = { status: result.status };
-            const data = result.error;
-            if (response.status === 409) {
-                showFieldError('username', 'Username already exists');
-            } else if (response.status === 400) {
-                const errorMsg = data.message || 'Invalid registration data';
-                if (errorMsg.toLowerCase().includes('username')) {
-                    showFieldError('username', errorMsg);
-                } else if (errorMsg.toLowerCase().includes('password')) {
-                    showFieldError('password', errorMsg);
-                } else {
-                    showStatus(errorMsg, 'error');
-                }
-            } else {
-                showStatus('Registration failed. Please try again.', 'error');
-            }
-        }
+        showStatus('Account created successfully! Redirecting...', 'success');
+        
+        // Redirect to main page
+        setTimeout(() => {
+            window.location.href = '/main';
+        }, 0);
     } catch (error) {
         console.error('Registration error:', error);
-        showStatus('Network error. Please check your connection.', 'error');
+        
+        // Handle specific error cases based on status code
+        if (error.status === 409) {
+            showFieldError('username', 'Username already exists');
+        } else if (error.status === 400) {
+            // Parse error message if available
+            let errorMsg = 'Invalid registration data';
+            try {
+                const errorData = JSON.parse(error.responseText);
+                errorMsg = errorData.message || errorMsg;
+            } catch {}
+            
+            if (errorMsg.toLowerCase().includes('username')) {
+                showFieldError('username', errorMsg);
+            } else if (errorMsg.toLowerCase().includes('password')) {
+                showFieldError('password', errorMsg);
+            } else {
+                showStatus(errorMsg, 'error');
+            }
+        } else {
+            showStatus('Registration failed. Please check your connection.', 'error');
+        }
     }
     
     button.classList.remove('loading');

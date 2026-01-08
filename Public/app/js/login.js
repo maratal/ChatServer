@@ -8,31 +8,15 @@ function generateUUID() {
 
 // Centralized login function
 async function performLogin(username, password, deviceInfo) {
-    // Create Basic Auth header
-    const credentials = btoa(`${username}:${password}`);
+    const data = await apiLoginUser(username, password, deviceInfo);
     
-    const response = await fetch('/users/login', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${credentials}`
-        },
-        body: JSON.stringify(deviceInfo)
-    });
-    
-    const data = await response.json();
-    
-    if (response.ok) {
-        // Store user data with access token in currentUser
-        const currentUserData = {
-            info: data.info,
-            session: data.deviceSessions[0]
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUserData));
-        return { success: true, data: currentUserData };
-    } else {
-        return { success: false, error: data, status: response.status };
-    }
+    // Store user data with access token in currentUser
+    const currentUserData = {
+        info: data.info,
+        session: data.deviceSessions[0]
+    };
+    localStorage.setItem('currentUser', JSON.stringify(currentUserData));
+    return currentUserData;
 }
 
 // Get device info automatically
@@ -153,31 +137,32 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     }
     
     try {
-        const result = await performLogin(formData.username, formData.password, formData.deviceInfo);
+        await performLogin(formData.username, formData.password, formData.deviceInfo);
         
-        if (result.success) {
-            showStatus('Login successful! Redirecting...', 'success');
-            
-            // Redirect to main page
-            setTimeout(() => {
-                window.location.href = '/main';
-            }, 0);
-        } else {
-            // Handle specific error cases
-            const response = { status: result.status };
-            const data = result.error;
-            if (response.status === 401) {
-                showFieldError('username', 'Invalid username or password');
-                showFieldError('password', 'Invalid username or password');
-            } else if (response.status === 400) {
-                showStatus(data.message || 'Invalid request data', 'error');
-            } else {
-                showStatus('Login failed. Please try again.', 'error');
-            }
-        }
+        showStatus('Login successful! Redirecting...', 'success');
+        
+        // Redirect to main page
+        setTimeout(() => {
+            window.location.href = '/main';
+        }, 0);
     } catch (error) {
         console.error('Login error:', error);
-        showStatus('Network error. Please check your connection.', 'error');
+        
+        // Handle specific error cases based on status code
+        if (error.status === 401) {
+            showFieldError('username', 'Invalid username or password');
+            showFieldError('password', 'Invalid username or password');
+        } else if (error.status === 400) {
+            // Parse error message if available
+            let errorMessage = 'Invalid request data';
+            try {
+                const errorData = JSON.parse(error.responseText);
+                errorMessage = errorData.message || errorMessage;
+            } catch {}
+            showStatus(errorMessage, 'error');
+        } else {
+            showStatus('Login failed. Please check your connection.', 'error');
+        }
     }
     
     button.classList.remove('loading');

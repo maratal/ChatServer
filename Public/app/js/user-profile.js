@@ -27,21 +27,7 @@ async function openCurrentUserProfile() {
     
     try {
         // Fetch current user info
-        const accessToken = getAccessToken();
-        const response = await fetch('/users/me', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Failed to fetch current user info:', response.status, errorText);
-            throw new Error(`Failed to fetch user info: ${response.status} ${errorText}`);
-        }
-        
-        const userPrivateInfo = await response.json();
+        const userPrivateInfo = await apiGetCurrentUser();
         console.log('Current user data received:', userPrivateInfo);
         
         // Update currentUser in localStorage with latest info including photos
@@ -79,7 +65,7 @@ function displayCurrentUserProfile(user) {
     
     // Get current photo
     const currentPhoto = userPhotos.length > 0 ? userPhotos[currentPhotoIndex] : null;
-    const photoUrl = currentPhoto ? `/uploads/${currentPhoto.id}.${currentPhoto.fileType}` : null;
+    const photoUrl = currentPhoto ? getUploadUrl(currentPhoto.id, currentPhoto.fileType) : null;
     const hasMultiplePhotos = userPhotos.length > 1;
     
     let html = `
@@ -181,25 +167,7 @@ async function saveCurrentUserProfile() {
     const about = aboutInput.value.trim();
     
     try {
-        const accessToken = getAccessToken();
-        const response = await fetch('/users/me', {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: name || null,
-                about: about || null
-            })
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Failed to update profile:', response.status, errorText);
-            alert('Failed to update profile: ' + errorText);
-            return;
-        }
+        await apiUpdateCurrentUser(name, about);
         
         // Update currentUser in localStorage
         if (currentUser && currentUser.info) {
@@ -376,25 +344,12 @@ async function uploadAvatarFile(file) {
         const fileExtension = file.name.split('.').pop().toLowerCase() || 'jpg';
         
         // Upload file using streaming upload
-        const accessToken = getAccessToken();
-        if (!accessToken) {
-            throw new Error('No access token available');
-        }
-        
-        const uploadUrl = `/uploads`;
-        const response = await uploadFileWithProgress(uploadUrl, file, fileId, file.type, (progress) => {
+        const uploadedFileName = await apiUploadFile(file, fileId, file.type, (progress) => {
             // Cap progress at 75% during real upload
             currentProgress = Math.min(progress, 75);
             console.log(`Upload progress: ${progress.toFixed(2)}% (capped at ${currentProgress.toFixed(2)}%)`);
             updateProgressVisual(currentProgress);
         });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Upload failed: ${response.status} ${errorText}`);
-        }
-        
-        const uploadedFileName = await response.text();
         
         // Extract file ID from uploaded file name (remove extension)
         // Server returns filename like "uuid.jpg", we need just "uuid"
@@ -420,20 +375,7 @@ async function uploadAvatarFile(file) {
         });
         
         // Add photo to user profile
-        const addPhotoResponse = await fetch('/users/me/photos', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                photo: {
-                    id: uploadedFileId,
-                    fileType: fileExtension,
-                    fileSize: file.size
-                }
-            })
-        });
+        const addPhotoResponse = await apiAddUserPhoto(uploadedFileId, fileExtension, file.size);
         
         if (!addPhotoResponse.ok) {
             const errorText = await addPhotoResponse.text();
@@ -442,12 +384,7 @@ async function uploadAvatarFile(file) {
         
         // Reload profile to show updated avatar
         // Set index to last photo (newly uploaded)
-        const reloadedUser = await fetch('/users/me', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        }).then(r => r.json());
+        const reloadedUser = await apiGetCurrentUser();
         
         currentPhotoIndex = 0;
         
@@ -473,45 +410,6 @@ async function uploadAvatarFile(file) {
     }
 }
 
-function uploadFileWithProgress(url, file, fileName, contentType, onProgress) {
-    return new Promise((resolve, reject) => {
-        const accessToken = getAccessToken();
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                onProgress(percentComplete);
-            }
-        });
-        
-        xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                resolve({
-                    ok: true,
-                    text: () => Promise.resolve(xhr.responseText)
-                });
-            } else {
-                reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
-        });
-        
-        xhr.addEventListener('error', () => {
-            reject(new Error('Upload failed'));
-        });
-        
-        xhr.addEventListener('abort', () => {
-            reject(new Error('Upload aborted'));
-        });
-        
-        xhr.open('POST', url);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.setRequestHeader('File-Name', fileName);
-        xhr.setRequestHeader('Content-Type', contentType);
-        
-        xhr.send(file);
-    });
-}
 
 function showAvatarUploadError(errorMessage) {
     const avatarContainer = document.querySelector('.user-profile-avatar-container');
@@ -603,10 +501,10 @@ function updateAvatarDisplay() {
     if (!avatar) return;
     
     if (currentPhoto && avatarImg) {
-        avatarImg.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
+        avatarImg.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
     } else if (currentPhoto) {
         const img = document.createElement('img');
-        img.src = `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
+        img.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
         img.alt = '';
         img.id = 'userProfileAvatarImg';
         avatar.innerHTML = '';
@@ -652,22 +550,7 @@ async function deleteUserAvatar(photoId) {
     const deletedIndex = userPhotos.findIndex(p => p.id === photoId);
     
     try {
-        const accessToken = getAccessToken();
-        if (!accessToken) {
-            throw new Error('No access token available');
-        }
-        
-        const response = await fetch(`/users/me/photos/${photoId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to delete photo: ${response.status} ${errorText}`);
-        }
+        await apiDeleteUserPhoto(photoId);
         
         // Adjust current index if needed
         if (deletedIndex < currentPhotoIndex) {

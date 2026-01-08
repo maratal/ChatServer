@@ -13,28 +13,10 @@ const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="1
 // Load messages for a chat
 async function loadMessages(chatId) {
     console.log(`Loading messages for chat ${chatId}...`);
-
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-        console.error('No access token available');
-        window.location.href = '/';
-        return;
-    }
     
     try {
-        const response = await fetch(`/chats/${chatId}/messages?count=50`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        
-        if (response.ok) {
-            const messages = await response.json();
-            displayMessages(messages);
-        } else {
-            console.error('Failed to load messages:', response.statusText);
-        }
+        const messages = await apiGetMessages(chatId, 50);
+        displayMessages(messages);
     } catch (error) {
         console.error('Error loading messages:', error);
     }
@@ -222,7 +204,7 @@ function createMessageElement(message) {
         : '';
     
     const avatarContent = authorMainPhoto 
-        ? `<img src="/uploads/${authorMainPhoto.id}.${authorMainPhoto.fileType}" alt="">`
+        ? `<img src="${getUploadUrl(authorMainPhoto.id, authorMainPhoto.fileType)}" alt="">`
         : getAvatarInitialsHtml(authorName, message.authorId);
     
     // Handle attachments
@@ -258,10 +240,10 @@ function createMessageElement(message) {
                     </button>
                     ` : ''}
                     ${isImage ? `
-                    <img class="message-attachment-image" src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}" alt="Attachment">
+                    <img class="message-attachment-image" src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
                     ` : isVideo ? `
                     <video class="message-attachment-video" controls onclick="event.stopPropagation();">
-                        <source src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}" type="video/${firstAttachment.fileType}">
+                        <source src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" type="video/${firstAttachment.fileType}">
                     </video>
                     ` : ''}
                     ${hasMultipleValidAttachments ? `
@@ -365,7 +347,7 @@ function switchMessageAttachment(messageId, index) {
         if (isImage) {
             const img = document.createElement('img');
             img.className = 'message-attachment-image';
-            img.src = `/uploads/${attachment.id}.${attachment.fileType}`;
+            img.src = getUploadUrl(attachment.id, attachment.fileType);
             img.alt = 'Attachment';
             currentMedia.replaceWith(img);
         } else if (isVideo) {
@@ -373,7 +355,7 @@ function switchMessageAttachment(messageId, index) {
             video.className = 'message-attachment-video';
             video.controls = true;
             const source = document.createElement('source');
-            source.src = `/uploads/${attachment.id}.${attachment.fileType}`;
+            source.src = getUploadUrl(attachment.id, attachment.fileType);
             source.type = `video/${attachment.fileType}`;
             video.appendChild(source);
             currentMedia.replaceWith(video);
@@ -573,12 +555,6 @@ async function uploadAttachment(attachment) {
     if (attachment.uploading || attachment.uploaded) return;
     
     attachment.uploading = true;
-    const accessToken = getAccessToken();
-    if (!accessToken) {
-        console.error('No access token available');
-        attachment.uploading = false;
-        return;
-    }
     
     const fileId = crypto.randomUUID();
     const fileType = attachment.file.name.split('.').pop().toLowerCase()
@@ -586,8 +562,7 @@ async function uploadAttachment(attachment) {
     try {
         // Start upload with progress tracking
         let uploadXhr = null;
-        const uploadPromise = uploadFileWithProgress(
-            '/uploads',
+        const uploadPromise = apiUploadFile(
             attachment.file,
             fileId,
             attachment.file.type,
@@ -605,14 +580,7 @@ async function uploadAttachment(attachment) {
             progress: 0
         });
         
-        const response = await uploadPromise;
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Upload failed: ${response.status} ${errorText}`);
-        }
-        
-        const uploadedFileName = await response.text();
+        const uploadedFileName = await uploadPromise;
         const uploadedFileNameParts = uploadedFileName.split('.');
         const uploadedFileId = uploadedFileNameParts.slice(0, -1).join('.');
         const uploadedFileType = uploadedFileNameParts.slice(-1)[0];
@@ -678,16 +646,8 @@ async function removeAttachment(attachmentId) {
     // If attachment is uploaded, delete it from server
     if (attachment.uploaded && attachment.uploadedId && attachment.fileType) {
         try {
-            const accessToken = getAccessToken();
-            if (accessToken) {
-                const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
-                await fetch(`/uploads/${encodeURIComponent(fileName)}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
-            }
+            const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
+            await apiDeleteUpload(fileName);
         } catch (error) {
             console.error('Error deleting uploaded file:', error);
         }
@@ -944,51 +904,6 @@ async function sendMessage() {
 
     // Re-display chats to re-sort by latest message
     displayChats();
-}
-
-// Upload file with progress tracking
-function uploadFileWithProgress(url, file, fileName, contentType, onProgress, onXhrCreated = null) {
-    return new Promise((resolve, reject) => {
-        const accessToken = getAccessToken();
-        const xhr = new XMLHttpRequest();
-        
-        if (onXhrCreated) {
-            onXhrCreated(xhr);
-        }
-        
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                onProgress(percentComplete);
-            }
-        });
-        
-        xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                resolve({
-                    ok: true,
-                    text: () => Promise.resolve(xhr.responseText)
-                });
-            } else {
-                reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
-        });
-        
-        xhr.addEventListener('error', () => {
-            reject(new Error('Upload failed'));
-        });
-        
-        xhr.addEventListener('abort', () => {
-            reject(new Error('Upload aborted'));
-        });
-        
-        xhr.open('POST', url);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.setRequestHeader('File-Name', fileName);
-        xhr.setRequestHeader('Content-Type', contentType);
-        
-        xhr.send(file);
-    });
 }
 
 // Add message to chat
@@ -1251,22 +1166,10 @@ function retryMessage(localId) {
 // Send message to server (helper function)
 async function sendMessageToServer(message) {
     try {
-        const accessToken = getAccessToken();
-        if (!accessToken) {
-            console.error('No access token available');
-            markMessageAsFailed(message.localId);
-            return;
-        }
-        
-        const requestBody = {
-            localId: message.localId,
-            text: message.text || null,
-            isVisible: true
-        };
-        
-        // Add attachments if present
+        // Prepare attachments if present
+        let attachments = null;
         if (message.attachments && message.attachments.length > 0) {
-            requestBody.attachments = message.attachments.map(att => ({
+            attachments = message.attachments.map(att => ({
                 id: att.id,
                 fileType: att.fileType,
                 fileSize: att.fileSize,
@@ -1275,22 +1178,15 @@ async function sendMessageToServer(message) {
             }));
         }
         
-        const response = await fetch(`/chats/${message.chatId}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
+        const serverMessage = await apiSendMessage(
+            message.chatId,
+            message.localId,
+            message.text || null,
+            attachments
+        );
         
-        if (response.ok) {
-            const serverMessage = await response.json();
-            pendingMessages.delete(message.localId);
-            updateMessageInChat(message.localId, serverMessage);
-        } else {
-            markMessageAsFailed(message.localId);
-        }
+        pendingMessages.delete(message.localId);
+        updateMessageInChat(message.localId, serverMessage);
     } catch (error) {
         console.error('Error sending message:', error);
         markMessageAsFailed(message.localId);
