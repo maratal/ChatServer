@@ -113,7 +113,8 @@ function displayMessages(messages) {
     messagesContainer.innerHTML = '';
     
     if (messages.length === 0) {
-        messagesContainer.innerHTML = '<div class="no-messages" style="text-align: center; color: #666; padding: 40px;">No messages in this chat</div>';
+        const noMessagesText = getRandomNoMessagesText();
+        messagesContainer.innerHTML = `<div class="no-messages">${escapeHtml(noMessagesText)}</div>`;
         return;
     }
     

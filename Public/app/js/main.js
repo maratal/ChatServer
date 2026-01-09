@@ -158,10 +158,13 @@ function displayChats() {
         chatItems.appendChild(chatItem);
     });
 
-    // Restore previously selected chat from localStorage
+    // Restore previously selected chat from localStorage or select first chat
     const savedChatId = localStorage.getItem('selectedChatId');
     if (savedChatId && chats.some(c => c.id === savedChatId)) {
         selectChat(savedChatId);
+    } else if (sortedChats.length > 0) {
+        // Select first chat if no saved chat or saved chat doesn't exist
+        selectChat(sortedChats[0].id);
     }
 }
 
@@ -315,6 +318,12 @@ async function selectChat(chatId) {
     
     // Load messages
     await loadMessages(chatId);
+    
+    // Focus message input field
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.focus();
+    }
 }
 
 // Update current user display in chat list header

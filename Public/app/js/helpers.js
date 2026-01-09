@@ -1,5 +1,23 @@
 // Utility functions
 
+// Fun "no messages" variants
+const NO_MESSAGES_VARIANTS = [
+    "No messages yet... Break the ice! 🧊",
+    "Ready to start chatting? 💬",
+    "This chat is a blank canvas 🎨",
+    "Nothing here but potential ✨",
+    "Looks like a fresh start! 🌱",
+    "Your words could be the first! ✍️",
+    "Time to start a conversation! 💬",
+    "Empty inbox = infinite possibilities 🚀",
+    "Say hello and get things rolling! 👋",
+    "A new adventure begins here 🎯"
+];
+
+function getRandomNoMessagesText() {
+    return NO_MESSAGES_VARIANTS[Math.floor(Math.random() * NO_MESSAGES_VARIANTS.length)];
+}
+
 // Avatar color generation - 20 distinct vivid colors
 const AVATAR_COLORS = (function() {
     const colors = [];
