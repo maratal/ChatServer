@@ -70,6 +70,8 @@ extension Chat {
         var removedUsers: [UserInfo]?
         var lastMessage: MessageInfo?
         var images: [MediaInfo]?
+        var updatedAt: Date
+        var createdAt: Date
         
         var isMuted: Bool?
         var isArchived: Bool?
@@ -87,6 +89,8 @@ extension Chat {
             if chat.$images.value != nil {
                 self.images = chat.images.map { $0.info() }
             }
+            self.updatedAt = chat.updatedAt ?? Date()
+            self.createdAt = chat.createdAt ?? Date()
             self.isMuted = relation.isMuted
             self.isArchived = relation.isArchived
             self.isBlocked = relation.isChatBlocked
@@ -107,6 +111,8 @@ extension Chat {
             if chat.$images.value != nil {
                 self.images = chat.images.map { $0.info() }
             }
+            self.updatedAt = chat.updatedAt ?? Date()
+            self.createdAt = chat.createdAt ?? Date()
             self.isMuted = relation.isMuted
             self.isArchived = relation.isArchived
             self.isBlocked = relation.isChatBlocked

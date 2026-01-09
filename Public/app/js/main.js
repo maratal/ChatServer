@@ -152,11 +152,29 @@ function displayChats() {
         if (isPersonalNotes(a)) return -1;
         if (isPersonalNotes(b)) return 1;
         
-        // Sort by lastMessage date (newest first)
-        const aDate = getChatLastMessageDate(a) || new Date(0);
-        const bDate = getChatLastMessageDate(b) || new Date(0);
+        // Sort by lastMessage date (newest first), with chats having lastMessage taking precedence
+        const aDate = getChatLastMessageDate(a);
+        const bDate = getChatLastMessageDate(b);
+
+        // Both have lastMessage - sort by lastMessage date (newest first)
+        if (aDate && bDate) {
+            return bDate - aDate;
+        }
+
+        // Only a has lastMessage - a comes first
+        if (aDate) {
+            return -1;
+        }
+
+        // Only b has lastMessage - b comes first
+        if (bDate) {
+            return 1;
+        }
         
-        return bDate - aDate;
+        // Neither has lastMessage - sort by updatedAt (newest first)
+        const aUpdatedAt = typeof a.updatedAt === 'string' ? new Date(a.updatedAt) : (typeof a.updatedAt === 'number' ? new Date(a.updatedAt * 1000) : new Date(0));
+        const bUpdatedAt = typeof b.updatedAt === 'string' ? new Date(b.updatedAt) : (typeof b.updatedAt === 'number' ? new Date(b.updatedAt * 1000) : new Date(0));
+        return bUpdatedAt - aUpdatedAt;
     });
     
     sortedChats.forEach(chat => {
