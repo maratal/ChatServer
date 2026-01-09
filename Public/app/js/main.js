@@ -610,8 +610,12 @@ async function createOrOpenPersonalChat(userId) {
         // Create new personal chat
         const newChat = await apiCreateChat(true, [userId]);
         
-        // Add to chats list
-        chats.unshift(newChat);
+        // Check if chat already exists in the list (API might return existing chat)
+        const existingChatIndex = chats.findIndex(c => c.id === newChat.id);
+        if (existingChatIndex === -1) {
+            // Chat doesn't exist, add it
+            chats.unshift(newChat);
+        }
         
         // Refresh chat display
         displayChats();
@@ -1317,8 +1321,13 @@ async function createGroupChat() {
         // Close modal (won't delete avatar since we cleared groupChatUploadedAvatarInfo)
         closeGroupChatModal();
         
-        // Add to chats list and refresh
-        chats.unshift(newChat);
+        // Check if chat already exists in the list (API might return existing chat)
+        const existingChatIndex = chats.findIndex(c => c.id === newChat.id);
+        if (existingChatIndex === -1) {
+            // Chat doesn't exist, add it
+            chats.unshift(newChat);
+        }
+        
         displayChats();
         selectChat(newChat.id);
         
