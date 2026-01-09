@@ -1717,7 +1717,8 @@ input[type="text"]:disabled, textarea:disabled {
     flex-direction: column;
 }
 
-.messages-container:has(.no-messages) {
+.messages-container:has(.no-messages),
+.messages-container:has(.no-chat-selected) {
     justify-content: center;
     align-items: center;
 }
@@ -2103,18 +2104,40 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .no-chat-selected {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
     color: hsl(var(--muted-foreground));
-    font-size: 1.1rem;
+    font-size: 1rem;
+    text-align: center;
 }
 
 .no-messages {
     color: hsl(var(--muted-foreground));
     font-size: 1rem;
     text-align: center;
+}
+
+.no-chats-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    height: 100%;
+}
+
+.find-users-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: hsl(var(--muted-foreground));
+    text-decoration: none;
+    font-size: 1rem;
+    padding: 12px 20px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.find-users-link:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
 }
 
 .message-error {

@@ -79,7 +79,7 @@
             </div>
 
             <!-- Message Input -->
-            <div class="px-4" id="messageInputContainer">
+            <div class="px-4" id="messageInputContainer" style="display: none;">
                 <div id="attachmentPreviewContainer" style="display: none;"></div>
                 <div class="flex items-end gap-2">
                     <input type="file" id="attachmentInput" accept="image/*,video/*" multiple style="display: none;">

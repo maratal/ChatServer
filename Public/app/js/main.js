@@ -136,7 +136,13 @@ function displayChats() {
     chatItems.innerHTML = '';
     
     if (chats.length === 0) {
-        chatItems.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No chats yet</div>';
+        chatItems.innerHTML = `
+            <div class="no-chats-container">
+                <a href="#" class="find-users-link" onclick="event.preventDefault(); openUserSelection();">
+                    Find someone to chat
+                </a>
+            </div>
+        `;
         return;
     }
     
