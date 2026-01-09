@@ -200,8 +200,8 @@ function createChatItem(chat) {
             hasOnlineStatus = otherUser.lastSeen ? isUserOnline(otherUser.lastSeen) : false;
         }
     } else {
-        // For group chats, show chat title
-        chatName = chat.title || 'Group Chat';
+        // For group chats, show chat title or member names
+        chatName = getGroupChatDisplayName(chat);
         avatarUserId = `group_${chat.id}`; // Use chat id for group color
     }
     
@@ -297,7 +297,7 @@ async function selectChat(chatId) {
         }
     } else {
         messagesContainer.classList.remove('personal-chat');
-        const groupName = chat.title || 'Group Chat';
+        const groupName = getGroupChatDisplayName(chat);
         chatTitle.textContent = groupName;
         chatSubtitle.textContent = `${chat.allUsers.length} members`;
         applyAvatarColor(chatHeaderAvatar, groupName, `group_${chat.id}`);
@@ -409,7 +409,7 @@ function openUserSelection() {
     document.getElementById('userSearchInput').value = '';
     
     // Load initial users
-    loadUsers();
+    loadUsers(document.getElementById('usersList'), displayUsers);
     
     // Setup search listener
     setupUserSearch();
@@ -446,14 +446,15 @@ function setupUserSearch() {
         // Set new timeout for search
         userSearchTimeout = setTimeout(() => {
             const query = this.value.trim();
+            const usersList = document.getElementById('usersList');
             if (query) {
-                searchUsers(query);
+                searchUsers(query, usersList, displayUsers);
             } else {
                 // Reset to all users if search is cleared
                 fetchedUsers = [];
                 lastUserId = null;
                 hasMoreUsers = true;
-                loadUsers();
+                loadUsers(usersList, displayUsers);
             }
         }, 300);
     });
@@ -467,15 +468,17 @@ function setupUserScrollPagination() {
         if (this.scrollTop + this.clientHeight >= this.scrollHeight - 5) {
             // Load more users if available and not currently loading
             if (hasMoreUsers && !isLoadingUsers && !document.getElementById('userSearchInput').value.trim()) {
-                loadUsers();
+                loadUsers(document.getElementById('usersList'), displayUsers);
             }
         }
     });
 }
 
-async function loadUsers() {
+async function loadUsers(domElement, displayCallback) {
     if (isLoadingUsers || !hasMoreUsers) return;
-    
+    // Show loading
+    domElement.innerHTML = '<div class="users-loading">Looking...</div>';
+
     isLoadingUsers = true;
     const pageSize = 20;
     
@@ -494,28 +497,26 @@ async function loadUsers() {
             hasMoreUsers = false;
         }
         
-        displayUsers();
+        displayCallback();
     } catch (error) {
         console.error('Error loading users:', error);
-        showUsersError('Error loading users');
+        domElement.innerHTML = `<div class="users-empty">Error loading users</div>`;
     } finally {
         isLoadingUsers = false;
     }
 }
 
-async function searchUsers(query) {
-    const usersList = document.getElementById('usersList');
-    
+async function searchUsers(query, domElement, displayCallback) {
     // Show loading
-    usersList.innerHTML = '<div class="users-loading">Searching users...</div>';
+    domElement.innerHTML = '<div class="users-loading">Looking...</div>';
     
     try {
         const users = await apiSearchUsers(query);
         fetchedUsers = users;
-        displayUsers();
+        displayCallback();
     } catch (error) {
         console.error('Error searching users:', error);
-        showUsersError('Error searching users');
+        domElement.innerHTML = `<div class="users-empty">Error searching users</div>`;
     }
 }
 
@@ -902,5 +903,420 @@ document.addEventListener('keydown', function(event) {
         if (modal && modal.classList.contains('show')) {
             closeUserInfo();
         }
+        // Close group chat modal on Escape
+        const groupModal = document.getElementById('groupChatModal');
+        if (groupModal && groupModal.classList.contains('show')) {
+            closeGroupChatModal();
+        }
     }
 }, true); // Use capture phase
+
+// New Chat Menu Functions
+let newChatMenuOpen = false;
+
+function showNewChatMenu(event) {
+    event.stopPropagation();
+    
+    const button = document.getElementById('newChatButton');
+    const rect = button.getBoundingClientRect();
+    
+    showContextMenu({
+        items: [
+            { id: 'personal', label: 'Personal Chat' },
+            { id: 'group', label: 'Group Chat' }
+        ],
+        x: rect.left,
+        y: rect.top - 8,
+        anchor: 'bottom-left',
+        onAction: (action) => {
+            if (action === 'personal') {
+                openUserSelection();
+            } else if (action === 'group') {
+                openGroupChatModal();
+            }
+        }
+    });
+}
+
+// Group Chat Modal Functions
+let groupChatSearchTimeout = null;
+let groupChatSelectedUsers = [];
+let groupChatAvatarFile = null;
+let groupChatAvatarUploadInProgress = false;
+
+function openGroupChatModal() {
+    const modal = document.getElementById('groupChatModal');
+    modal.style.display = 'block';
+    modal.offsetHeight; // Force reflow
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            modal.classList.add('show');
+        });
+    });
+    
+    // Reset state
+    fetchedUsers = [];
+    lastUserId = null;
+    hasMoreUsers = true;
+    isLoadingUsers = false;
+
+    groupChatSelectedUsers = [];
+    groupChatAvatarFile = null;
+    groupChatUploadedAvatarInfo = null;
+    
+    // Clear inputs
+    document.getElementById('groupChatNameInput').value = '';
+    document.getElementById('groupUserSearchInput').value = '';
+    
+    // Reset avatar
+    const avatar = document.getElementById('groupChatAvatar');
+    avatar.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+    `;
+    
+    // Hide remove button
+    document.getElementById('groupChatAvatarRemove').style.display = 'none';
+    
+    // Update create button state
+    updateGroupChatCreateButton();
+    
+    // Load initial users
+    loadUsers(document.getElementById('groupChatUsersList'), displayGroupChatUsers);
+    
+    // Setup search listener
+    setupGroupUserSearch();
+    
+    // Setup scroll listener for pagination
+    setupGroupUserScrollPagination();
+}
+
+async function closeGroupChatModal() {
+    const modal = document.getElementById('groupChatModal');
+    modal.classList.remove('show');
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+    
+    if (groupChatSearchTimeout) {
+        clearTimeout(groupChatSearchTimeout);
+        groupChatSearchTimeout = null;
+    }
+    
+    // Clean up uploaded avatar if not used
+    if (groupChatUploadedAvatarInfo) {
+        try {
+            await apiDeleteUpload(groupChatUploadedAvatarInfo.fileName);
+        } catch (error) {
+            console.error('Error cleaning up unused avatar:', error);
+        }
+        groupChatUploadedAvatarInfo = null;
+    }
+}
+
+function setupGroupUserSearch() {
+    const searchInput = document.getElementById('groupUserSearchInput');
+    
+    // Remove previous listener
+    searchInput.removeEventListener('input', handleGroupUserSearchInput);
+    searchInput.addEventListener('input', handleGroupUserSearchInput);
+}
+
+function handleGroupUserSearchInput(event) {
+    if (groupChatSearchTimeout) {
+        clearTimeout(groupChatSearchTimeout);
+    }
+    
+    groupChatSearchTimeout = setTimeout(() => {
+        const query = event.target.value.trim();
+        const usersList = document.getElementById('groupChatUsersList');
+        if (query) {
+            searchUsers(query, usersList, displayGroupChatUsers);
+        } else {
+            fetchedUsers = [];
+            lastUserId = null;
+            hasMoreUsers = true;
+            loadUsers(usersList, displayGroupChatUsers);
+        }
+    }, 300);
+}
+
+function setupGroupUserScrollPagination() {
+    const usersList = document.getElementById('groupChatUsersList');
+    
+    usersList.removeEventListener('scroll', handleGroupUserScroll);
+    usersList.addEventListener('scroll', handleGroupUserScroll);
+}
+
+function handleGroupUserScroll(event) {
+    const usersList = event.target;
+    if (usersList.scrollTop + usersList.clientHeight >= usersList.scrollHeight - 5) {
+        if (hasMoreUsers && !isLoadingUsers && !document.getElementById('groupUserSearchInput').value.trim()) {
+            loadUsers(usersList, displayGroupChatUsers);
+        }
+    }
+}
+
+function displayGroupChatUsers(error = null) {
+    const usersList = document.getElementById('groupChatUsersList');
+    
+    if (error) {
+        usersList.innerHTML = `<div class="users-empty">${error}</div>`;
+        return;
+    }
+    
+    // Filter out current user
+    const availableUsers = fetchedUsers.filter(u => u.id !== currentUser?.info?.id);
+    
+    if (availableUsers.length === 0) {
+        usersList.innerHTML = '<div class="users-empty">No users found</div>';
+        return;
+    }
+    
+    let html = '';
+    availableUsers.forEach(user => {
+        const userName = user.name || user.username || '?';
+        const avatarHtml = getAvatarInitialsHtml(userName, user.id);
+        const isSelected = groupChatSelectedUsers.some(u => u.id === user.id);
+        
+        html += `
+            <div class="group-user-item ${isSelected ? 'selected' : ''}" onclick="toggleGroupChatUser(${user.id})">
+                <div class="avatar-small">${avatarHtml}</div>
+                <div class="user-item-info">
+                    <div class="user-item-name">${escapeHtml(user.name || user.username || 'Unknown User')}</div>
+                    <div class="user-item-username">@${escapeHtml(user.username || 'unknown')}</div>
+                </div>
+                <div class="group-user-checkbox ${isSelected ? 'checked' : ''}">
+                    ${isSelected ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    if (hasMoreUsers && !document.getElementById('groupUserSearchInput').value.trim()) {
+        html += '<div class="users-loading" style="padding: 20px;">Loading more users...</div>';
+    }
+    
+    usersList.innerHTML = html;
+}
+
+function toggleGroupChatUser(userId) {
+    const user = fetchedUsers.find(u => u.id === userId);
+    if (!user) return;
+    
+    const index = groupChatSelectedUsers.findIndex(u => u.id === userId);
+    if (index === -1) {
+        groupChatSelectedUsers.push(user);
+    } else {
+        groupChatSelectedUsers.splice(index, 1);
+    }
+    
+    displayGroupChatUsers();
+    updateGroupChatCreateButton();
+}
+
+function updateGroupChatCreateButton() {
+    const btn = document.getElementById('groupChatCreateBtn');
+    const countLabel = document.getElementById('groupChatSelectedCount');
+    const count = groupChatSelectedUsers.length;
+    
+    // Enable button if at least one user is selected
+    btn.disabled = count === 0;
+    
+    // Update selected count label
+    if (count === 0) {
+        countLabel.textContent = '';
+    } else if (count === 1) {
+        countLabel.textContent = '1 user selected';
+    } else {
+        countLabel.textContent = `${count} users selected`;
+    }
+}
+
+// Group chat avatar functions
+let groupChatUploadedAvatarInfo = null; // Store uploaded file info {id, fileType, fileSize}
+
+function openGroupAvatarFileDialog() {
+    if (groupChatAvatarUploadInProgress) return;
+    const input = document.getElementById('groupChatAvatarInput');
+    if (input) {
+        input.click();
+    }
+}
+
+function handleGroupAvatarFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    const maxSize = 1 * 1024 * 1024;
+    if (file.size > maxSize) {
+        alert('Image size must be less than 1MB');
+        return;
+    }
+    
+    // Store file for later reference
+    groupChatAvatarFile = file;
+    
+    // Show preview immediately
+    const avatar = document.getElementById('groupChatAvatar');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        avatar.innerHTML = `<img src="${e.target.result}" alt="Group avatar preview">`;
+    };
+    reader.readAsDataURL(file);
+    
+    // Show remove button
+    document.getElementById('groupChatAvatarRemove').style.display = 'flex';
+    
+    // Upload group avatar
+    uploadGroupChatAvatar(file);
+    
+    event.target.value = '';
+}
+
+async function uploadGroupChatAvatar(file) {
+    groupChatAvatarUploadInProgress = true;
+    const progressBar = document.getElementById('groupChatAvatarProgress');
+    const progressCircle = document.getElementById('groupChatAvatarProgressBar');
+    const avatar = document.getElementById('groupChatAvatar');
+    
+    progressBar.style.display = 'block';
+    avatar.style.opacity = '0.7';
+    
+    const updateProgressVisual = (progress) => {
+        const circumference = 2 * Math.PI * 48;
+        const offset = circumference - (progress / 100) * circumference;
+        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressCircle.style.strokeDashoffset = offset;
+    };
+    
+    try {
+        const fileId = crypto.randomUUID();
+        const fileExtension = file.name.split('.').pop().toLowerCase() || 'jpg';
+        
+        // Upload file
+        const uploadedFileName = await apiUploadFile(file, fileId, file.type, (progress) => {
+            updateProgressVisual(Math.min(progress, 75));
+        });
+        
+        const uploadedFileId = uploadedFileName.split('.').slice(0, -1).join('.');
+        
+        // Store uploaded file info for later use
+        groupChatUploadedAvatarInfo = {
+            id: uploadedFileId,
+            fileType: fileExtension,
+            fileSize: file.size,
+            fileName: uploadedFileName
+        };
+        
+        updateProgressVisual(100);
+        
+    } catch (error) {
+        console.error('Error uploading group avatar:', error);
+        // Reset on error
+        groupChatUploadedAvatarInfo = null;
+        groupChatAvatarFile = null;
+        resetGroupAvatarDisplay();
+    } finally {
+        groupChatAvatarUploadInProgress = false;
+        progressBar.style.display = 'none';
+        avatar.style.opacity = '1';
+    }
+}
+
+async function removeGroupAvatar() {
+    // Delete from server if already uploaded
+    if (groupChatUploadedAvatarInfo) {
+        try {
+            await apiDeleteUpload(groupChatUploadedAvatarInfo.fileName);
+        } catch (error) {
+            console.error('Error deleting group avatar from server:', error);
+        }
+        groupChatUploadedAvatarInfo = null;
+    }
+    
+    groupChatAvatarFile = null;
+    resetGroupAvatarDisplay();
+}
+
+function resetGroupAvatarDisplay() {
+    const avatar = document.getElementById('groupChatAvatar');
+    avatar.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+    `;
+    
+    // Hide remove button
+    document.getElementById('groupChatAvatarRemove').style.display = 'none';
+}
+
+async function createGroupChat() {
+    const nameInput = document.getElementById('groupChatNameInput');
+    const groupName = nameInput.value.trim() || null;
+    
+    if (groupChatSelectedUsers.length === 0) {
+        alert('Please select at least one member');
+        return;
+    }
+    
+    const btn = document.getElementById('groupChatCreateBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
+    
+    try {
+        // Create the chat first
+        const participants = groupChatSelectedUsers.map(u => u.id);
+        const newChat = await apiCreateChat(false, participants, groupName);
+        
+        // If there's an uploaded avatar, add it to the chat
+        if (groupChatUploadedAvatarInfo) {
+            try {
+                await apiAddChatImage(
+                    newChat.id, 
+                    groupChatUploadedAvatarInfo.id, 
+                    groupChatUploadedAvatarInfo.fileType, 
+                    groupChatUploadedAvatarInfo.fileSize
+                );
+            } catch (error) {
+                console.error('Error adding avatar to chat:', error);
+                // Continue anyway - chat is created, just without avatar
+            }
+            // Clear so closeGroupChatModal doesn't try to delete it
+            groupChatUploadedAvatarInfo = null;
+        }
+        
+        // Close modal (won't delete avatar since we cleared groupChatUploadedAvatarInfo)
+        closeGroupChatModal();
+        
+        // Add to chats list and refresh
+        chats.unshift(newChat);
+        displayChats();
+        selectChat(newChat.id);
+        
+    } catch (error) {
+        console.error('Error creating group chat:', error);
+        alert('Error creating group chat: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = 'Create Group';
+    }
+}
+
+// Close group chat modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('groupChatModal');
+    const content = document.querySelector('.group-chat-content');
+    if (modal && modal.classList.contains('show') && content && !content.contains(event.target)) {
+        closeGroupChatModal();
+    }
+}, true);

@@ -148,9 +148,10 @@ function addLongPressHandler(element, options) {
 }
 
 // Show context menu utility
-// options: { items, x, y, onAction, highlightElement, highlightClass }
+// options: { items, x, y, onAction, highlightElement, highlightClass, anchor }
+// anchor: 'top-left' (default) - menu top-left at (x,y), 'bottom-left' - menu bottom-left at (x,y)
 function showContextMenu(options) {
-    const { items, x, y, onAction, highlightElement, highlightClass = 'menu-active' } = options;
+    const { items, x, y, onAction, highlightElement, highlightClass = 'menu-active', anchor = 'top-left' } = options;
     
     // Remove any existing menu and its highlight
     const existingMenu = document.querySelector('.context-menu');
@@ -180,10 +181,16 @@ function showContextMenu(options) {
     // Position menu
     const menuRect = menu.getBoundingClientRect();
     
-    // Adjust position to keep menu in viewport
+    // Calculate initial position based on anchor
     let left = x;
     let top = y;
     
+    if (anchor === 'bottom-left') {
+        // Menu bottom-left corner at (x, y), so top = y - menuHeight
+        top = y - menuRect.height;
+    }
+    
+    // Adjust position to keep menu in viewport
     if (left + menuRect.width > window.innerWidth) {
         left = window.innerWidth - menuRect.width - 10;
     }

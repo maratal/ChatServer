@@ -212,10 +212,19 @@ async function apiGetChats(full = true) {
     return await handleResponse(response);
 }
 
-async function apiCreateChat(isPersonal, participants) {
+async function apiCreateChat(isPersonal, participants, title = null) {
     const accessToken = getAccessToken();
     if (!accessToken) {
         throw new Error('No access token available');
+    }
+    
+    const body = {
+        isPersonal: isPersonal,
+        participants: participants
+    };
+    
+    if (title) {
+        body.title = title;
     }
     
     const response = await fetch('/chats', {
@@ -224,9 +233,29 @@ async function apiCreateChat(isPersonal, participants) {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
         },
+        body: JSON.stringify(body)
+    });
+    return await handleResponse(response);
+}
+
+async function apiAddChatImage(chatId, imageId, fileType, fileSize) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`/chats/${chatId}/images`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-            isPersonal: isPersonal,
-            participants: participants
+            image: {
+                id: imageId,
+                fileType: fileType,
+                fileSize: fileSize
+            }
         })
     });
     return await handleResponse(response);

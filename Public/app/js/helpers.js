@@ -248,3 +248,30 @@ function getImageDimensions(file) {
         img.src = url;
     });
 }
+
+// Get group chat display name - title or comma-joined member names (up to first 10)
+function getGroupChatDisplayName(chat) {
+    if (chat.isPersonal) {
+        return null;
+    }
+    
+    if (chat.title) {
+        return chat.title;
+    }
+    
+    if (!chat.allUsers || chat.allUsers.length === 0) {
+        return 'Group Chat';
+    }
+    
+    // Filter out current user and get first 10 members
+    const otherMembers = chat.allUsers
+        .filter(user => user.id !== currentUser?.info?.id)
+        .slice(0, 10)
+        .map(user => user.name || user.username || 'Unknown');
+    
+    if (otherMembers.length === 0) {
+        return 'Group Chat';
+    }
+    
+    return otherMembers.join(', ');
+}
