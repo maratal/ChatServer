@@ -75,6 +75,14 @@ extension Request {
         }
         return id
     }
+    
+    func countFromQuery(default defaultValue: Int = 20) -> Int {
+        guard let count: Int = query["count"] else {
+            return defaultValue
+        }
+        // Limit count to a reasonable maximum
+        return min(max(count, 1), 100)
+    }
 }
 
 extension PathComponent {

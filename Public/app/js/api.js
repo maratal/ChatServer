@@ -122,14 +122,19 @@ async function apiGetUser(userId) {
     return await handleResponse(response);
 }
 
-async function apiGetAllUsers(lastUserId = null) {
+async function apiGetAllUsers(lastUserId = null, count = 20) {
     const accessToken = getAccessToken();
     if (!accessToken) {
         throw new Error('No access token available');
     }
     
-    const url = lastUserId ? `/users/all?id=${lastUserId}` : '/users/all';
-    const response = await fetch(url, {
+    // Build URL with count parameter and optional id parameter
+    const params = new URLSearchParams({ count: count.toString() });
+    if (lastUserId) {
+        params.append('id', lastUserId);
+    }
+    
+    const response = await fetch(`/users/all?${params}`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`

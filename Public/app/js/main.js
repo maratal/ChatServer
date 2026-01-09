@@ -462,9 +462,10 @@ async function loadUsers() {
     if (isLoadingUsers || !hasMoreUsers) return;
     
     isLoadingUsers = true;
+    const pageSize = 20;
     
     try {
-        const users = await apiGetAllUsers(lastUserId || null);
+        const users = await apiGetAllUsers(lastUserId, pageSize);
         
         // Add users to current users
         if (users.length > 0) {
@@ -473,8 +474,8 @@ async function loadUsers() {
             lastUserId = users[users.length - 1].id;
         }
         
-        // Set hasMoreUsers to false if we got less than the requested amount (20)
-        if (users.length < 20) {
+        // Set hasMoreUsers to false if we got less than the requested amount
+        if (users.length < pageSize) {
             hasMoreUsers = false;
         }
         

@@ -60,12 +60,14 @@ extension User {
         var username: String
         var about: String?
         var lastSeen: Date?
+        var createdAt: Date
         var photos: [MediaInfo]?
         
         init(from user: User, fullInfo: Bool) {
             self.id = user.id
             self.name = user.name
             self.username = user.username
+            self.createdAt = user.createdAt ?? Date()
             if user.$photos.value != nil && !user.photos.isEmpty {
                 let photos = user.photos.map { $0.info() }
                 self.photos = photos.sorted {
