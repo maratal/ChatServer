@@ -66,8 +66,8 @@ actor UsersDatabaseRepository: DatabaseRepository, UsersRepository {
     
     func search(_ s: String) async throws -> [User] {
         try await User.query(on: database).group(.or) { query in
-            query.filter(\.$name ~~ s)
-            query.filter(\.$username ~~ s)
+            query.filter(\.$name, .custom("ILIKE"), "%\(s)%")
+            query.filter(\.$username, .custom("ILIKE"), "%\(s)%")
         }
         .range(..<100)
         .with(\.$photos)
