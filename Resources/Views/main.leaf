@@ -169,24 +169,6 @@
         </div>
     </div>
     
-    <!-- User Info Modal -->
-    <div class="user-info-modal" id="userInfoModal">
-        <div class="user-info-content">
-            <div class="user-info-header">
-                <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
-                <button class="user-panel-close-btn" onclick="closeUserInfo()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
-                        <path d="M18 6 6 18"></path>
-                        <path d="m6 6 12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="user-info-body" id="userInfoBody">
-                <div class="user-info-loading">Loading user information...</div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Group Chat Creation Modal -->
     <div class="group-chat-modal" id="groupChatModal">
         <div class="group-chat-content">

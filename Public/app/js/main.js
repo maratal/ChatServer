@@ -331,8 +331,8 @@ async function selectChat(chatId) {
             const user = chat.allUsers.find(user => user.id !== currentUser?.info.id) || currentUser.info;
             chatHeaderAvatarContainer.onclick = () => showUserInfo(user.id);
         } else {
-            // For group chats, do nothing (yet)
-            chatHeaderAvatarContainer.onclick = null;
+            // For group chats, show group chat info
+            chatHeaderAvatarContainer.onclick = () => showGroupChatInfo(chat.id);
         }
     }
     
@@ -434,6 +434,13 @@ function openUserSelection() {
     
     // Setup scroll listener for pagination
     setupUserScrollPagination();
+
+    // Close on backdrop click
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeUserSelection();
+        }
+    });
 }
 
 function closeUserSelection() {
@@ -628,21 +635,6 @@ async function createOrOpenPersonalChat(userId) {
     }
 }
 
-// Close modal when clicking outside
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('userSelectionModal');
-    if (event.target === modal) {
-        closeUserSelection();
-    }
-});
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeUserSelection();
-    }
-});
-
 // Add plus button click handler when page loads
 document.addEventListener('DOMContentLoaded', function() {
     const addChatButton = document.getElementById('addChatButton');
@@ -652,38 +644,72 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // User Info Modal Functions
+// User info modal stack management
+let userInfoModalStack = []; // Array of { userId, element, closeHandler }
+let userInfoModalCounter = 0;
+
 async function showUserInfo(userId) {
     if (!userId) return;
     
-    const modal = document.getElementById('userInfoModal');
-    const body = document.getElementById('userInfoBody');
+    // Create a new modal container
+    const modalId = `userInfoModal_${userInfoModalCounter++}`;
+    const modalElement = document.createElement('div');
+    modalElement.id = modalId;
+    modalElement.className = 'user-info-modal';
+    modalElement.style.zIndex = 1000 + userInfoModalStack.length * 10;
+    
+    modalElement.innerHTML = `
+        <div class="user-info-content">
+            <div class="user-info-header">
+                <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
+                <button class="user-panel-close-btn" onclick="closeTopModalInfoPanel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="user-info-body" id="${modalId}_body">
+                <div class="user-info-loading">Loading user information...</div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalElement);
+    const body = document.getElementById(`${modalId}_body`);
+    
+    // Close on backdrop click
+    modalElement.addEventListener('click', function(event) {
+        if (event.target === modalElement) {
+            closeTopModalInfoPanel();
+        }
+    });
     
     // Show modal - same pattern as user selection modal
-    modal.style.display = 'block';
+    modalElement.style.display = 'block';
     // Force a reflow to ensure initial styles are applied
-    modal.offsetHeight;
+    modalElement.offsetHeight;
     
     // Trigger animation after display is set
     requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            modal.classList.add('show');
-        });
+        modalElement.classList.add('show');
     });
     
-    body.innerHTML = '<div class="user-info-loading">Loading user information...</div>';
+    // Add to stack
+    userInfoModalStack.push({ userId, element: modalElement, bodyId: `${modalId}_body` });
 
     try {
         const user = await apiGetUser(userId);
         console.log('User data received:', user);
-        displayUserInfo(user);
+        displayUserInfo(user, `${modalId}_body`);
     } catch (error) {
         console.error('Error fetching user info:', error);
         body.innerHTML = `<div class="user-info-loading" style="color: #ef4444;">Error: ${error.message || 'Failed to load user information'}</div>`;
     }
 }
 
-function displayUserInfo(user) {
-    const body = document.getElementById('userInfoBody');
+function displayUserInfo(user, bodyId = 'userInfoBody') {
+    const body = document.getElementById(bodyId);
     
     const name = user.name || user.username || 'Unknown User';
     const username = user.username || 'unknown';
@@ -856,13 +882,289 @@ function openUserInfoViewer() {
     });
 }
 
-function closeUserInfo() {
-    const modal = document.getElementById('userInfoModal');
-    modal.classList.remove('show');
+function closeAllModalInfoPanels() {
+    // Close all user info modals
+    while (userInfoModalStack.length > 0) {
+        closeTopModalInfoPanel();
+    }
+}
+
+function closeTopModalInfoPanel() {
+    if (userInfoModalStack.length === 0) return;
+    
+    const modalInfo = userInfoModalStack.pop();
+    modalInfo.element.classList.remove('show');
+    
     // Hide modal after animation completes
     setTimeout(() => {
-        modal.style.display = 'none';
+        if (modalInfo.element.parentNode) {
+            modalInfo.element.parentNode.removeChild(modalInfo.element);
+        }
     }, 300);
+}
+
+// Store group chat images for viewer
+let groupChatInfoImages = [];
+let groupChatCurrentInfo = null; // Store current chat being viewed
+
+async function showGroupChatInfo(chatId) {
+    if (!chatId) return;
+    
+    // Create a new modal container (using the same stack system as user info)
+    const modalId = `userInfoModal_${userInfoModalCounter++}`;
+    const modalElement = document.createElement('div');
+    modalElement.id = modalId;
+    modalElement.className = 'user-info-modal';
+    modalElement.style.zIndex = 1000 + userInfoModalStack.length * 10;
+    
+    modalElement.innerHTML = `
+        <div class="user-info-content">
+            <div class="user-info-header">
+                <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
+                <button class="user-panel-close-btn" onclick="closeTopModalInfoPanel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="user-info-body" id="${modalId}_body">
+                <div class="user-info-loading">Loading group information...</div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalElement);
+    const body = document.getElementById(`${modalId}_body`);
+    
+    // Close on backdrop click
+    modalElement.addEventListener('click', function(event) {
+        if (event.target === modalElement) {
+            closeTopModalInfoPanel();
+        }
+    });
+    
+    // Show modal
+    modalElement.style.display = 'block';
+    modalElement.offsetHeight;
+    
+    requestAnimationFrame(() => {
+        modalElement.classList.add('show');
+    });
+    
+    // Add to stack
+    userInfoModalStack.push({ chatId, element: modalElement, bodyId: `${modalId}_body`, isGroupChat: true });
+
+    try {
+        const chat = await apiGetChat(chatId);
+        groupChatCurrentInfo = chat;
+        displayGroupChatInfo(chat, `${modalId}_body`);
+    } catch (error) {
+        console.error('Error fetching group chat info:', error);
+        body.innerHTML = `<div class="user-info-loading" style="color: #ef4444;">Error: ${error.message || 'Failed to load group chat information'}</div>`;
+    }
+}
+
+function displayGroupChatInfo(chat, bodyId = 'userInfoBody') {
+    const body = document.getElementById(bodyId);
+    
+    const groupName = getGroupChatDisplayName(chat, currentUser);
+    const memberCount = chat.allUsers?.length || 0;
+    const isOwner = chat.owner?.id === currentUser?.info?.id;
+    
+    // Store images globally for viewer
+    groupChatInfoImages = chat.images || [];
+    const chatImage = groupChatInfoImages.length > 0 ? groupChatInfoImages[0] : null;
+    const avatarColor = getAvatarColorForUser(`group_${chat.id}`);
+    
+    // Get current photo
+    const photoUrl = chatImage ? getUploadUrl(chatImage.id, chatImage.fileType) : null;
+    
+    // Filter out current user from members list
+    const otherMembers = (chat.allUsers || []).filter(user => user.id !== currentUser?.info?.id);
+    
+    let html = '';
+    
+    if (isOwner) {
+        // Editable version for owner
+        html += `
+            <div class="user-info-avatar-container">
+                <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
+                    <div class="user-info-avatar" id="groupChatAvatarDisplay" style="cursor: pointer;" onclick="openGroupChatAvatarFileDialog()">
+                        ${photoUrl ? `<img src="${photoUrl}" alt="" id="groupChatAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(groupName)}</span>`}
+                    </div>
+                    <svg class="user-profile-avatar-progress" id="groupChatAvatarProgress" viewBox="0 0 100 100" style="display: none;">
+                        <circle class="user-profile-avatar-progress-bg" cx="50" cy="50" r="48"></circle>
+                        <circle class="user-profile-avatar-progress-bar" cx="50" cy="50" r="48" id="groupChatAvatarProgressBar"></circle>
+                    </svg>
+                    <button class="user-profile-avatar-menu-button" id="groupChatAvatarMenuButton" onclick="event.stopPropagation(); showGroupChatAvatarMenu(event)" title="Avatar menu">
+                        •••
+                    </button>
+                </div>
+                <input type="file" id="groupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleGroupChatAvatarFileSelect(event)">
+            </div>
+            <div class="user-profile-section">
+                <div class="user-profile-section-title">Group Name</div>
+                <input type="text" class="user-profile-name-input" id="groupChatNameInput" value="${escapeHtml(chat.title || '')}" placeholder="Enter group name">
+            </div>
+        `;
+    } else {
+        // Read-only version for non-owners
+        html += `
+            <div class="user-info-avatar-container">
+                <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
+                    <div class="user-info-avatar" id="userInfoAvatar" style="cursor: ${photoUrl ? 'pointer' : 'default'};">
+                        ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(groupName)}</span>`}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Only show title if it exists
+        if (chat.title && chat.title.trim()) {
+            html += `<div class="user-info-name">${escapeHtml(chat.title)}</div>`;
+        }
+    }
+    
+    // Members section
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">Members${isOwner ? ' <button class="inline-link-button" onclick="openAddMembersModal()">Add</button>' : ''}</div>
+            <div class="group-chat-members-grid" id="groupChatMembersGrid">
+                ${otherMembers.map(user => {
+                    const userName = user.name || user.username || 'Unknown User';
+                    const avatarHtml = getAvatarInitialsHtml(userName, user.id);
+                    return `
+                        <div class="group-chat-member-cell" onclick="${isOwner ? `showGroupMemberMenu(event, ${user.id})` : `showUserInfo(${user.id})`}">
+                            <div class="avatar-small">${avatarHtml}</div>
+                            <div class="group-chat-member-name">${escapeHtml(userName)}</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+    
+    // Meta information
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">Information</div>
+            <div class="user-info-meta">
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>${memberCount} ${memberCount === 1 ? 'member' : 'members'}</span>
+                </div>
+                ${chat.createdAt ? `
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                        <line x1="16" x2="16" y1="2" y2="6"></line>
+                        <line x1="8" x2="8" y1="2" y2="6"></line>
+                        <line x1="3" x2="21" y1="10" y2="10"></line>
+                    </svg>
+                    <span>Created: ${new Date(chat.createdAt).toLocaleDateString()}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Save button for owner
+    if (isOwner) {
+        html += `
+            <div class="user-profile-actions">
+                <button class="user-profile-save-btn" onclick="saveGroupChatChanges()">Save Changes</button>
+            </div>
+        `;
+    }
+    
+    body.innerHTML = html;
+    
+    // Add click handler to avatar for non-owners
+    if (!isOwner) {
+        const avatar = document.getElementById('userInfoAvatar');
+        if (avatar && photoUrl) {
+            avatar.addEventListener('click', function(event) {
+                openGroupChatImageViewer();
+            });
+        }
+    }
+}
+
+function openGroupChatImageViewer() {
+    if (groupChatInfoImages.length === 0) return;
+    openMediaViewer(groupChatInfoImages, 0, () => {});
+}
+
+// Member management
+function showGroupMemberMenu(event, userId) {
+    event.stopPropagation();
+    const cell = event.currentTarget;
+    const rect = cell.getBoundingClientRect();
+    
+    showContextMenu({
+        items: [
+            { id: 'personal_chat', label: 'Personal Chat', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>' },
+            { id: 'view_info', label: 'View Info', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="16" y2="12"></line><line x1="12" x2="12.01" y1="8" y2="8"></line></svg>' },
+            { id: 'block', label: 'Block', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"></line></svg>', separator: true },
+            { id: 'remove', label: 'Remove from Group', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line></svg>' }
+        ],
+        x: event.x,
+        y: event.y,
+        anchor: 'top-left',
+        onAction: async (action) => {
+            if (action === 'personal_chat') {
+                await createOrOpenPersonalChat(userId);
+                closeAllModalInfoPanels();
+            } else if (action === 'view_info') {
+                showUserInfo(userId);
+            } else if (action === 'block') {
+                await blockGroupChatMember(userId);
+            } else if (action === 'remove') {
+                await removeGroupChatMember(userId);
+            }
+        },
+        highlightElement: cell,
+        highlightClass: 'menu-active'
+    });
+}
+
+async function blockGroupChatMember(userId) {
+    if (!confirm('Block this member in this group chat?')) return;
+    
+    // TODO: Implement block user in chat API call
+    alert('Block functionality will be implemented');
+}
+
+async function removeGroupChatMember(userId) {
+    if (!confirm('Remove this member from the group?')) return;
+    
+    try {
+        const updatedChat = await apiRemoveChatUsers(groupChatCurrentInfo.id, [userId]);
+        groupChatCurrentInfo = updatedChat;
+        displayGroupChatInfo(updatedChat);
+        
+        // Update chat list if this chat is in it
+        const chatIndex = chats.findIndex(c => c.id === updatedChat.id);
+        if (chatIndex !== -1) {
+            chats[chatIndex] = updatedChat;
+            displayChats();
+        }
+    } catch (error) {
+        console.error('Error removing member:', error);
+        alert('Error removing member: ' + error.message);
+    }
+}
+
+function openAddMembersModal() {
+    // Reuse the user selection modal logic
+    console.log('openAddMembersModal');
+    // TODO: Need to modify user selection to support adding to existing group
 }
 
 function isUserOnline(lastSeen) {
@@ -899,36 +1201,42 @@ document.addEventListener('click', function(event) {
             return;
         }
     }
-    
-    // Close user info modal when clicking outside
-    // Don't close if viewer is open
-    const viewer = document.getElementById('mediaViewer');
-    if (viewer && (viewer === event.target || viewer.contains(event.target))) {
-        return;
-    }
-    const modal = document.getElementById('userInfoModal');
-    const content = document.querySelector('.user-info-content');
-    if (modal && modal.classList.contains('show') && content && !content.contains(event.target)) {
-        closeUserInfo();
-    }
 }, true); // Use capture phase to catch events earlier
 
-// Close user info modal on Escape key
+// Consolidated Escape key handler (prioritized order)
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        // Don't close user info panel if viewer is open
+        // 1. Media viewer has highest priority
         const viewer = document.getElementById('mediaViewer');
         if (viewer) {
             return; // Viewer will handle Escape key
         }
-        const modal = document.getElementById('userInfoModal');
-        if (modal && modal.classList.contains('show')) {
-            closeUserInfo();
+        
+        // 2. User info modal stack (dynamically created modals)
+        if (userInfoModalStack.length > 0) {
+            closeTopModalInfoPanel();
+            return;
         }
-        // Close group chat modal on Escape
+        
+        // 3. User profile modal
+        const userProfileModal = document.getElementById('userProfileModal');
+        if (userProfileModal && userProfileModal.classList.contains('show')) {
+            closeCurrentUserProfile();
+            return;
+        }
+        
+        // 4. Group chat modal
         const groupModal = document.getElementById('groupChatModal');
         if (groupModal && groupModal.classList.contains('show')) {
             closeGroupChatModal();
+            return;
+        }
+        
+        // 5. User selection modal (lowest priority)
+        const userSelectionModal = document.getElementById('userSelectionModal');
+        if (userSelectionModal && userSelectionModal.classList.contains('show')) {
+            closeUserSelection();
+            return;
         }
     }
 }, true); // Use capture phase

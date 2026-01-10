@@ -43,6 +43,13 @@ async function openCurrentUserProfile() {
         console.error('Error fetching current user info:', error);
         body.innerHTML = `<div class="user-profile-error">Error loading profile: ${error.message}</div>`;
     }
+
+    // Close on backdrop click
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeCurrentUserProfile();
+        }
+    });
 }
 
 function displayCurrentUserProfile(user) {
@@ -207,35 +214,6 @@ function closeCurrentUserProfile() {
         modal.style.display = 'none';
     }, 300);
 }
-
-// Close profile modal when clicking outside
-document.addEventListener('click', function(event) {
-    // Don't close profile panel if viewer is open
-    const viewer = document.getElementById('mediaViewer');
-    if (viewer && (viewer === event.target || viewer.contains(event.target))) {
-        return;
-    }
-    const modal = document.getElementById('userProfileModal');
-    const content = document.querySelector('.user-profile-content');
-    if (modal && modal.classList.contains('show') && content && !content.contains(event.target) && !event.target.closest('#sidebarCurrentUserAvatar')) {
-        closeCurrentUserProfile();
-    }
-}, true);
-
-// Close profile modal on Escape key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        // Don't close profile panel if viewer is open
-        const viewer = document.getElementById('mediaViewer');
-        if (viewer) {
-            return; // Viewer will handle Escape key
-        }
-        const modal = document.getElementById('userProfileModal');
-        if (modal && modal.classList.contains('show')) {
-            closeCurrentUserProfile();
-        }
-    }
-}, true); // Use capture phase
 
 // Avatar upload functionality
 let avatarUploadInProgress = false;
