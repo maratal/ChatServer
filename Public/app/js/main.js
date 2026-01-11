@@ -182,13 +182,38 @@ function displayChats() {
         chatItems.appendChild(chatItem);
     });
 
-    // Restore previously selected chat from localStorage or select first chat
-    const savedChatId = localStorage.getItem('selectedChatId');
-    if (savedChatId && chats.some(c => c.id === savedChatId)) {
-        selectChat(savedChatId);
-    } else if (sortedChats.length > 0) {
-        // Select first chat if no saved chat or saved chat doesn't exist
-        selectChat(sortedChats[0].id);
+    // Restore previously selected chat from URL hash, localStorage, or select first chat
+    let chatIdToSelect = null;
+    
+    // 1. Check if URL has a chat hash
+    if (window.location.hash.startsWith('#chat-')) {
+        const hashChatId = window.location.hash.substring(6); // Remove '#chat-'
+        if (chats.some(c => c.id === hashChatId)) {
+            chatIdToSelect = hashChatId;
+        }
+    }
+    
+    // 2. Fall back to localStorage
+    if (!chatIdToSelect) {
+        const savedChatId = localStorage.getItem('selectedChatId');
+        if (savedChatId && chats.some(c => c.id === savedChatId)) {
+            chatIdToSelect = savedChatId;
+        }
+    }
+    
+    // 3. Fall back to first chat
+    if (!chatIdToSelect && sortedChats.length > 0) {
+        chatIdToSelect = sortedChats[0].id;
+    }
+    
+    // Select the chat and initialize history state
+    if (chatIdToSelect) {
+        // Replace initial state instead of pushing
+        history.replaceState({ chatId: chatIdToSelect }, '', `#chat-${chatIdToSelect}`);
+        selectChat(chatIdToSelect, true); // fromHistory = true to avoid pushing another state
+    } else {
+        // No chats to select - set initial state with no chat
+        history.replaceState({}, '', window.location.pathname);
     }
 }
 
@@ -264,7 +289,7 @@ function createChatItem(chat) {
 }
 
 // Select a chat and load its messages
-async function selectChat(chatId) {
+async function selectChat(chatId, fromHistory = false) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
     
@@ -280,6 +305,11 @@ async function selectChat(chatId) {
         return;
     }
     currentChatId = chatId;
+    
+    // Push to history (only if not navigating from back/forward button)
+    if (!fromHistory) {
+        history.pushState({ chatId: chatId }, '', `#chat-${chatId}`);
+    }
     
     // Save selected chat ID to localStorage
     localStorage.setItem('selectedChatId', chatId);
@@ -1655,3 +1685,31 @@ document.addEventListener('click', function(event) {
         closeGroupChatModal();
     }
 }, true);
+
+// Browser back/forward button navigation through chat history
+window.addEventListener('popstate', function(event) {
+    if (event.state && event.state.chatId) {
+        // Navigate to the chat from history
+        selectChat(event.state.chatId, true);
+    } else {
+        // No state or no chatId - clear selection
+        currentChatId = null;
+        localStorage.removeItem('selectedChatId');
+        
+        // Clear active state
+        document.querySelectorAll('.chat-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Hide chat header and message input
+        const chatHeader = document.getElementById('chatHeader');
+        const messageInputContainer = document.getElementById('messageInputContainer');
+        const messagesContainer = document.getElementById('messagesContainer');
+        
+        if (chatHeader) chatHeader.style.display = 'none';
+        if (messageInputContainer) messageInputContainer.style.display = 'none';
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '<div class="no-chat-selected">Select a chat to start messaging</div>';
+        }
+    }
+});
