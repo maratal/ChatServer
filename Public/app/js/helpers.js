@@ -109,6 +109,13 @@ function mainPhotoForUser(user) {
     return firstPhoto;
 }
 
+function mainImageForChat(chat) {
+    if (!chat || !chat.images || !Array.isArray(chat.images) || chat.images.length === 0) return null;
+    const firstImage = chat.images[0];
+    if (!firstImage || !firstImage.id || !firstImage.fileType) return null;
+    return firstImage;
+}
+
 function truncateText(text, maxLength) {
     if (!text) return '';
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;

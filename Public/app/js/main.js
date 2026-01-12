@@ -340,7 +340,16 @@ async function selectChat(chatId, fromHistory = false) {
             const isOnline = otherUser.lastSeen ? isUserOnline(otherUser.lastSeen) : false;
             const lastSeen = otherUser.lastSeen ? formatLastSeen(otherUser.lastSeen) : null;
             chatSubtitle.textContent = lastSeen ? `Last seen ${lastSeen}` : '';
-            applyAvatarColor(chatHeaderAvatar, otherUser.name, otherUser.id);
+            
+            // Display user avatar image if available, otherwise use initials
+            const mainPhoto = mainPhotoForUser(otherUser);
+            if (mainPhoto) {
+                chatHeaderAvatar.innerHTML = `<img src="${getUploadUrl(mainPhoto.id, mainPhoto.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+                chatHeaderAvatar.style.color = '';
+                chatHeaderAvatar.style.backgroundColor = '';
+            } else {
+                applyAvatarColor(chatHeaderAvatar, otherUser.name, otherUser.id);
+            }
             chatHeaderStatusIndicator.style.display = isOnline ? 'block' : 'none';
         }
     } else {
@@ -348,7 +357,16 @@ async function selectChat(chatId, fromHistory = false) {
         const groupName = getGroupChatDisplayName(chat);
         chatTitle.textContent = groupName;
         chatSubtitle.textContent = `${chat.allUsers.length} members`;
-        applyAvatarColor(chatHeaderAvatar, groupName, `group_${chat.id}`);
+        
+        // Display group chat avatar image if available, otherwise use initials
+        const chatImage = mainImageForChat(chat);
+        if (chatImage) {
+            chatHeaderAvatar.innerHTML = `<img src="${getUploadUrl(chatImage.id, chatImage.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            chatHeaderAvatar.style.color = '';
+            chatHeaderAvatar.style.backgroundColor = '';
+        } else {
+            applyAvatarColor(chatHeaderAvatar, groupName, `group_${chat.id}`);
+        }
         chatHeaderStatusIndicator.style.display = 'none'; // No status for group chats
     }
     
