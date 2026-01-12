@@ -185,7 +185,7 @@
                 <!-- Avatar upload -->
                 <div class="group-chat-avatar-container">
                     <div class="group-chat-avatar-wrapper">
-                        <div class="group-chat-avatar" id="groupChatAvatar" onclick="openGroupAvatarFileDialog()">
+                        <div class="group-chat-avatar" id="groupChatAvatar" onclick="openNewGroupChatAvatarFileDialog()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                                 <circle cx="12" cy="13" r="4"></circle>
@@ -202,12 +202,12 @@
                             <circle class="group-chat-avatar-progress-bar" cx="50" cy="50" r="48" id="groupChatAvatarProgressBar"></circle>
                         </svg>
                     </div>
-                    <input type="file" id="groupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleGroupAvatarFileSelect(event)">
+                    <input type="file" id="newGroupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleGroupChatAvatarFileSelect(event)">
                 </div>
                 
                 <!-- Group name input -->
                 <div class="group-chat-name-section">
-                    <input type="text" class="group-chat-name-input" id="groupChatNameInput" placeholder="Group Name">
+                    <input type="text" class="group-chat-name-input" id="newGroupChatNameInput" placeholder="Group Name">
                 </div>
                 
                 <!-- User search -->

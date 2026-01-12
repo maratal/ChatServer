@@ -262,7 +262,28 @@ function createChatItem(chat) {
     // Generate avatar HTML
     let avatarHtml;
     if (avatarUserId) {
-        avatarHtml = getAvatarInitialsHtml(chatName, avatarUserId);
+        // Check if there's an image for this chat (for group chats) or user (for personal chats)
+        if (chat.isPersonal) {
+            const otherUser = chat.allUsers.find(user => user.id !== currentUser?.info.id);
+            if (otherUser) {
+                const mainPhoto = mainPhotoForUser(otherUser);
+                if (mainPhoto) {
+                    avatarHtml = getAvatarImageHtml(mainPhoto);
+                } else {
+                    avatarHtml = getAvatarInitialsHtml(chatName, avatarUserId);
+                }
+            } else {
+                avatarHtml = getAvatarInitialsHtml(chatName, avatarUserId);
+            }
+        } else {
+            // Group chat - check for chat images
+            const chatImage = mainImageForChat(chat);
+            if (chatImage) {
+                avatarHtml = getAvatarImageHtml(chatImage);
+            } else {
+                avatarHtml = getAvatarInitialsHtml(chatName, avatarUserId);
+            }
+        }
     } else {
         // Personal notes - use special class without colors
         avatarHtml = `<span class="${avatarClass}">${escapeHtml(avatarContent)}</span>`;
@@ -300,19 +321,6 @@ async function selectChat(chatId, fromHistory = false) {
             item.classList.add('active');
         }
     });
-    
-    if (currentChatId === chatId) {
-        return;
-    }
-    currentChatId = chatId;
-    
-    // Push to history (only if not navigating from back/forward button)
-    if (!fromHistory) {
-        history.pushState({ chatId: chatId }, '', `#chat-${chatId}`);
-    }
-    
-    // Save selected chat ID to localStorage
-    localStorage.setItem('selectedChatId', chatId);
 
     // Update chat header
     const chatHeader = document.getElementById('chatHeader');
@@ -344,7 +352,7 @@ async function selectChat(chatId, fromHistory = false) {
             // Display user avatar image if available, otherwise use initials
             const mainPhoto = mainPhotoForUser(otherUser);
             if (mainPhoto) {
-                chatHeaderAvatar.innerHTML = `<img src="${getUploadUrl(mainPhoto.id, mainPhoto.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+                chatHeaderAvatar.innerHTML = getAvatarImageHtml(mainPhoto);
                 chatHeaderAvatar.style.color = '';
                 chatHeaderAvatar.style.backgroundColor = '';
             } else {
@@ -361,7 +369,7 @@ async function selectChat(chatId, fromHistory = false) {
         // Display group chat avatar image if available, otherwise use initials
         const chatImage = mainImageForChat(chat);
         if (chatImage) {
-            chatHeaderAvatar.innerHTML = `<img src="${getUploadUrl(chatImage.id, chatImage.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            chatHeaderAvatar.innerHTML = getAvatarImageHtml(chatImage);
             chatHeaderAvatar.style.color = '';
             chatHeaderAvatar.style.backgroundColor = '';
         } else {
@@ -369,6 +377,19 @@ async function selectChat(chatId, fromHistory = false) {
         }
         chatHeaderStatusIndicator.style.display = 'none'; // No status for group chats
     }
+    
+    if (currentChatId === chatId) {
+        return;
+    }
+    currentChatId = chatId;
+    
+    // Push to history (only if not navigating from back/forward button)
+    if (!fromHistory) {
+        history.pushState({ chatId: chatId }, '', `#chat-${chatId}`);
+    }
+    
+    // Save selected chat ID to localStorage
+    localStorage.setItem('selectedChatId', chatId);
     
     chatHeader.style.display = 'flex';
     
@@ -694,13 +715,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // User Info Modal Functions
 // User info modal stack management
 let userInfoModalStack = []; // Array of { userId, element, closeHandler }
-let userInfoModalCounter = 0;
 
 async function showUserInfo(userId) {
     if (!userId) return;
     
     // Create a new modal container
-    const modalId = `userInfoModal_${userInfoModalCounter++}`;
+    const modalId = `userInfoModal_${userId}`;
     const modalElement = document.createElement('div');
     modalElement.id = modalId;
     modalElement.className = 'user-info-modal';
@@ -756,9 +776,15 @@ async function showUserInfo(userId) {
     }
 }
 
-function displayUserInfo(user, bodyId = 'userInfoBody') {
+function displayUserInfo(user) {
+    const bodyId = `userInfoModal_${user.id}_body`;
     const body = document.getElementById(bodyId);
     
+    if (!body) {
+        console.error('Element body not found:', bodyId);
+        return;
+    }
+
     const name = user.name || user.username || 'Unknown User';
     const username = user.username || 'unknown';
     const about = user.about || '';
@@ -951,17 +977,14 @@ function closeTopModalInfoPanel() {
     }, 300);
 }
 
-// Store group chat images for viewer
-let groupChatInfoImages = [];
-let groupChatCurrentInfo = null; // Store current chat being viewed
-
 async function showGroupChatInfo(chatId) {
     if (!chatId) return;
     
     // Create a new modal container (using the same stack system as user info)
-    const modalId = `userInfoModal_${userInfoModalCounter++}`;
+    const modalId = `chatInfoModal_${chatId}`;
     const modalElement = document.createElement('div');
     modalElement.id = modalId;
+    modalElement.dataset.chatId = chatId;
     modalElement.className = 'user-info-modal';
     modalElement.style.zIndex = 1000 + userInfoModalStack.length * 10;
     
@@ -1005,24 +1028,28 @@ async function showGroupChatInfo(chatId) {
 
     try {
         const chat = await apiGetChat(chatId);
-        groupChatCurrentInfo = chat;
-        displayGroupChatInfo(chat, `${modalId}_body`);
+        displayGroupChatInfo(chat);
     } catch (error) {
         console.error('Error fetching group chat info:', error);
         body.innerHTML = `<div class="user-info-loading" style="color: #ef4444;">Error: ${error.message || 'Failed to load group chat information'}</div>`;
     }
 }
 
-function displayGroupChatInfo(chat, bodyId = 'userInfoBody') {
+function displayGroupChatInfo(chat) {
+    const bodyId = `chatInfoModal_${chat.id}_body`;
     const body = document.getElementById(bodyId);
+    
+    if (!body) {
+        console.error('Element body not found:', bodyId);
+        return;
+    }
     
     const groupName = getGroupChatDisplayName(chat, currentUser);
     const memberCount = chat.allUsers?.length || 0;
     const isOwner = chat.owner?.id === currentUser?.info?.id;
     
     // Store images globally for viewer
-    groupChatInfoImages = chat.images || [];
-    const chatImage = groupChatInfoImages.length > 0 ? groupChatInfoImages[0] : null;
+    const chatImage = chat.images && chat.images.length > 0 ? chat.images[0] : null;
     const avatarColor = getAvatarColorForUser(`group_${chat.id}`);
     
     // Get current photo
@@ -1038,7 +1065,7 @@ function displayGroupChatInfo(chat, bodyId = 'userInfoBody') {
         html += `
             <div class="user-info-avatar-container">
                 <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
-                    <div class="user-info-avatar" id="groupChatAvatarDisplay" style="cursor: pointer;" onclick="openGroupChatAvatarFileDialog()">
+                    <div class="user-info-avatar" id="groupChatAvatarDisplay" style="cursor: pointer;">
                         ${photoUrl ? `<img src="${photoUrl}" alt="" id="groupChatAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(groupName)}</span>`}
                     </div>
                     <svg class="user-profile-avatar-progress" id="groupChatAvatarProgress" viewBox="0 0 100 100" style="display: none;">
@@ -1053,7 +1080,7 @@ function displayGroupChatInfo(chat, bodyId = 'userInfoBody') {
             </div>
             <div class="user-profile-section">
                 <div class="user-profile-section-title">Group Name</div>
-                <input type="text" class="user-profile-name-input" id="groupChatNameInput" value="${escapeHtml(chat.title || '')}" placeholder="Enter group name">
+                <input type="text" class="user-profile-name-input" id="groupChatNameInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Enter group name">
             </div>
         `;
     } else {
@@ -1083,7 +1110,7 @@ function displayGroupChatInfo(chat, bodyId = 'userInfoBody') {
                     const userName = user.name || user.username || 'Unknown User';
                     const avatarHtml = getAvatarInitialsHtml(userName, user.id);
                     return `
-                        <div class="group-chat-member-cell" onclick="${isOwner ? `showGroupMemberMenu(event, ${user.id})` : `showUserInfo(${user.id})`}">
+                        <div class="group-chat-member-cell" onclick="${isOwner ? `showGroupMemberMenu(event, '${chat.id}', ${user.id})` : `showUserInfo(${user.id})`}">
                             <div class="avatar-small">${avatarHtml}</div>
                             <div class="group-chat-member-name">${escapeHtml(userName)}</div>
                         </div>
@@ -1126,31 +1153,47 @@ function displayGroupChatInfo(chat, bodyId = 'userInfoBody') {
     if (isOwner) {
         html += `
             <div class="user-profile-actions">
-                <button class="user-profile-save-btn" onclick="saveGroupChatChanges()">Save Changes</button>
+                <button class="user-profile-save-btn" onclick="saveGroupChatChanges('${chat.id}')">Save Changes</button>
             </div>
         `;
     }
     
     body.innerHTML = html;
     
-    // Add click handler to avatar for non-owners
-    if (!isOwner) {
+    // Add click handler to avatar
+    if (isOwner) {
+        const avatar = document.getElementById('groupChatAvatarDisplay');
+        if (avatar) {
+            avatar.addEventListener('click', function(event) {
+                // Don't trigger if clicking on menu button
+                if (event.target.closest('.user-profile-avatar-menu-button')) {
+                    return;
+                }
+                // If there are images, open viewer; otherwise open file dialog
+                if (chat.images && chat.images.length > 0) {
+                    openGroupChatImageViewer(chat);
+                } else {
+                    openGroupChatAvatarFileDialog();
+                }
+            });
+        }
+    } else {
         const avatar = document.getElementById('userInfoAvatar');
         if (avatar && photoUrl) {
             avatar.addEventListener('click', function(event) {
-                openGroupChatImageViewer();
+                openGroupChatImageViewer(chat);
             });
         }
     }
 }
 
-function openGroupChatImageViewer() {
-    if (groupChatInfoImages.length === 0) return;
-    openMediaViewer(groupChatInfoImages, 0, () => {});
+function openGroupChatImageViewer(chat) {
+    if (!chat.images || chat.images.length === 0) return;
+    openMediaViewer(chat.images, 0, () => {});
 }
 
 // Member management
-function showGroupMemberMenu(event, userId) {
+function showGroupMemberMenu(event, chatId, userId) {
     event.stopPropagation();
     const cell = event.currentTarget;
     const rect = cell.getBoundingClientRect();
@@ -1172,9 +1215,9 @@ function showGroupMemberMenu(event, userId) {
             } else if (action === 'view_info') {
                 showUserInfo(userId);
             } else if (action === 'block') {
-                await blockGroupChatMember(userId);
+                await blockGroupChatMember(chatId, userId);
             } else if (action === 'remove') {
-                await removeGroupChatMember(userId);
+                await removeGroupChatMember(chatId, userId);
             }
         },
         highlightElement: cell,
@@ -1182,19 +1225,18 @@ function showGroupMemberMenu(event, userId) {
     });
 }
 
-async function blockGroupChatMember(userId) {
+async function blockGroupChatMember(chatId, userId) {
     if (!confirm('Block this member in this group chat?')) return;
     
     // TODO: Implement block user in chat API call
-    alert('Block functionality will be implemented');
+    alert(`Blocking user ${userId} in chat ${chatId}`);
 }
 
-async function removeGroupChatMember(userId) {
+async function removeGroupChatMember(chatId, userId) {
     if (!confirm('Remove this member from the group?')) return;
     
     try {
-        const updatedChat = await apiRemoveChatUsers(groupChatCurrentInfo.id, [userId]);
-        groupChatCurrentInfo = updatedChat;
+        const updatedChat = await apiRemoveChatUsers(chatId, [userId]);
         displayGroupChatInfo(updatedChat);
         
         // Update chat list if this chat is in it
@@ -1206,6 +1248,69 @@ async function removeGroupChatMember(userId) {
     } catch (error) {
         console.error('Error removing member:', error);
         alert('Error removing member: ' + error.message);
+    }
+}
+
+async function saveGroupChatChanges(chatId) {
+    console.log('Saving group chat changes for chat:', chatId);
+    
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error('Chat not found:', chatId);
+        return;
+    }
+
+    try {
+        // Get the group name input value (using chat-specific ID)
+        const nameInput = document.getElementById(`groupChatNameInput_${chatId}`);
+        const newTitle = nameInput ? nameInput.value.trim() || null : null;
+        
+        // Update chat title if it changed
+        if (newTitle !== chat.title) {
+            await apiUpdateChat(chat.id, { title: newTitle });
+            chat.title = newTitle;
+        }
+
+        // Upload avatar if one was selected
+        if (groupChatUploadedAvatarInfo) {
+            await apiAddChatImage(
+                chat.id,
+                groupChatUploadedAvatarInfo.id,
+                groupChatUploadedAvatarInfo.fileType,
+                groupChatUploadedAvatarInfo.fileSize
+            );
+
+            // Update local state
+            let images = chat.images || [];
+            images.push({
+                id: groupChatUploadedAvatarInfo.id,
+                fileType: groupChatUploadedAvatarInfo.fileType,
+                fileSize: groupChatUploadedAvatarInfo.fileSize
+            });
+            chat.images = images;
+        }
+        
+        // Refresh chat from server to get updated data
+        const updatedChat = await apiGetChat(chat.id);
+        
+        // Update the chat in the chats array
+        const chatIndex = chats.findIndex(c => c.id === updatedChat.id);
+        if (chatIndex !== -1) {
+            chats[chatIndex] = updatedChat;
+        }
+        
+        displayChats();
+        
+        // Update header if this chat is selected
+        if (currentChatId === chat.id) {
+            selectChat(currentChatId, true);
+        }
+        
+        // Reset upload state
+        groupChatUploadedAvatarInfo = null;
+    } catch (error) {
+        console.error('Error saving group chat changes:', error);
+        alert('Error saving changes: ' + error.message);
     }
 }
 
@@ -1319,7 +1424,6 @@ function showNewChatMenu(event) {
 // Group Chat Modal Functions
 let groupChatSearchTimeout = null;
 let groupChatSelectedUsers = [];
-let groupChatAvatarFile = null;
 let groupChatAvatarUploadInProgress = false;
 
 function openGroupChatModal() {
@@ -1340,11 +1444,10 @@ function openGroupChatModal() {
     isLoadingUsers = false;
 
     groupChatSelectedUsers = [];
-    groupChatAvatarFile = null;
     groupChatUploadedAvatarInfo = null;
     
     // Clear inputs
-    document.getElementById('groupChatNameInput').value = '';
+    document.getElementById('newGroupChatNameInput').value = '';
     document.getElementById('groupUserSearchInput').value = '';
     
     // Reset avatar
@@ -1518,7 +1621,15 @@ function updateGroupChatCreateButton() {
 // Group chat avatar functions
 let groupChatUploadedAvatarInfo = null; // Store uploaded file info {id, fileType, fileSize}
 
-function openGroupAvatarFileDialog() {
+function openNewGroupChatAvatarFileDialog() {
+    if (groupChatAvatarUploadInProgress) return;
+    const input = document.getElementById('newGroupChatAvatarInput');
+    if (input) {
+        input.click();
+    }
+}
+
+function openGroupChatAvatarFileDialog() {
     if (groupChatAvatarUploadInProgress) return;
     const input = document.getElementById('groupChatAvatarInput');
     if (input) {
@@ -1526,7 +1637,7 @@ function openGroupAvatarFileDialog() {
     }
 }
 
-function handleGroupAvatarFileSelect(event) {
+function handleGroupChatAvatarFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
     
@@ -1535,37 +1646,55 @@ function handleGroupAvatarFileSelect(event) {
         return;
     }
     
-    const maxSize = 1 * 1024 * 1024;
+    const maxSize = 2 * 1024 * 1024;
     if (file.size > maxSize) {
-        alert('Image size must be less than 1MB');
+        alert('Image size must be less than 2MB');
         return;
     }
-    
-    // Store file for later reference
-    groupChatAvatarFile = file;
-    
+        
+    // Get container element and find all required DOM elements
+    const container = event.target.parentElement;
+    const avatar = container.querySelector('.group-chat-avatar, .user-info-avatar');
+
+    if (!avatar) {
+        console.error('Avatar element not found');
+        return;
+    }
+
     // Show preview immediately
-    const avatar = document.getElementById('groupChatAvatar');
     const reader = new FileReader();
     reader.onload = function(e) {
         avatar.innerHTML = `<img src="${e.target.result}" alt="Group avatar preview">`;
     };
     reader.readAsDataURL(file);
     
-    // Show remove button
-    document.getElementById('groupChatAvatarRemove').style.display = 'flex';
+    // Show remove button if it exists (new group modal only)
+    const removeButton = document.getElementById('groupChatAvatarRemove');
+    if (removeButton) {
+        removeButton.style.display = 'flex';
+    }
+
+    // Get progress bar and progress circle (different classes for different containers)
+    const progressBar = container.querySelector('.group-chat-avatar-progress, .user-profile-avatar-progress');
+    const progressCircle = container.querySelector('.group-chat-avatar-progress-bar, .user-profile-avatar-progress-bar');
+    
+    // Create container info object with all DOM elements
+    const containerInfo = {
+        progressBar: progressBar,
+        progressCircle: progressCircle,
+        avatar: avatar
+    };
     
     // Upload group avatar
-    uploadGroupChatAvatar(file);
+    uploadGroupChatAvatar(containerInfo, file);
     
     event.target.value = '';
 }
 
-async function uploadGroupChatAvatar(file) {
+async function uploadGroupChatAvatar(containerInfo, file) {
     groupChatAvatarUploadInProgress = true;
-    const progressBar = document.getElementById('groupChatAvatarProgress');
-    const progressCircle = document.getElementById('groupChatAvatarProgressBar');
-    const avatar = document.getElementById('groupChatAvatar');
+    
+    const { progressBar, progressCircle, avatar } = containerInfo;
     
     progressBar.style.display = 'block';
     avatar.style.opacity = '0.7';
@@ -1637,7 +1766,6 @@ async function uploadGroupChatAvatar(file) {
         }
         // Reset on error
         groupChatUploadedAvatarInfo = null;
-        groupChatAvatarFile = null;
         resetGroupAvatarDisplay();
     } finally {
         if (animationFrameId) {
@@ -1659,8 +1787,6 @@ async function removeGroupAvatar() {
         }
         groupChatUploadedAvatarInfo = null;
     }
-    
-    groupChatAvatarFile = null;
     resetGroupAvatarDisplay();
 }
 
@@ -1678,7 +1804,7 @@ function resetGroupAvatarDisplay() {
 }
 
 async function createGroupChat() {
-    const nameInput = document.getElementById('groupChatNameInput');
+    const nameInput = document.getElementById('newGroupChatNameInput');
     const groupName = nameInput.value.trim() || null;
     
     if (groupChatSelectedUsers.length === 0) {

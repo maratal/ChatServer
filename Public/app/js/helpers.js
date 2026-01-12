@@ -84,6 +84,11 @@ function getAvatarInitialsHtml(name, userId, extraClasses = '') {
     return `<span class="${classes}" style="color: ${color.text}; background-color: ${color.background};">${initials}</span>`;
 }
 
+// Get image HTML
+function getAvatarImageHtml(imageInfo) {
+    return `<img src="${getUploadUrl(imageInfo.id, imageInfo.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+}
+
 // Apply avatar color to an existing element
 function applyAvatarColor(element, name, userId) {
     const color = getAvatarColorForUser(userId);
@@ -280,5 +285,5 @@ function getGroupChatDisplayName(chat) {
         return 'Group Chat';
     }
     
-    return otherMembers.join(', ');
+    return otherMembers.join(', ') + ", you";
 }
