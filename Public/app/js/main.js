@@ -1570,11 +1570,41 @@ async function uploadGroupChatAvatar(file) {
     progressBar.style.display = 'block';
     avatar.style.opacity = '0.7';
     
+    let animationFrameId = null;
+    
     const updateProgressVisual = (progress) => {
         const circumference = 2 * Math.PI * 48;
         const offset = circumference - (progress / 100) * circumference;
         progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
         progressCircle.style.strokeDashoffset = offset;
+    };
+    
+    // Smooth animation function for the last 25%
+    const animateToComplete = (startProgress, duration) => {
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+            const endProgress = 100;
+            const progressRange = endProgress - startProgress;
+            
+            const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(1, elapsed / duration);
+                
+                // Use ease-out easing for smooth animation
+                const easedProgress = 1 - Math.pow(1 - progress, 3);
+                const currentProgressValue = startProgress + (progressRange * easedProgress);
+                
+                updateProgressVisual(currentProgressValue);
+                
+                if (progress < 1) {
+                    animationFrameId = requestAnimationFrame(animate);
+                } else {
+                    resolve();
+                }
+            };
+            
+            animate();
+        });
     };
     
     try {
@@ -1596,15 +1626,23 @@ async function uploadGroupChatAvatar(file) {
             fileName: uploadedFileName
         };
         
-        updateProgressVisual(100);
+        // Animate the last 25% smoothly over 500ms
+        await animateToComplete(75, 500);
         
     } catch (error) {
         console.error('Error uploading group avatar:', error);
+        // Cancel any ongoing animation
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
         // Reset on error
         groupChatUploadedAvatarInfo = null;
         groupChatAvatarFile = null;
         resetGroupAvatarDisplay();
     } finally {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
         groupChatAvatarUploadInProgress = false;
         progressBar.style.display = 'none';
         avatar.style.opacity = '1';

@@ -1223,8 +1223,8 @@ input[type="text"]:disabled, textarea:disabled {
     position: absolute;
     top: -4px;
     left: -4px;
-    width: 128px;
-    height: 128px;
+    width: 158px;
+    height: 158px;
     transform: rotate(-90deg);
     pointer-events: none;
 }
