@@ -32,16 +32,15 @@ actor NotificationManager: Notificator {
                 if via == .all || via == .webSocket {
                     sent = try await webSocket.send(notification, to: session)
                 }
-                if via == .all || via == .push {
-                    guard
-                        let device = session.deviceInfo,
-                        relation.isMuted == false,
-                        event == .message && !sent || event == .auxiliary
-                    else {
-                        break
-                    }
-                    await push.send(notification, to: device)
+                guard !relation.isMuted else { break }
+                guard
+                    via == .all || via == .push,
+                    event == .message && !sent || event == .auxiliary,
+                    let device = session.deviceInfo
+                else {
+                    continue
                 }
+                await push.send(notification, to: device)
             }
         }
     }
