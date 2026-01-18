@@ -811,7 +811,7 @@ function displayUserInfo(user) {
                     </svg>
                 </button>
                 ` : ''}
-                <div class="user-info-avatar" id="userInfoAvatar" style="cursor: ${photoUrl ? 'pointer' : 'default'};">
+                <div class="user-info-avatar" id="userInfoAvatar">
                     ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(name)}</span>`}
                 </div>
                 ${hasMultiplePhotos ? `
@@ -1065,7 +1065,7 @@ function displayGroupChatInfo(chat) {
         html += `
             <div class="user-info-avatar-container">
                 <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
-                    <div class="user-info-avatar" id="groupChatAvatarDisplay" style="cursor: pointer;">
+                    <div class="user-info-avatar" id="groupChatAvatarDisplay">
                         ${photoUrl ? `<img src="${photoUrl}" alt="" id="groupChatAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(groupName)}</span>`}
                     </div>
                     <svg class="user-profile-avatar-progress" id="groupChatAvatarProgress" viewBox="0 0 100 100" style="display: none;">
@@ -1088,7 +1088,7 @@ function displayGroupChatInfo(chat) {
         html += `
             <div class="user-info-avatar-container">
                 <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
-                    <div class="user-info-avatar" id="userInfoAvatar" style="cursor: ${photoUrl ? 'pointer' : 'default'};">
+                    <div class="user-info-avatar" id="userInfoAvatar">
                         ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(groupName)}</span>`}
                     </div>
                 </div>

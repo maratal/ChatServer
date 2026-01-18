@@ -367,6 +367,11 @@ input[type="text"], textarea {
     flex-shrink: 0;
     overflow: hidden;
     box-shadow: var(--shadow-soft);
+    transition: transform 0.1s ease;
+}
+
+.avatar-small:hover {
+    transform: scale(1.05);
 }
 
 .avatar-small img {
@@ -380,12 +385,22 @@ input[type="text"], textarea {
 #sidebarCurrentUserAvatar {
     width: 34px;
     height: 34px;
+    transition: transform 0.1s ease;
+}
+
+#sidebarCurrentUserAvatar:hover {
+    transform: scale(1.05);
 }
 
 #chatHeaderAvatarContainer {
     width: 34px;
     height: 34px;
     overflow: visible; /* Allow status indicator to show */
+    transition: transform 0.1s ease;
+}
+
+#chatHeaderAvatarContainer:hover {
+    transform: scale(1.05);
 }
 
 .avatar-initials {
@@ -451,7 +466,6 @@ input[type="text"], textarea {
 }
 
 .message-row .avatar-small[data-clickable="true"] {
-    cursor: pointer;
     user-select: none;
 }
 
@@ -915,7 +929,7 @@ input[type="text"]:disabled, textarea:disabled {
     justify-content: center;
     margin-bottom: 1.5rem;
     margin-top: 0;
-    padding-top: 0;
+    padding-top: 6px;
 }
 
 .user-info-avatar-wrapper {
@@ -932,6 +946,11 @@ input[type="text"]:disabled, textarea:disabled {
     width: 250px;
     align-items: center;
     justify-content: center;
+    transition: transform 0.1s ease;
+}
+
+.user-info-avatar:hover {
+    transform: scale(1.05);
 }
 
 .user-info-avatar .avatar-initials {
@@ -1181,9 +1200,12 @@ input[type="text"]:disabled, textarea:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
     overflow: hidden;
-    transition: opacity 0.2s ease;
+    transition: transform 0.1s ease;
+}
+
+.group-chat-avatar:hover {
+    transform: scale(1.05);
 }
 
 .group-chat-avatar svg {
