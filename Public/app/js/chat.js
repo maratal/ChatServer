@@ -794,7 +794,7 @@ function animateAttachmentProgressToComplete(attachmentId, startProgress, durati
 
 // Update send button state
 function updateSendButtonState() {
-    const messageInput = document.getElementById('messageInput');
+    const messageInput = getMessageInputElement();
     const sendButton = document.getElementById('sendButton');
     if (messageInput && sendButton) {
         const hasText = messageInput.value.trim().length > 0;
@@ -813,7 +813,7 @@ function updateSendButtonState() {
 
 // Message input handling
 function initializeMessageInput() {
-    const messageInput = document.getElementById('messageInput');
+    const messageInput = getMessageInputElement();
     const sendButton = document.getElementById('sendButton');
     
     function adjustHeight() {
@@ -831,7 +831,18 @@ function initializeMessageInput() {
     messageInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (this.value.trim()) {
+            const text = this.value.trim();
+            
+            // Check if we're in debug command mode or entering it
+            const isDebugCommandMode = this.dataset.debugCommandMode === 'true';
+            if (isDebugCommandMode || stringIsDebugPrefix(text)) {
+                if (handleDebugCommandWrapper(text)) {
+                    // Debug command handled, clear input
+                    this.value = '';
+                    this.style.height = '38px';
+                    updateSendButtonState();
+                }
+            } else if (text) {
                 sendMessage();
             }
         }
@@ -843,9 +854,9 @@ function initializeMessageInput() {
 }
 
 // Send message
-async function sendMessage() {
-    const messageInput = document.getElementById('messageInput');
-    const text = messageInput.value.trim();
+async function sendMessage(textOverride = null) {
+    const messageInput = getMessageInputElement();
+    const text = textOverride !== null ? textOverride.trim() : messageInput.value.trim();
     
     if (!text && selectedAttachments.length === 0) return;
     if (!currentChatId || !currentUser || !currentUser.info.id) return;
@@ -884,7 +895,8 @@ async function sendMessage() {
         updateAttachmentPreview();
     }
     
-    if (text) {
+    // Only clear input if we're not overriding with direct text
+    if (text && textOverride === null && messageInput) {
         messageInput.value = '';
         messageInput.style.height = '38px';
     }

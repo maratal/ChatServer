@@ -609,7 +609,7 @@ function searchEmojis(query) {
 }
 
 function insertEmoji(emoji) {
-    const messageInput = document.getElementById('messageInput');
+    const messageInput = getMessageInputElement();
     const currentValue = messageInput.value;
     const cursorPosition = messageInput.selectionStart;
     

@@ -413,7 +413,7 @@ async function selectChat(chatId, fromHistory = false) {
     await loadMessages(chatId);
     
     // Focus message input field
-    const messageInput = document.getElementById('messageInput');
+    const messageInput = getMessageInputElement();
     if (messageInput) {
         messageInput.focus();
     }

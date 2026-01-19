@@ -306,3 +306,22 @@ function getGroupChatDisplayName(chat) {
     
     return otherMembers.join(', ') + ", you";
 }
+
+/**
+ * Get the message input element
+ */
+function getMessageInputElement() {
+    return document.getElementById('messageInput');
+}
+
+// Check if a string is a debug command prefix
+function stringIsDebugPrefix(str) {
+    return str.startsWith('/debug') || str.startsWith('/d');
+}
+
+// Wrapper for handleDebugCommand to handle debug command in message input
+function handleDebugCommandWrapper(text) {
+    // Uncomment the following line to handle debug command in message input
+    // return handleDebugCommand(text);
+    return false;
+}
