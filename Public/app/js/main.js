@@ -758,9 +758,11 @@ async function showUserInfo(userId) {
     // Force a reflow to ensure initial styles are applied
     modalElement.offsetHeight;
     
-    // Trigger animation after display is set
+    // Trigger animation after display is set (double RAF ensures transition works)
     requestAnimationFrame(() => {
-        modalElement.classList.add('show');
+        requestAnimationFrame(() => {
+            modalElement.classList.add('show');
+        });
     });
     
     // Add to stack
@@ -1019,8 +1021,11 @@ async function showGroupChatInfo(chatId) {
     modalElement.style.display = 'block';
     modalElement.offsetHeight;
     
+    // Trigger animation after display is set (double RAF ensures transition works)
     requestAnimationFrame(() => {
-        modalElement.classList.add('show');
+        requestAnimationFrame(() => {
+            modalElement.classList.add('show');
+        });
     });
     
     // Add to stack

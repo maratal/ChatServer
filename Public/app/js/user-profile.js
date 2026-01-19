@@ -18,9 +18,11 @@ async function openCurrentUserProfile() {
     // Force a reflow to ensure initial styles are applied
     modal.offsetHeight;
     
-    // Trigger animation after display is set
+    // Trigger animation after display is set (double RAF ensures transition works)
     requestAnimationFrame(() => {
-        modal.classList.add('show');
+        requestAnimationFrame(() => {
+            modal.classList.add('show');
+        });
     });
     
     body.innerHTML = '<div class="user-profile-loading">Loading profile...</div>';
