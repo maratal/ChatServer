@@ -1161,6 +1161,18 @@ input[type="text"]:disabled, textarea:disabled {
     transform: translateX(0);
 }
 
+/* Right-side positioning for add users mode */
+.group-chat-content.slide-from-right {
+    left: auto;
+    right: 0;
+    transform: translateX(100%);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.group-chat-modal.show .group-chat-content.slide-from-right {
+    transform: translateX(0);
+}
+
 .group-chat-header {
     height: var(--header-height);
     background: hsl(var(--sidebar-background));
@@ -1168,6 +1180,12 @@ input[type="text"]:disabled, textarea:disabled {
     align-items: center;
     justify-content: space-between;
     padding: 0 1rem;
+}
+
+.group-chat-header > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .group-chat-body {

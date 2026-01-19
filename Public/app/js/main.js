@@ -1109,7 +1109,7 @@ function displayGroupChatInfo(chat) {
     // Members section
     html += `
         <div class="user-info-section">
-            <div class="user-info-section-title">Members${isOwner ? ' <button class="inline-link-button" onclick="openAddMembersModal()">Add</button>' : ''}</div>
+            <div class="user-info-section-title">Members${isOwner ? ' <button class="inline-link-button" onclick="openGroupChatModal(\'' + chat.id + '\')">Add</button>' : ''}</div>
             <div class="group-chat-members-grid" id="groupChatMembersGrid">
                 ${otherMembers.map(user => {
                     const userName = user.name || user.username || 'Unknown User';
@@ -1242,13 +1242,21 @@ async function removeGroupChatMember(chatId, userId) {
     
     try {
         const updatedChat = await apiRemoveChatUsers(chatId, [userId]);
-        displayGroupChatInfo(updatedChat);
         
-        // Update chat list if this chat is in it
-        const chatIndex = chats.findIndex(c => c.id === updatedChat.id);
-        if (chatIndex !== -1) {
-            chats[chatIndex] = updatedChat;
-            displayChats();
+        // Update the local allUsers array for this chat
+        const chat = chats.find(c => c.id === chatId);
+        if (!chat) {
+            console.error('Chat not found:', chatId);
+            return;
+        }
+        
+        const removedUserIds = updatedChat.removedUsers.map(u => u.id);
+        chat.allUsers = chat.allUsers.filter(u => !removedUserIds.includes(u.id));
+        displayGroupChatInfo(chat);
+        
+        // Update header if this chat is selected
+        if (currentChatId === chatId) {
+            selectChat(currentChatId, true);
         }
     } catch (error) {
         console.error('Error removing member:', error);
@@ -1319,12 +1327,6 @@ async function saveGroupChatChanges(chatId) {
     }
 }
 
-function openAddMembersModal() {
-    // Reuse the user selection modal logic
-    console.log('openAddMembersModal');
-    // TODO: Need to modify user selection to support adding to existing group
-}
-
 function isUserOnline(lastSeen) {
     const date = new Date(lastSeen);
     const now = new Date();
@@ -1370,23 +1372,23 @@ document.addEventListener('keydown', function(event) {
             return; // Viewer will handle Escape key
         }
         
-        // 2. User info modal stack (dynamically created modals)
+        // 2. Group chat modal (check before user info modals since it can overlay them)
+        const groupModal = document.getElementById('groupChatModal');
+        if (groupModal && groupModal.classList.contains('show')) {
+            closeGroupChatModal();
+            return;
+        }
+        
+        // 3. User info modal stack (dynamically created modals)
         if (userInfoModalStack.length > 0) {
             closeTopModalInfoPanel();
             return;
         }
         
-        // 3. User profile modal
+        // 4. User profile modal
         const userProfileModal = document.getElementById('userProfileModal');
         if (userProfileModal && userProfileModal.classList.contains('show')) {
             closeCurrentUserProfile();
-            return;
-        }
-        
-        // 4. Group chat modal
-        const groupModal = document.getElementById('groupChatModal');
-        if (groupModal && groupModal.classList.contains('show')) {
-            closeGroupChatModal();
             return;
         }
         
@@ -1431,8 +1433,46 @@ let groupChatSearchTimeout = null;
 let groupChatSelectedUsers = [];
 let groupChatAvatarUploadInProgress = false;
 
-function openGroupChatModal() {
+function openGroupChatModal(chatId = null) {
     const modal = document.getElementById('groupChatModal');
+    const isAddUsersMode = chatId !== null;
+    
+    // Set chat ID as data attribute
+    if (chatId) {
+        modal.dataset.chatId = chatId;
+    } else {
+        delete modal.dataset.chatId;
+    }
+    
+    // Update UI based on mode
+    const title = document.getElementById('groupChatModalTitle');
+    const avatarNameSection = document.getElementById('groupChatAvatarNameSection');
+    const btn = document.getElementById('groupChatCreateBtn');
+    const content = modal.querySelector('.group-chat-content');
+    
+    if (isAddUsersMode) {
+        // Add users mode
+        const chat = chats.find(c => c.id === chatId);
+        const groupName = chat ? getGroupChatDisplayName(chat, currentUser) : '';
+        
+        title.textContent = 'Add users';
+        avatarNameSection.style.display = 'none';
+        btn.textContent = 'Add Users';
+        
+        // Add class for right-side positioning
+        content.classList.add('slide-from-right');
+        modal.style.zIndex = 1000 + (userInfoModalStack.length + 1) * 10;
+    } else {
+        // Create group mode
+        title.textContent = 'New Group';
+        avatarNameSection.style.display = 'block';
+        btn.textContent = 'Create Group';
+        
+        // Remove right-side class if it exists
+        content.classList.remove('slide-from-right');
+        modal.style.zIndex = 1000;
+    }
+    
     modal.style.display = 'block';
     modal.offsetHeight; // Force reflow
     
@@ -1455,17 +1495,19 @@ function openGroupChatModal() {
     document.getElementById('newGroupChatNameInput').value = '';
     document.getElementById('groupUserSearchInput').value = '';
     
-    // Reset avatar
-    const avatar = document.getElementById('groupChatAvatar');
-    avatar.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-        </svg>
-    `;
-    
-    // Hide remove button
-    document.getElementById('groupChatAvatarRemove').style.display = 'none';
+    // Reset avatar (only if creating new group)
+    if (!isAddUsersMode) {
+        const avatar = document.getElementById('groupChatAvatar');
+        avatar.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+        `;
+        
+        // Hide remove button
+        document.getElementById('groupChatAvatarRemove').style.display = 'none';
+    }
     
     // Update create button state
     updateGroupChatCreateButton();
@@ -1482,8 +1524,11 @@ function openGroupChatModal() {
 
 async function closeGroupChatModal() {
     const modal = document.getElementById('groupChatModal');
+    
+    // Remove show class - CSS transition handles the slide-out animation
     modal.classList.remove('show');
     
+    // Wait for animation to complete before hiding
     setTimeout(() => {
         modal.style.display = 'none';
     }, 300);
@@ -1493,8 +1538,9 @@ async function closeGroupChatModal() {
         groupChatSearchTimeout = null;
     }
     
-    // Clean up uploaded avatar if not used
-    if (groupChatUploadedAvatarInfo) {
+    const chatId = modal.dataset.chatId; // null if creating new group
+    // Clean up uploaded avatar if not used (only in create mode)
+    if (groupChatUploadedAvatarInfo && chatId === null) {
         try {
             await apiDeleteUpload(groupChatUploadedAvatarInfo.fileName);
         } catch (error) {
@@ -1502,6 +1548,8 @@ async function closeGroupChatModal() {
         }
         groupChatUploadedAvatarInfo = null;
     }
+    // Remove chat ID data attribute
+    delete modal.dataset.chatId;
 }
 
 function setupGroupUserSearch() {
@@ -1556,7 +1604,16 @@ function displayGroupChatUsers(error = null) {
     }
     
     // Filter out current user
-    const availableUsers = fetchedUsers.filter(u => u.id !== currentUser?.info?.id);
+    let availableUsers = fetchedUsers.filter(u => u.id !== currentUser?.info?.id);
+    
+    const modal = document.getElementById('groupChatModal');
+    const chatId = modal?.dataset.chatId;
+    // If in add users mode, also filter out existing members
+    if (chatId) {
+        const chat = chats.find(c => c.id === chatId);
+        const existingMemberIds = chat?.allUsers?.map(u => u.id) || [];
+        availableUsers = availableUsers.filter(u => !existingMemberIds.includes(u.id));
+    }
     
     if (availableUsers.length === 0) {
         usersList.innerHTML = '<div class="users-empty">No users found</div>';
@@ -1808,6 +1865,17 @@ function resetGroupAvatarDisplay() {
     document.getElementById('groupChatAvatarRemove').style.display = 'none';
 }
 
+async function handleGroupChatAction() {
+    // Get chat ID from modal's data attribute
+    const modal = document.getElementById('groupChatModal');
+    const chatId = modal.dataset.chatId;
+    if (chatId) {
+        await addUsersToChat(chatId);
+    } else {
+        await createGroupChat();
+    }
+}
+
 async function createGroupChat() {
     const nameInput = document.getElementById('newGroupChatNameInput');
     const groupName = nameInput.value.trim() || null;
@@ -1861,6 +1929,53 @@ async function createGroupChat() {
         alert('Error creating group chat: ' + error.message);
         btn.disabled = false;
         btn.textContent = 'Create Group';
+    }
+}
+
+async function addUsersToChat(chatId) { 
+    if (groupChatSelectedUsers.length === 0) {
+        alert('Please select at least one user');
+        return;
+    }
+    
+    const btn = document.getElementById('groupChatCreateBtn');
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+    
+    try {
+        const userIds = groupChatSelectedUsers.map(u => u.id);
+        const updatedChat = await apiAddChatUsers(chatId, userIds);
+        
+        // Update the local allUsers array for this chat
+        const chat = chats.find(c => c.id === chatId);
+        if (chat) {
+            const addedUsers = updatedChat.addedUsers;
+            chat.allUsers.push(...addedUsers);
+        }
+        
+        // Close modal
+        closeGroupChatModal();
+        
+        // Refresh chat list
+        displayChats();
+        
+        // Refresh group chat info if it's open
+        const chatInfoModal = document.querySelector(`[data-chat-id="${chatId}"]`);
+        if (chatInfoModal) {
+            const refreshedChat = await apiGetChat(chatId);
+            displayGroupChatInfo(refreshedChat);
+        }
+        
+        // Update header if this chat is selected
+        if (currentChatId === chatId) {
+            selectChat(currentChatId, true);
+        }
+        
+    } catch (error) {
+        console.error('Error adding users to chat:', error);
+        alert('Error adding users: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = 'Add Users';
     }
 }
 

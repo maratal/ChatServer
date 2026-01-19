@@ -173,7 +173,7 @@
     <div class="group-chat-modal" id="groupChatModal">
         <div class="group-chat-content">
             <div class="group-chat-header">
-                <h1 class="text-2xl font-bold text-sidebar-foreground">New Group</h1>
+                <h1 class="text-2xl font-bold text-sidebar-foreground" id="groupChatModalTitle">New Group</h1>
                 <button class="user-panel-close-btn" onclick="closeGroupChatModal()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                         <path d="M18 6 6 18"></path>
@@ -182,32 +182,35 @@
                 </button>
             </div>
             <div class="group-chat-body" id="groupChatBody">
-                <!-- Avatar upload -->
-                <div class="group-chat-avatar-container">
-                    <div class="group-chat-avatar-wrapper">
-                        <div class="group-chat-avatar" id="groupChatAvatar" onclick="openNewGroupChatAvatarFileDialog()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                                <circle cx="12" cy="13" r="4"></circle>
+                <!-- Avatar and name section (hidden when adding users) -->
+                <div id="groupChatAvatarNameSection">
+                    <!-- Avatar upload -->
+                    <div class="group-chat-avatar-container">
+                        <div class="group-chat-avatar-wrapper">
+                            <div class="group-chat-avatar" id="groupChatAvatar" onclick="openNewGroupChatAvatarFileDialog()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                    <circle cx="12" cy="13" r="4"></circle>
+                                </svg>
+                            </div>
+                            <button class="group-chat-avatar-remove" id="groupChatAvatarRemove" onclick="event.stopPropagation(); removeGroupAvatar()" style="display: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 6 6 18"></path>
+                                    <path d="m6 6 12 12"></path>
+                                </svg>
+                            </button>
+                            <svg class="group-chat-avatar-progress" id="groupChatAvatarProgress" viewBox="0 0 100 100" style="display: none;">
+                                <circle class="group-chat-avatar-progress-bg" cx="50" cy="50" r="48"></circle>
+                                <circle class="group-chat-avatar-progress-bar" cx="50" cy="50" r="48" id="groupChatAvatarProgressBar"></circle>
                             </svg>
                         </div>
-                        <button class="group-chat-avatar-remove" id="groupChatAvatarRemove" onclick="event.stopPropagation(); removeGroupAvatar()" style="display: none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 6 6 18"></path>
-                                <path d="m6 6 12 12"></path>
-                            </svg>
-                        </button>
-                        <svg class="group-chat-avatar-progress" id="groupChatAvatarProgress" viewBox="0 0 100 100" style="display: none;">
-                            <circle class="group-chat-avatar-progress-bg" cx="50" cy="50" r="48"></circle>
-                            <circle class="group-chat-avatar-progress-bar" cx="50" cy="50" r="48" id="groupChatAvatarProgressBar"></circle>
-                        </svg>
+                        <input type="file" id="newGroupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleGroupChatAvatarFileSelect(event)">
                     </div>
-                    <input type="file" id="newGroupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleGroupChatAvatarFileSelect(event)">
-                </div>
-                
-                <!-- Group name input -->
-                <div class="group-chat-name-section">
-                    <input type="text" class="group-chat-name-input" id="newGroupChatNameInput" placeholder="Group Name">
+                    
+                    <!-- Group name input -->
+                    <div class="group-chat-name-section">
+                        <input type="text" class="group-chat-name-input" id="newGroupChatNameInput" placeholder="Group Name">
+                    </div>
                 </div>
                 
                 <!-- User search -->
@@ -226,10 +229,10 @@
                     <div class="users-loading">Loading users...</div>
                 </div>
                 
-                <!-- Create button -->
+                <!-- Create/Add button -->
                 <div class="group-chat-actions">
                     <div class="group-chat-selected-count" id="groupChatSelectedCount"></div>
-                    <button class="group-chat-create-btn" id="groupChatCreateBtn" onclick="createGroupChat()" disabled>Create Group</button>
+                    <button class="group-chat-create-btn" id="groupChatCreateBtn" onclick="handleGroupChatAction()" disabled>Create Group</button>
                 </div>
             </div>
         </div>
