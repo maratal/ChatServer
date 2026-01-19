@@ -322,6 +322,6 @@ function stringIsDebugPrefix(str) {
 // Wrapper for handleDebugCommand to handle debug command in message input
 function handleDebugCommandWrapper(text) {
     // Uncomment the following line to handle debug command in message input
-    // return handleDebugCommand(text);
+    return handleDebugCommand(text);
     return false;
 }
