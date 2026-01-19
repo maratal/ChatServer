@@ -61,15 +61,15 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
     let timeGapWithNext = false;
     
     if (prevElement && prevElement.dataset.createdAt && currentCreatedAt) {
-        const prevTime = new Date(prevElement.dataset.createdAt);
-        const currentTime = new Date(currentCreatedAt);
+        const prevTime = normalizeTimestamp(prevElement.dataset.createdAt);
+        const currentTime = normalizeTimestamp(currentCreatedAt);
         const timeDiff = Math.abs(currentTime - prevTime) / (1000 * 60); // minutes
         timeGapWithPrev = timeDiff > 10;
     }
     
     if (nextElement && nextElement.dataset.createdAt && currentCreatedAt) {
-        const nextTime = new Date(nextElement.dataset.createdAt);
-        const currentTime = new Date(currentCreatedAt);
+        const nextTime = normalizeTimestamp(nextElement.dataset.createdAt);
+        const currentTime = normalizeTimestamp(currentCreatedAt);
         const timeDiff = Math.abs(nextTime - currentTime) / (1000 * 60); // minutes
         timeGapWithNext = timeDiff > 10;
     }
@@ -154,7 +154,11 @@ function createMessageElement(message) {
     
     // Set the author ID, timestamp, and IDs as data attributes
     messageDiv.dataset.authorId = message.authorId || '';
-    messageDiv.dataset.createdAt = message.createdAt || new Date().toISOString();
+    
+    // Normalize timestamp and store as ISO string
+    const normalizedDate = normalizeTimestamp(message.createdAt);
+    messageDiv.dataset.createdAt = normalizedDate.toISOString();
+    
     if (message.localId) {
         messageDiv.dataset.localId = message.localId;
     }
@@ -179,13 +183,12 @@ function createMessageElement(message) {
     const authorInitials = author ? getInitials(author.name) : '?';
     const authorMainPhoto = mainPhotoForUser(author);
     
-    // Format time
-    const messageDate = new Date(message.createdAt);
-    const messageTime = messageDate.toLocaleTimeString([], {
+    // Format time using normalized date
+    const messageTime = normalizedDate.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit'
     });
-    const fullDateTime = formatFullDateTime(message.createdAt);
+    const fullDateTime = formatFullDateTime(normalizedDate);
     
     // Check if this is a group chat (show author names only for group chats)
     const isGroupChat = chat && !chat.isPersonal;
@@ -929,7 +932,7 @@ function addMessageToChat(message, bulkAddition = false) {
     }
     
     // Check if we need to add a date header before this message
-    const messageDate = new Date(message.createdAt);
+    const messageDate = normalizeTimestamp(message.createdAt);
     const messageDateString = messageDate.toDateString();
     
     // Get the last message element to check the date
@@ -946,7 +949,7 @@ function addMessageToChat(message, bulkAddition = false) {
     // Check if we need to add a date header: if there's no previous message (first message) or if the date is different
     let needsDateHeader = true;
     if (lastMessage) {
-        const lastMessageDate = new Date(lastMessage.dataset.createdAt);
+        const lastMessageDate = normalizeTimestamp(lastMessage.dataset.createdAt);
         const lastMessageDateString = lastMessageDate.toDateString();
         needsDateHeader = lastMessageDateString !== messageDateString;
     }

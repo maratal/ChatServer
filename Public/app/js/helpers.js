@@ -181,9 +181,28 @@ function formatChatGroupingDate(date) {
     }
 }
 
+// Normalize timestamp to Date object (handles both string and number formats)
+function normalizeTimestamp(timestamp) {
+    if (!timestamp) return new Date();
+    
+    if (typeof timestamp === 'string') {
+        return new Date(timestamp);
+    } else if (typeof timestamp === 'number') {
+        // Server sends UNIX timestamps in seconds (since 1970)
+        // If timestamp is less than year 2000 in milliseconds, assume it's in seconds
+        if (timestamp < 946_684_800_000) { // 2000-01-01 00:00:00
+            return new Date(timestamp * 1000);
+        } else {
+            return new Date(timestamp);
+        }
+    }
+    
+    return new Date(timestamp);
+}
+
 // Format full date and time for tooltips
 function formatFullDateTime(date) {
-    const dateObj = new Date(date);
+    const dateObj = normalizeTimestamp(date);
     return dateObj.toLocaleString([], {
         weekday: 'long',
         year: 'numeric',
