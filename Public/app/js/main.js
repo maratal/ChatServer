@@ -410,7 +410,10 @@ async function selectChat(chatId, fromHistory = false) {
     messageInputContainer.style.display = 'flex';
     
     // Load messages
-    await loadMessages(chatId);
+    await loadMessages(chatId, true);
+    
+    // Setup infinite scroll for this chat
+    setupInfiniteScroll(chatId);
     
     // Focus message input field
     const messageInput = getMessageInputElement();

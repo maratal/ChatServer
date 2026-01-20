@@ -3,6 +3,9 @@ let pendingMessages = new Map(); // Track messages being sent
 let selectedAttachments = [];
 let attachmentUploads = new Map(); // Map of attachmentId -> { xhr, file, progress }
 let attachmentAnimationFrames = new Map(); // Map of attachmentId -> animationFrameId
+let isLoadingMessages = false; // Track if we're currently loading messages
+let oldestMessageId = null; // Track the oldest message ID we've loaded
+let hasMoreMessages = true; // Track if there are more messages to load
 
 // SVG icons for menu items
 const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
@@ -11,14 +14,75 @@ const bookmarkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height=
 const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
 
 // Load messages for a chat
-async function loadMessages(chatId) {
-    console.log(`Loading messages for chat ${chatId}...`);
+async function loadMessages(chatId, initialLoad = false) {
+    if (isLoadingMessages) {
+        return;
+    }
+
+    if (initialLoad) {
+        oldestMessageId = null;
+        hasMoreMessages = true;
+    }
+    
+    // Get existing messages from DOM
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (!messagesContainer) {
+        isLoadingMessages = false;
+        return;
+    }
+
+    isLoadingMessages = true;
+
+    if (oldestMessageId) {
+        console.log(`Loading older messages for chat ${chatId} before ${oldestMessageId}...`);
+    } else {
+        console.log(`Loading latest messages for chat ${chatId}...`);
+    }
     
     try {
-        const messages = await apiGetMessages(chatId, 50);
-        displayMessages(messages);
+        const messages = await apiGetMessages(chatId, 50, oldestMessageId);
+        
+        if (messages.length === 0 && !initialLoad) {
+            hasMoreMessages = false;
+            isLoadingMessages = false;
+            console.log(`No more messages to load for chat ${chatId}`);
+            return;
+        }
+        
+        // Update oldest message ID
+        if (messages.length > 0) {
+            oldestMessageId = messages[messages.length - 1].id;
+            hasMoreMessages = messages.length === 50; // If we got exactly 50, there might be more
+        } else {
+            hasMoreMessages = false;
+        }
+        
+        // Save scroll position before prepending messages (only if not initial load)
+        const scrollableContainer = messagesContainer.parentElement;
+        let scrollHeightBefore = 0;
+        let scrollTopBefore = 0;
+        if (!initialLoad) {
+            scrollHeightBefore = scrollableContainer?.scrollHeight || 0;
+            scrollTopBefore = scrollableContainer?.scrollTop || 0;
+        }
+        
+        // Display messages (will prepend if not initial load, clear and append if initial)
+        displayMessages(messages, initialLoad, hasMoreMessages);
+        
+        // Restore scroll position after DOM update (only if not initial load)
+        if (!initialLoad) {
+            requestAnimationFrame(() => {
+                if (scrollableContainer) {
+                    const scrollHeightAfter = scrollableContainer.scrollHeight;
+                    const heightDifference = scrollHeightAfter - scrollHeightBefore;
+                    scrollableContainer.scrollTop = scrollTopBefore + heightDifference;
+                }
+            });
+        }
     } catch (error) {
         console.error('Error loading messages:', error);
+    } finally {
+        isLoadingMessages = false;
     }
 }
 
@@ -44,6 +108,40 @@ function scrollMessagesToBottom(instant = false) {
     }
 }
 
+// Setup infinite scroll for messages container
+function setupInfiniteScroll(chatId) {
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (!messagesContainer) return;
+    
+    const scrollableContainer = messagesContainer.parentElement;
+    if (!scrollableContainer) return;
+    
+    // Remove existing scroll listener if any
+    scrollableContainer.removeEventListener('scroll', handleMessagesScroll);
+    
+    // Add scroll listener
+    scrollableContainer.addEventListener('scroll', handleMessagesScroll);
+    
+    // Store chatId for the scroll handler
+    scrollableContainer.dataset.chatId = chatId;
+}
+
+// Handle scroll event for infinite scroll
+function handleMessagesScroll(e) {
+    const scrollableContainer = e.target;
+    const chatId = scrollableContainer.dataset.chatId;
+    
+    if (!chatId || !currentChatId || chatId !== currentChatId) {
+        return;
+    }
+    
+    // Check if user scrolled near the top (within 200px)
+    const scrollTop = scrollableContainer.scrollTop;
+    if (scrollTop < 200 && hasMoreMessages && !isLoadingMessages) {
+        loadMessages(chatId, false);
+    }
+}
+
 // Update grouping for a single message based on its neighbors
 function updateSingleMessageGrouping(messageElement, index, allMessageElements) {
     const prevElement = index > 0 ? allMessageElements[index - 1] : null;
@@ -60,18 +158,39 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
     let timeGapWithPrev = false;
     let timeGapWithNext = false;
     
+    // Check date difference for date header visibility
+    let dateDiffersFromPrev = false;
+    
     if (prevElement && prevElement.dataset.createdAt && currentCreatedAt) {
         const prevTime = normalizeTimestamp(prevElement.dataset.createdAt);
         const currentTime = normalizeTimestamp(currentCreatedAt);
         const timeDiff = Math.abs(currentTime - prevTime) / (1000 * 60); // minutes
         timeGapWithPrev = timeDiff > 10;
+        
+        // Check if dates differ
+        const prevDateString = prevTime.toDateString();
+        const currentDateString = currentTime.toDateString();
+        dateDiffersFromPrev = prevDateString !== currentDateString;
+    } else {
+        // No previous element, show date header (this is the first message)
+        dateDiffersFromPrev = true;
     }
     
     if (nextElement && nextElement.dataset.createdAt && currentCreatedAt) {
         const nextTime = normalizeTimestamp(nextElement.dataset.createdAt);
         const currentTime = normalizeTimestamp(currentCreatedAt);
-        const timeDiff = Math.abs(nextTime - currentTime) / (1000 * 60); // minutes
+        const timeDiff = Math.abs(currentTime - nextTime) / (1000 * 60); // minutes
         timeGapWithNext = timeDiff > 10;
+    }
+    
+    // Show/hide date header based on date difference
+    const dateHeader = messageElement.querySelector('.message-date-header');
+    if (dateHeader) {
+        if (dateDiffersFromPrev) {
+            dateHeader.style.display = 'flex';
+        } else {
+            dateHeader.style.display = 'none';
+        }
     }
     
     // Check if messages have attachments (by checking for attachment container in DOM)
@@ -106,25 +225,47 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
 }
 
 // Display messages in the chat area
-function displayMessages(messages) {
-    console.log(`Displaying ${messages.length} messages...`);
+function displayMessages(messages, isInitialLoad = false, hasMoreMessages = true) {
+    const prepend = !isInitialLoad;
+    console.log(`Displaying ${messages.length} messages... (prepend: ${prepend})`);
 
     const messagesContainer = document.getElementById('messagesContainer');
-    messagesContainer.innerHTML = '';
+    if (!messagesContainer) return;
     
-    if (messages.length === 0) {
-        const noMessagesText = getRandomNoMessagesText();
-        messagesContainer.innerHTML = `<div class="no-messages">${escapeHtml(noMessagesText)}</div>`;
-        return;
+    // If initial load, clear the container
+    if (isInitialLoad) {
+        messagesContainer.innerHTML = '';
+        
+        if (messages.length === 0) {
+            const noMessagesText = getRandomNoMessagesText();
+            messagesContainer.innerHTML = `<div class="no-messages">${escapeHtml(noMessagesText)}</div>`;
+            return;
+        }
+    } else {
+        // When prepending, remove "no messages" if present
+        const noMessages = messagesContainer.querySelector('.no-messages');
+        if (noMessages) {
+            noMessages.remove();
+        }
     }
     
-    // Reverse messages to show oldest first
-    messages.reverse();
+    // Reverse messages to show oldest first (only if initial load, as prepended messages are already oldest-first)
+    if (isInitialLoad) {
+        messages.reverse();
+    }
     
     // Add messages in bulk mode (no animation, grouping, or scrolling - we'll batch those)
-    messages.forEach((message) => {
-        addMessageToChat(message, true);
-    });
+    // When prepending, we need to track the previous message in the batch for date header checks
+    let previousMessageInBatch = null;
+    for (let i = 0; i < messages.length; i++) {
+        const message = messages[i];
+        // If there are no more messages, the very first (top) message should have a date header
+        const isTopMessage = !hasMoreMessages && i === messages.length - 1;
+        addMessageToChat(message, true, prepend);
+        if (prepend) {
+            previousMessageInBatch = message;
+        }
+    };
     
     // Apply grouping to all rendered messages at once (more efficient than incremental)
     const messageElements = Array.from(messagesContainer.children).filter(el => el.classList.contains('message-row'));
@@ -132,10 +273,13 @@ function displayMessages(messages) {
         updateSingleMessageGrouping(messageElement, index, messageElements);
     });
     
-    // Scroll to bottom instantly when loading messages
-    setTimeout(() => {
-        scrollMessagesToBottom(true);
-    }, 50);
+    // Handle scrolling (only for initial load)
+    if (isInitialLoad) {
+        // Scroll to bottom instantly when loading messages
+        setTimeout(() => {
+            scrollMessagesToBottom(true);
+        }, 50);
+    }
 }
 
 // Create date header element
@@ -275,7 +419,13 @@ function createMessageElement(message) {
     
     const avatarClass = isOwnMessage ? 'avatar-small outgoing' : 'avatar-small incoming';
     
+    // Create date header text
+    const dateHeaderText = formatChatGroupingDate(normalizedDate);
+    
     messageDiv.innerHTML = `
+        <div class="message-date-header" style="display: none;">
+            <span class="date-header-text" title="${escapeHtml(fullDateTime)}">${dateHeaderText}</span>
+        </div>
         <span class="${avatarClass}" ${avatarDataAttrs}>
             ${avatarContent}
         </span>
@@ -924,7 +1074,7 @@ async function sendMessage(textOverride = null) {
 
 // Add message to chat
 // bulkAddition: when true, skips animation, grouping update, and scroll
-function addMessageToChat(message, bulkAddition = false) {
+function addMessageToChat(message, bulkAddition = false, prepend = false) {
     const animated = !bulkAddition;
     const updateGrouping = !bulkAddition;
     const scroll = !bulkAddition;
@@ -943,34 +1093,8 @@ function addMessageToChat(message, bulkAddition = false) {
         noMessages.remove();
     }
     
-    // Check if we need to add a date header before this message
-    const messageDate = normalizeTimestamp(message.createdAt);
-    const messageDateString = messageDate.toDateString();
-    
-    // Get the last message element to check the date
-    const allChildren = Array.from(messagesContainer.children);
-    let lastMessage = null;
-    for (let i = allChildren.length - 1; i >= 0; i--) {
-        const child = allChildren[i];
-        if (child.classList.contains('message-row')) {
-            lastMessage = child;
-            break;
-        }
-    }
-    
-    // Check if we need to add a date header: if there's no previous message (first message) or if the date is different
-    let needsDateHeader = true;
-    if (lastMessage) {
-        const lastMessageDate = normalizeTimestamp(lastMessage.dataset.createdAt);
-        const lastMessageDateString = lastMessageDate.toDateString();
-        needsDateHeader = lastMessageDateString !== messageDateString;
-    }
-    
-    // Add date header if needed
-    if (needsDateHeader) {
-        const dateHeader = createDateHeader(formatChatGroupingDate(messageDate), messageDate);
-        messagesContainer.appendChild(dateHeader);
-    }
+    // Date header is now handled inside the message element by updateSingleMessageGrouping
+    // No need to check for date headers here
     
     const messageElement = createMessageElement(message);
     
@@ -982,18 +1106,26 @@ function addMessageToChat(message, bulkAddition = false) {
     if (animated) {
         messageElement.style.opacity = '0';
         messageElement.style.transform = 'translateY(20px)';
-        messagesContainer.appendChild(messageElement);
-        
-        // Trigger animation
-        requestAnimationFrame(() => {
-            messageElement.style.transition = 'all 0.3s ease';
-            messageElement.style.opacity = '1';
-            messageElement.style.transform = 'translateY(0)';
-        });
+    }
+
+    // Insert message (date header is now inside the message element, handled by updateSingleMessageGrouping)
+    if (prepend) {
+        messagesContainer.insertBefore(messageElement, messagesContainer.firstChild);
     } else {
         messagesContainer.appendChild(messageElement);
     }
-    
+
+    if (animated) {
+        // Trigger animation
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                messageElement.style.transition = 'all 0.3s ease';
+                messageElement.style.opacity = '1';
+                messageElement.style.transform = 'translateY(0)';
+            });
+        });
+    }
+
     // Re-calculate grouping for the new message and potentially the previous one
     if (updateGrouping) {
         updateMessageGroupingIncremental(messageElement);

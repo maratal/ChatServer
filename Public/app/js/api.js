@@ -342,13 +342,18 @@ async function apiAddChatImage(chatId, imageId, fileType, fileSize) {
     return await handleResponse(response);
 }
 
-async function apiGetMessages(chatId, count = 50) {
+async function apiGetMessages(chatId, count = 50, before = null) {
     const accessToken = getAccessToken();
     if (!accessToken) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/messages?count=${count}`, {
+    let url = `/chats/${chatId}/messages?count=${count}`;
+    if (before) {
+        url += `&before=${before}`;
+    }
+    
+    const response = await fetch(url, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`

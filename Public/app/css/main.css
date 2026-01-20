@@ -454,14 +454,15 @@ input[type="text"], textarea {
     width: 2rem;
     height: 2rem;
     font-size: 0.75rem;
-    margin: 2px;
 }
 
 .message-row .avatar-small.incoming {
     margin-left: 15px;
+    margin-right: 5px;
 }
 
 .message-row .avatar-small.outgoing {
+    margin-left: 5px;
     margin-right: 15px;
 }
 
@@ -2161,8 +2162,7 @@ input[type="text"]:disabled, textarea:disabled {
 /* Message Row Styles */
 .message-row {
     display: flex;
-    gap: 8px;
-    transition: background-color 0.15s ease;
+    flex-wrap: wrap;
 }
 
 .message-row.menu-active {
@@ -2402,7 +2402,16 @@ input[type="text"]:disabled, textarea:disabled {
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     font-size: 0.75rem;
-    font-weight: 500;
+}
+
+/* Date header inside message element */
+.message-date-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 15px;
+    padding-bottom: 5px;
+    width: 100%;
 }
 
 /* Message grouping styles with correct corner radius logic - higher specificity */
