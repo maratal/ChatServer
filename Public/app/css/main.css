@@ -218,11 +218,6 @@ h1, h2, h3, h4, h5, h6 {
     gap: 0.5rem;
     white-space: nowrap;
     border-radius: calc(var(--radius) - 2px);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
     border: none;
     background: transparent;
     cursor: pointer;
@@ -1537,41 +1532,36 @@ input[type="text"]:disabled, textarea:disabled {
     transition: stroke-dashoffset 0.3s ease-out;
 }
 
-.user-profile-avatar-menu-button {
+.ellipsis-button {
+    font-size: 1.35rem;
+    line-height: 1;
+    letter-spacing: -0.125rem;
+    color: hsl(var(--muted-foreground));
+    transform: translateY(-1px);
+    gap: 0.5rem;
+    background: transparent;
+    cursor: pointer;
+    border: none;
+    align-items: center;
+    justify-content: center;
+    /* transform: rotate(90deg); */
+}
+
+/* User profile avatar menu button */
+#userProfileAvatarMenuButton {
     position: absolute;
     bottom: 4px;
     right: 4px;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: transparent;
-    color: hsl(var(--foreground));
     border: none;
-    display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 20;
     transition: opacity 0.2s ease;
-    box-shadow: none;
     opacity: 0;
-    pointer-events: none;
 }
 
-.user-profile-avatar-wrapper:hover .user-profile-avatar-menu-button {
+.user-profile-avatar-wrapper:hover #userProfileAvatarMenuButton {
     opacity: 1;
-    pointer-events: auto;
-}
-
-.user-profile-avatar-menu-button:hover {
-    opacity: 0.7;
-}
-
-.user-profile-avatar-menu-button {
-    font-size: 1.5rem;
-    line-height: 1;
-    letter-spacing: -0.15rem;
-    color: hsl(var(--muted-foreground));
 }
 
 /* Avatar menu uses absolute positioning */

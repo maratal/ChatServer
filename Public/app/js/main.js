@@ -982,6 +982,72 @@ function closeTopModalInfoPanel() {
     }, 300);
 }
 
+
+function showChatHeaderMenu(event) {
+    const menuButton = document.getElementById('chatHeaderMenuButton');
+    if (!menuButton) return;
+    
+    const rect = menuButton.getBoundingClientRect();
+    
+    showChatMenu(rect, currentChatId);
+}
+
+function showChatMenu(rect, chatId) {
+    if (!chatId) return;
+    
+    const menuItems = [
+        { id: 'info', label: 'Info', icon: infoIcon },
+        { id: 'mute', label: 'Mute', icon: muteIcon },
+        { id: 'block', label: 'Block', icon: blockIcon },
+        { id: 'archive', label: 'Archive', icon: archiveIcon },
+        { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
+    ];
+    
+    showContextMenu({
+        items: menuItems,
+        x: rect.left,
+        y: rect.bottom + 2,
+        anchor: 'top-left',
+        onAction: (action) => {
+            handleChatHeaderMenuAction(action, chatId);
+        }
+    });
+}
+
+function handleChatHeaderMenuAction(action, chatId) {
+    const chat = chats.find(chat => chat.id === chatId);
+    if (!chat) return;
+    
+    switch (action) {
+        case 'info':
+            if (chat.isPersonal) {
+                const user = chat.allUsers.find(user => user.id !== currentUser?.info.id) || currentUser.info;
+                showUserInfo(user.id);
+            } else {
+                showGroupChatInfo(chat.id);
+            }
+            break;
+        case 'mute':
+            // TODO: Implement mute functionality
+            console.log('Mute chat:', chat.id);
+            break;
+        case 'block':
+            // TODO: Implement block functionality
+            console.log('Block chat:', chat.id);
+            break;
+        case 'archive':
+            // TODO: Implement archive functionality
+            console.log('Archive chat:', chat.id);
+            break;
+        case 'delete':
+            // TODO: Implement delete functionality
+            if (confirm('Are you sure you want to delete this chat?')) {
+                console.log('Delete chat:', chat.id);
+            }
+            break;
+    }
+}
+
 async function showGroupChatInfo(chatId) {
     if (!chatId) return;
     
@@ -1080,7 +1146,7 @@ function displayGroupChatInfo(chat) {
                         <circle class="user-profile-avatar-progress-bg" cx="50" cy="50" r="48"></circle>
                         <circle class="user-profile-avatar-progress-bar" cx="50" cy="50" r="48" id="groupChatAvatarProgressBar"></circle>
                     </svg>
-                    <button class="user-profile-avatar-menu-button" id="groupChatAvatarMenuButton" onclick="event.stopPropagation(); showGroupChatAvatarMenu(event)" title="Avatar menu">
+                    <button class="ellipsis-button" id="groupChatAvatarMenuButton" onclick="event.stopPropagation(); showGroupChatAvatarMenu(event)" title="Avatar menu">
                         •••
                     </button>
                 </div>
@@ -2013,6 +2079,10 @@ window.addEventListener('popstate', function(event) {
         
         if (chatHeader) chatHeader.style.display = 'none';
         if (messageInputContainer) messageInputContainer.style.display = 'none';
+        
+        // Clear current chat for menu
+        window.currentChatForMenu = null;
+        
         if (messagesContainer) {
             messagesContainer.innerHTML = '<div class="no-chat-selected">Select a chat to start messaging</div>';
         }
