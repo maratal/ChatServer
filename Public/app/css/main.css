@@ -2012,6 +2012,27 @@ input[type="text"]:disabled, textarea:disabled {
     white-space: nowrap;
 }
 
+.chat-muted-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background-color: hsl(var(--muted));
+    border-radius: 11px;
+    height: 22px;
+    font-size: 10px;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+    border-width: 2px;
+    border-style: solid;
+    border-color: hsl(var(--primary-foreground));
+}
+
+.chat-muted-text {
+    line-height: 1;
+}
+
 .chat-badge {
     border-radius: calc(var(--radius) - 2px);
     border: 1px solid transparent;

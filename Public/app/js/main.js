@@ -249,6 +249,7 @@ function createChatItem(chat) {
     }
     
     // Get last message preview and time
+    const isMuted = chat.isMuted || false;
     const lastMessageText = chat.lastMessage ? 
         truncateText(chat.lastMessage.text || '[Media]', 30) : 
         'No messages yet';
@@ -300,7 +301,12 @@ function createChatItem(chat) {
                 ${messageDateString ? `<span class="chat-time">${messageDateString}</span>` : ''}
             </div>
             <div class="chat-message-row">
-                <p class="chat-last-message">${escapeHtml(lastMessageText)}</p>
+                ${isMuted ? 
+                    `<span class="chat-muted-indicator">
+                        <span class="chat-muted-text">Muted</span>
+                    </span>` : 
+                    `<p class="chat-last-message">${escapeHtml(lastMessageText)}</p>`
+                }
                 ${unreadCount > 0 ? `<div class="chat-badge">${unreadCount}</div>` : ''}
             </div>
         </div>
@@ -995,9 +1001,14 @@ function showChatHeaderMenu(event) {
 function showChatMenu(rect, chatId) {
     if (!chatId) return;
     
+    const chat = chats.find(chat => chat.id === chatId);
+    if (!chat) return;
+    
+    const isMuted = chat.isMuted || false;
+    
     const menuItems = [
         { id: 'info', label: 'Info', icon: infoIcon },
-        { id: 'mute', label: 'Mute', icon: muteIcon },
+        { id: 'mute', label: isMuted ? 'Unmute' : 'Mute', icon: isMuted ? unmuteIcon : muteIcon },
         { id: 'block', label: 'Block', icon: blockIcon },
         { id: 'archive', label: 'Archive', icon: archiveIcon },
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
@@ -1028,8 +1039,7 @@ function handleChatHeaderMenuAction(action, chatId) {
             }
             break;
         case 'mute':
-            // TODO: Implement mute functionality
-            console.log('Mute chat:', chat.id);
+            toggleMuteChat(chatId);
             break;
         case 'block':
             // TODO: Implement block functionality
@@ -1045,6 +1055,34 @@ function handleChatHeaderMenuAction(action, chatId) {
                 console.log('Delete chat:', chat.id);
             }
             break;
+    }
+}
+
+async function toggleMuteChat(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error('Chat not found:', chatId);
+        return;
+    }
+    
+    const newMuteState = !(chat.isMuted || false);
+    
+    try {
+        const updatedChat = await apiUpdateChatSettings(chatId, { isMuted: newMuteState });
+        
+        // Update the local chat object
+        chat.isMuted = updatedChat.isMuted;
+        
+        // Refresh the chat list display to show updated mute state
+        displayChats();
+        
+        // Update header if this chat is selected
+        if (currentChatId === chatId) {
+            selectChat(currentChatId, true);
+        }
+    } catch (error) {
+        console.error('Error toggling mute:', error);
+        alert('Error ' + (newMuteState ? 'muting' : 'unmuting') + ' chat: ' + error.message);
     }
 }
 

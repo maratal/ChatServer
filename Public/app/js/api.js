@@ -244,6 +244,23 @@ async function apiUpdateChat(chatId, data) {
     return await handleResponse(response);
 }
 
+async function apiUpdateChatSettings(chatId, settings) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`/chats/${chatId}/settings`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settings)
+    });
+    return await handleResponse(response);
+}
+
 async function apiDeleteChatImage(chatId, imageId) {
     const accessToken = getAccessToken();
     if (!accessToken) {
