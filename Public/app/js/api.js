@@ -261,6 +261,36 @@ async function apiUpdateChatSettings(chatId, settings) {
     return await handleResponse(response);
 }
 
+async function apiBlockChat(chatId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`/chats/${chatId}/block`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`
+        }
+    });
+    return await handleResponse(response);
+}
+
+async function apiUnblockChat(chatId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`/chats/${chatId}/unblock`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`
+        }
+    });
+    return await handleResponse(response);
+}
+
 async function apiDeleteChatImage(chatId, imageId) {
     const accessToken = getAccessToken();
     if (!accessToken) {

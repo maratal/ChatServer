@@ -249,6 +249,7 @@ function createChatItem(chat) {
     }
     
     // Get last message preview and time
+    const isBlocked = chat.isBlocked || false;
     const isArchived = chat.isArchived || false;
     const isMuted = chat.isMuted || false;
     const lastMessageText = chat.lastMessage ? 
@@ -302,7 +303,11 @@ function createChatItem(chat) {
                 ${messageDateString ? `<span class="chat-time">${messageDateString}</span>` : ''}
             </div>
             <div class="chat-message-row">
-                ${isArchived ? 
+                ${isBlocked ? 
+                    `<span class="chat-muted-indicator">
+                        <span class="chat-muted-text">Blocked</span>
+                    </span>` : 
+                    isArchived ? 
                     `<span class="chat-muted-indicator">
                         <span class="chat-muted-text">Archived</span>
                     </span>` : 
@@ -1011,11 +1016,12 @@ function showChatMenu(rect, chatId) {
     
     const isMuted = chat.isMuted || false;
     const isArchived = chat.isArchived || false;
+    const isBlocked = chat.isBlocked || false;
     
     const menuItems = [
         { id: 'info', label: 'Info', icon: infoIcon },
         { id: 'mute', label: isMuted ? 'Unmute' : 'Mute', icon: isMuted ? unmuteIcon : muteIcon },
-        { id: 'block', label: 'Block', icon: blockIcon },
+        { id: 'block', label: isBlocked ? 'Unblock' : 'Block', icon: blockIcon },
         { id: 'archive', label: isArchived ? 'Unarchive' : 'Archive', icon: archiveIcon },
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
     ];
@@ -1048,8 +1054,7 @@ function handleChatHeaderMenuAction(action, chatId) {
             toggleMuteChat(chatId);
             break;
         case 'block':
-            // TODO: Implement block functionality
-            console.log('Block chat:', chat.id);
+            toggleBlockChat(chatId);
             break;
         case 'archive':
             toggleArchiveChat(chatId);
@@ -1116,6 +1121,38 @@ async function toggleArchiveChat(chatId) {
     } catch (error) {
         console.error('Error toggling archive:', error);
         alert('Error ' + (newArchiveState ? 'archiving' : 'unarchiving') + ' chat: ' + error.message);
+    }
+}
+
+async function toggleBlockChat(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error('Chat not found:', chatId);
+        return;
+    }
+    
+    const newBlockState = !(chat.isBlocked || false);
+    
+    try {
+        if (newBlockState) {
+            await apiBlockChat(chatId);
+        } else {
+            await apiUnblockChat(chatId);
+        }
+        
+        // Update the local chat object
+        chat.isBlocked = newBlockState;
+        
+        // Refresh the chat list display to show updated block state
+        displayChats();
+        
+        // Update header if this chat is selected
+        if (currentChatId === chatId) {
+            selectChat(currentChatId, true);
+        }
+    } catch (error) {
+        console.error('Error toggling block:', error);
+        alert('Error ' + (newBlockState ? 'blocking' : 'unblocking') + ' chat: ' + error.message);
     }
 }
 
