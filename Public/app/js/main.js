@@ -4,6 +4,7 @@ let currentChatId = null;
 let chats = [];
 let websocket = null;
 let deviceSessionId = null;
+let currentChatFilter = 'all'; // 'all', 'archived', 'blocked', 'muted'
 
 // User selection variables
 let fetchedUsers = [];
@@ -135,19 +136,53 @@ function displayChats() {
     const chatItems = document.getElementById('chatItems');
     chatItems.innerHTML = '';
     
-    if (chats.length === 0) {
-        chatItems.innerHTML = `
-            <div class="no-chats-container">
-                <a href="#" class="find-users-link" onclick="event.preventDefault(); openUserSelection();">
-                    Find someone to chat
-                </a>
-            </div>
-        `;
+    // Filter chats based on current filter
+    let filteredChats = chats.filter(chat => {
+        const isBlocked = chat.isBlocked || false;
+        const isArchived = chat.isArchived || false;
+        const isMuted = chat.isMuted || false;
+        
+        switch (currentChatFilter) {
+            case 'all':
+                // Show all chats except blocked and archived
+                return !isBlocked && !isArchived;
+            case 'archived':
+                return isArchived;
+            case 'blocked':
+                return isBlocked;
+            case 'muted':
+                return isMuted;
+            default:
+                return true;
+        }
+    });
+    
+    // Update filter pill active states (do this before early return)
+    updateFilterPills();
+    
+    if (filteredChats.length === 0) {
+        // Only show "Find someone to chat" button if filter is set to "all"
+        // Otherwise show "No chats" label for other filters
+        if (currentChatFilter === 'all') {
+            chatItems.innerHTML = `
+                <div class="no-chats-container">
+                    <a href="#" class="find-users-link" onclick="event.preventDefault(); openUserSelection();">
+                        Find someone to chat
+                    </a>
+                </div>
+            `;
+        } else {
+            chatItems.innerHTML = `
+                <div class="no-chats-container">
+                    <span class="no-chats-label">No chats</span>
+                </div>
+            `;
+        }
         return;
     }
     
     // Sort chats: Personal Notes first, then by lastMessage date (newest first)
-    const sortedChats = [...chats].sort((a, b) => {
+    const sortedChats = [...filteredChats].sort((a, b) => {
         // Personal Notes always on top
         if (isPersonalNotes(a)) return -1;
         if (isPersonalNotes(b)) return 1;
@@ -181,6 +216,9 @@ function displayChats() {
         const chatItem = createChatItem(chat);
         chatItems.appendChild(chatItem);
     });
+    
+    // Update filter pill active states
+    updateFilterPills();
 
     // Restore previously selected chat from URL hash, localStorage, or select first chat
     let chatIdToSelect = null;
@@ -2196,3 +2234,18 @@ window.addEventListener('popstate', function(event) {
         }
     }
 });
+
+function setChatFilter(filter) {
+    currentChatFilter = filter;
+    displayChats();
+}
+
+function updateFilterPills() {
+    document.querySelectorAll('.chat-filter-pill').forEach(pill => {
+        if (pill.dataset.filter === currentChatFilter) {
+            pill.classList.add('active');
+        } else {
+            pill.classList.remove('active');
+        }
+    });
+}
