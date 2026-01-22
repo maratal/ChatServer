@@ -249,6 +249,7 @@ function createChatItem(chat) {
     }
     
     // Get last message preview and time
+    const isArchived = chat.isArchived || false;
     const isMuted = chat.isMuted || false;
     const lastMessageText = chat.lastMessage ? 
         truncateText(chat.lastMessage.text || '[Media]', 30) : 
@@ -301,7 +302,11 @@ function createChatItem(chat) {
                 ${messageDateString ? `<span class="chat-time">${messageDateString}</span>` : ''}
             </div>
             <div class="chat-message-row">
-                ${isMuted ? 
+                ${isArchived ? 
+                    `<span class="chat-muted-indicator">
+                        <span class="chat-muted-text">Archived</span>
+                    </span>` : 
+                    isMuted ? 
                     `<span class="chat-muted-indicator">
                         <span class="chat-muted-text">Muted</span>
                     </span>` : 
@@ -1005,12 +1010,13 @@ function showChatMenu(rect, chatId) {
     if (!chat) return;
     
     const isMuted = chat.isMuted || false;
+    const isArchived = chat.isArchived || false;
     
     const menuItems = [
         { id: 'info', label: 'Info', icon: infoIcon },
         { id: 'mute', label: isMuted ? 'Unmute' : 'Mute', icon: isMuted ? unmuteIcon : muteIcon },
         { id: 'block', label: 'Block', icon: blockIcon },
-        { id: 'archive', label: 'Archive', icon: archiveIcon },
+        { id: 'archive', label: isArchived ? 'Unarchive' : 'Archive', icon: archiveIcon },
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
     ];
     
@@ -1046,8 +1052,7 @@ function handleChatHeaderMenuAction(action, chatId) {
             console.log('Block chat:', chat.id);
             break;
         case 'archive':
-            // TODO: Implement archive functionality
-            console.log('Archive chat:', chat.id);
+            toggleArchiveChat(chatId);
             break;
         case 'delete':
             // TODO: Implement delete functionality
@@ -1083,6 +1088,34 @@ async function toggleMuteChat(chatId) {
     } catch (error) {
         console.error('Error toggling mute:', error);
         alert('Error ' + (newMuteState ? 'muting' : 'unmuting') + ' chat: ' + error.message);
+    }
+}
+
+async function toggleArchiveChat(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error('Chat not found:', chatId);
+        return;
+    }
+    
+    const newArchiveState = !(chat.isArchived || false);
+    
+    try {
+        const updatedChat = await apiUpdateChatSettings(chatId, { isArchived: newArchiveState });
+        
+        // Update the local chat object
+        chat.isArchived = updatedChat.isArchived;
+        
+        // Refresh the chat list display to show updated archive state
+        displayChats();
+        
+        // Update header if this chat is selected
+        if (currentChatId === chatId) {
+            selectChat(currentChatId, true);
+        }
+    } catch (error) {
+        console.error('Error toggling archive:', error);
+        alert('Error ' + (newArchiveState ? 'archiving' : 'unarchiving') + ' chat: ' + error.message);
     }
 }
 
