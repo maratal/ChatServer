@@ -234,8 +234,11 @@ actor ChatService: ChatServiceProtocol {
         guard chat.isPersonal || chat.owner.id == userId else {
             throw ServiceError(.forbidden, reason: "You can't delete this chat.")
         }
-        try await repo.deleteMessages(from: chat)
-        var itemsToSave = [ChatRelation]()
+        
+        try chat.setLatestMessage(nil)
+        try await repo.deleteMessages(from: chat, withMedia: true)
+        
+        var itemsToSave: [any RepositoryItem] = [chat]
         for relation in relations {
             if !relation.isChatBlocked { // should be visible locally for unblocking
                 relation.isRemovedOnDevice = true
@@ -311,7 +314,7 @@ actor ChatService: ChatServiceProtocol {
         guard chat.isPersonal || chat.owner.id == userId else {
             throw ServiceError(.forbidden, reason: "You can't clear this chat.")
         }
-        try await repo.deleteMessages(from: chat)
+        try await repo.deleteMessages(from: chat, withMedia: false)
         try await core.notificator.notify(chat: chat, in: repo, about: .chatCleared, from: relation.user, with: nil)
     }
     

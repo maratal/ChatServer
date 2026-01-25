@@ -19,11 +19,12 @@ protocol ChatsRepository: Sendable {
     func messages(from chatId: ChatID, before: MessageID?, count: Int) async throws -> [Message]
     func saveMessage(_ message: Message) async throws
     func loadAttachments(for message: Message) async throws
-    func deleteMessages(from chat: Chat) async throws
+    func deleteMessages(from chat: Chat, withMedia: Bool) async throws
     
     func findReadMarks(for messageId: MessageID) async throws -> [ReadMark]
     
     func findChatImage(_ id: ResourceID) async throws -> MediaResource?
+    func findAttachments(for chatId: ChatID) async throws -> [MediaResource]
     func saveChatImage(_ image: MediaResource) async throws
     func deleteChatImage(_ image: MediaResource) async throws
     func reloadChatImages(for chat: Chat) async throws
@@ -212,9 +213,23 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         try await relation.delete(on: database)
     }
     
-    func deleteMessages(from chat: Chat) async throws {
+    func deleteMessages(from chat: Chat, withMedia: Bool) async throws {
+        let chatId = try chat.requireID()
+        
+        if withMedia {
+            // Delete associated media resources first
+            let attachments = try await findAttachments(for: chatId)
+            // Delete all attachments in chat (scheduled for background execution)
+            Task.detached {
+                await self.deleteFilesForAttachments(attachments)
+            }
+            for attachment in attachments {
+                try await attachment.delete(on: database)
+            }
+        }
+        
         try await Message.query(on: database)
-            .filter(\.$chat.$id == chat.requireID())
+            .filter(\.$chat.$id == chatId)
             .delete()
     }
     
@@ -233,6 +248,13 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .first()
     }
     
+    func findAttachments(for chatId: ChatID) async throws -> [MediaResource] {
+        try await MediaResource.query(on: database)
+            .join(Message.self, on: \MediaResource.$attachmentOf.$id == \Message.$id)
+            .filter(Message.self, \.$chat.$id == chatId)
+            .all()
+    }
+    
     func saveChatImage(_ image: MediaResource) async throws {
         try await image.save(on: database)
     }
@@ -243,5 +265,18 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     
     func reloadChatImages(for chat: Chat) async throws {
         _ = try await chat.$images.get(reload: true, on: database)
+    }
+}
+
+extension ChatsDatabaseRepository {
+    /// Deletes all files (with preview) for media resources
+    private func deleteFilesForAttachments(_ attachments: [MediaResource]) {
+        let filePairs: [(filePath: String, previewFilePath: String)] = attachments.map { attachment in
+            (filePath: core.filePath(for: attachment) ?? "", previewFilePath: core.previewFilePath(for: attachment) ?? "")
+        }
+        for filePair in filePairs {
+            try? core.removeFileAtPath(filePair.filePath)
+            try? core.removeFileAtPath(filePair.previewFilePath)
+        }
     }
 }

@@ -131,8 +131,37 @@ function getChatLastMessageDate(chat) {
     return dateObj;
 }
 
+let shouldRestoreChatSelection = true;
+
+function restoreSelectedChatId() {
+    if (!shouldRestoreChatSelection) return null;
+
+    // Disable further restoration attempts until next page load
+    shouldRestoreChatSelection = false;
+    
+    let chatIdToSelect = null;
+
+    // 1. Check if URL has a chat hash
+    if (window.location.hash.startsWith('#chat-')) {
+        const hashChatId = window.location.hash.substring(6); // Remove '#chat-'
+        if (chats.some(c => c.id === hashChatId)) {
+            chatIdToSelect = hashChatId;
+        }
+    }
+
+    // 2. Fall back to localStorage
+    if (!chatIdToSelect) {
+        const savedChatId = localStorage.getItem('selectedChatId');
+        if (savedChatId && chats.some(c => c.id === savedChatId)) {
+            chatIdToSelect = savedChatId;
+        }
+    }
+
+    return chatIdToSelect;
+}
+
 // Display chats in the sidebar
-function displayChats() {
+function displayChats(chatIdToSelect = null) {
     const chatItems = document.getElementById('chatItems');
     chatItems.innerHTML = '';
     
@@ -159,7 +188,7 @@ function displayChats() {
     
     // Update filter pill active states (do this before early return)
     updateFilterPills();
-    
+
     if (filteredChats.length === 0) {
         // Only show "Find someone to chat" button if filter is set to "all"
         // Otherwise show "No chats" label for other filters
@@ -178,15 +207,14 @@ function displayChats() {
                 </div>
             `;
         }
-        return;
     }
-    
+
     // Sort chats: Personal Notes first, then by lastMessage date (newest first)
     const sortedChats = [...filteredChats].sort((a, b) => {
         // Personal Notes always on top
         if (isPersonalNotes(a)) return -1;
         if (isPersonalNotes(b)) return 1;
-        
+
         // Sort by lastMessage date (newest first), with chats having lastMessage taking precedence
         const aDate = getChatLastMessageDate(a);
         const bDate = getChatLastMessageDate(b);
@@ -205,53 +233,44 @@ function displayChats() {
         if (bDate) {
             return 1;
         }
-        
+
         // Neither has lastMessage - sort by updatedAt (newest first)
         const aUpdatedAt = typeof a.updatedAt === 'string' ? new Date(a.updatedAt) : (typeof a.updatedAt === 'number' ? new Date(a.updatedAt * 1000) : new Date(0));
         const bUpdatedAt = typeof b.updatedAt === 'string' ? new Date(b.updatedAt) : (typeof b.updatedAt === 'number' ? new Date(b.updatedAt * 1000) : new Date(0));
         return bUpdatedAt - aUpdatedAt;
     });
-    
+
     sortedChats.forEach(chat => {
         const chatItem = createChatItem(chat);
         chatItems.appendChild(chatItem);
     });
-    
-    // Update filter pill active states
-    updateFilterPills();
 
-    // Restore previously selected chat from URL hash, localStorage, or select first chat
-    let chatIdToSelect = null;
-    
-    // 1. Check if URL has a chat hash
-    if (window.location.hash.startsWith('#chat-')) {
-        const hashChatId = window.location.hash.substring(6); // Remove '#chat-'
-        if (chats.some(c => c.id === hashChatId)) {
-            chatIdToSelect = hashChatId;
-        }
+    // Clear currentChatId to allow re-selection
+    currentChatId = null;
+
+    if (chatIdToSelect) {
+        selectChat(chatIdToSelect);
+        return;
     }
+
+    // Restore selected chat if page just reloaded
+    let restoredChatId = restoreSelectedChatId();
     
-    // 2. Fall back to localStorage
-    if (!chatIdToSelect) {
-        const savedChatId = localStorage.getItem('selectedChatId');
-        if (savedChatId && chats.some(c => c.id === savedChatId)) {
-            chatIdToSelect = savedChatId;
-        }
-    }
-    
-    // 3. Fall back to first chat
-    if (!chatIdToSelect && sortedChats.length > 0) {
-        chatIdToSelect = sortedChats[0].id;
+    // Validate restoredChatId
+    if (!sortedChats.some(chat => chat.id === restoredChatId)) {
+        restoredChatId = null;
     }
     
     // Select the chat and initialize history state
-    if (chatIdToSelect) {
+    if (restoredChatId) {
         // Replace initial state instead of pushing
-        history.replaceState({ chatId: chatIdToSelect }, '', `#chat-${chatIdToSelect}`);
-        selectChat(chatIdToSelect, true); // fromHistory = true to avoid pushing another state
+        history.replaceState({ chatId: restoredChatId }, '', `#chat-${restoredChatId}`);
+        selectChat(restoredChatId, true); // fromHistory = true to avoid pushing another state
+    } else if (sortedChats.length > 0) {
+        // Select the first chat by default
+        selectChat(sortedChats[0].id);
     } else {
-        // No chats to select - set initial state with no chat
-        history.replaceState({}, '', window.location.pathname);
+        makeNoChatsSelected();
     }
 }
 
@@ -359,6 +378,17 @@ function createChatItem(chat) {
             </div>
         </div>
     `;
+    
+    // Add long press handler to show chat menu
+    addLongPressHandler(item, {
+        onLongPress: (event, startPosition) => {
+            const rect = item.getBoundingClientRect();
+            showChatMenu({ x: event.clientX, y: event.clientY }, chat.id);
+        },
+        excludeSelectors: ['.avatar-small'],
+        duration: 300,
+        maxMovement: 10
+    });
     
     return item;
 }
@@ -750,11 +780,8 @@ async function createOrOpenPersonalChat(userId) {
             chats.unshift(newChat);
         }
         
-        // Refresh chat display
-        displayChats();
-        
-        // Select the new chat
-        selectChat(newChat.id);
+        // Refresh chat display and select new chat
+        displayChats(newChat.id);
     } catch (error) {
         console.error('Error creating chat:', error);
         alert('Error creating chat. Please try again.');
@@ -1043,10 +1070,10 @@ function showChatHeaderMenu(event) {
     
     const rect = menuButton.getBoundingClientRect();
     
-    showChatMenu(rect, currentChatId);
+    showChatMenu({ x: rect.left, y: rect.bottom + 2 }, currentChatId);
 }
 
-function showChatMenu(rect, chatId) {
+function showChatMenu(point, chatId) {
     if (!chatId) return;
     
     const chat = chats.find(chat => chat.id === chatId);
@@ -1055,19 +1082,29 @@ function showChatMenu(rect, chatId) {
     const isMuted = chat.isMuted || false;
     const isArchived = chat.isArchived || false;
     const isBlocked = chat.isBlocked || false;
+    const isPersonalNotesChat = isPersonalNotes(chat);
     
     const menuItems = [
         { id: 'info', label: 'Info', icon: infoIcon },
-        { id: 'mute', label: isMuted ? 'Unmute' : 'Mute', icon: isMuted ? unmuteIcon : muteIcon },
-        { id: 'block', label: isBlocked ? 'Unblock' : 'Block', icon: blockIcon },
+    ];
+    
+    // Don't show mute and block options for Personal Notes
+    if (!isPersonalNotesChat) {
+        menuItems.push(
+            { id: 'mute', label: isMuted ? 'Unmute' : 'Mute', icon: isMuted ? unmuteIcon : muteIcon },
+            { id: 'block', label: isBlocked ? 'Unblock' : 'Block', icon: blockIcon }
+        );
+    }
+    
+    menuItems.push(
         { id: 'archive', label: isArchived ? 'Unarchive' : 'Archive', icon: archiveIcon },
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
-    ];
+    );
     
     showContextMenu({
         items: menuItems,
-        x: rect.left,
-        y: rect.bottom + 2,
+        x: point.x,
+        y: point.y,
         anchor: 'top-left',
         onAction: (action) => {
             handleChatHeaderMenuAction(action, chatId);
@@ -1098,10 +1135,7 @@ function handleChatHeaderMenuAction(action, chatId) {
             toggleArchiveChat(chatId);
             break;
         case 'delete':
-            // TODO: Implement delete functionality
-            if (confirm('Are you sure you want to delete this chat?')) {
-                console.log('Delete chat:', chat.id);
-            }
+            deleteChat(chatId);
             break;
     }
 }
@@ -1148,14 +1182,9 @@ async function toggleArchiveChat(chatId) {
         
         // Update the local chat object
         chat.isArchived = updatedChat.isArchived;
-        
+
         // Refresh the chat list display to show updated archive state
         displayChats();
-        
-        // Update header if this chat is selected
-        if (currentChatId === chatId) {
-            selectChat(currentChatId, true);
-        }
     } catch (error) {
         console.error('Error toggling archive:', error);
         alert('Error ' + (newArchiveState ? 'archiving' : 'unarchiving') + ' chat: ' + error.message);
@@ -1180,17 +1209,42 @@ async function toggleBlockChat(chatId) {
         
         // Update the local chat object
         chat.isBlocked = newBlockState;
-        
+
         // Refresh the chat list display to show updated block state
         displayChats();
-        
-        // Update header if this chat is selected
-        if (currentChatId === chatId) {
-            selectChat(currentChatId, true);
-        }
     } catch (error) {
         console.error('Error toggling block:', error);
         alert('Error ' + (newBlockState ? 'blocking' : 'unblocking') + ' chat: ' + error.message);
+    }
+}
+
+async function deleteChat(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error('Chat not found:', chatId);
+        return;
+    }
+    
+    // Confirm deletion
+    if (!confirm('Are you sure you want to delete this chat? This will delete all messages in the chat together with all media content. This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        // Call the API to delete the chat
+        await apiDeleteChat(chatId);
+        
+        // Remove the chat from the local chats array
+        const chatIndex = chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            chats.splice(chatIndex, 1);
+        }
+
+        // Refresh the chat list display
+        displayChats();
+    } catch (error) {
+        console.error('Error deleting chat:', error);
+        alert('Error deleting chat: ' + error.message);
     }
 }
 
@@ -2136,9 +2190,8 @@ async function createGroupChat() {
             chats.unshift(newChat);
         }
         
-        displayChats();
-        selectChat(newChat.id);
-        
+        // Refresh chat list and select the new chat
+        displayChats(newChat.id);
     } catch (error) {
         console.error('Error creating group chat:', error);
         alert('Error creating group chat: ' + error.message);
@@ -2218,22 +2271,30 @@ window.addEventListener('popstate', function(event) {
             item.classList.remove('active');
         });
         
-        // Hide chat header and message input
-        const chatHeader = document.getElementById('chatHeader');
-        const messageInputContainer = document.getElementById('messageInputContainer');
-        const messagesContainer = document.getElementById('messagesContainer');
-        
-        if (chatHeader) chatHeader.style.display = 'none';
-        if (messageInputContainer) messageInputContainer.style.display = 'none';
-        
-        // Clear current chat for menu
-        window.currentChatForMenu = null;
-        
-        if (messagesContainer) {
-            messagesContainer.innerHTML = '<div class="no-chat-selected">Select a chat to start messaging</div>';
-        }
+        // Clear UI
+        makeNoChatsSelected();
     }
 });
+
+function makeNoChatsSelected() {
+    const chatHeader = document.getElementById('chatHeader');
+    const messageInputContainer = document.getElementById('messageInputContainer');
+    const messagesContainer = document.getElementById('messagesContainer');
+
+    // Hide chat header and message input
+    if (chatHeader) chatHeader.style.display = 'none';
+    if (messageInputContainer) messageInputContainer.style.display = 'none';
+
+    // Show no chat selected message
+    if (messagesContainer) {
+        messagesContainer.innerHTML = '<div class="no-chat-selected">Select a chat to start messaging</div>';
+    }
+    // Clear current chat for menu
+    window.currentChatForMenu = null;
+
+    // No chats to select - set initial state with no chat
+    history.replaceState({}, '', window.location.pathname);
+}
 
 function setChatFilter(filter) {
     currentChatFilter = filter;
