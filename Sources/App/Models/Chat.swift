@@ -56,8 +56,8 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
 
 extension Chat {
     
-    func setLatestMessage(_ message: Message) throws {
-        self.$lastMessage.id = try message.requireID()
+    func setLatestMessage(_ message: Message?) throws {
+        self.$lastMessage.id = try message?.requireID()
     }
     
     struct Info: Serializable {

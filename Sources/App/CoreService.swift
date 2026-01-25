@@ -141,6 +141,11 @@ extension CoreService {
         try removeFile(for: resource)
         try removePreview(for: resource)
     }
+    
+    func removeFilePair(_ pair: (filePath: String, previewFilePath: String)) {
+        try? FileManager.default.removeItem(atPath: pair.filePath)
+        try? FileManager.default.removeItem(atPath: pair.previewFilePath)
+    }
 }
 
 // MARK: Database
