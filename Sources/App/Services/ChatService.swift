@@ -429,6 +429,7 @@ actor ChatService: ChatServiceProtocol {
         guard message.deletedAt == nil else {
             throw ServiceError(.badRequest, reason: "You can't edit deleted message.")
         }
+        
         var shouldSave = false
         if let text = update.text {
             message.text = text
@@ -439,11 +440,53 @@ actor ChatService: ChatServiceProtocol {
             message.isVisible = isVisible
             shouldSave = true
         }
-        if shouldSave {
-            try await repo.saveMessage(message)
+        
+        // Handle attachments
+        var itemsToSave: [any RepositoryItem] = []
+        
+        if let attachments = update.attachments {
+            // Load current attachments
+            try await repo.loadAttachments(for: message)
+            let currentAttachmentIds = Set(message.attachments.compactMap { $0.id })
+            let newAttachmentIds = Set(attachments.compactMap { $0.id })
+            
+            // Find attachments to remove (in current but not in new)
+            let attachmentsToRemove = currentAttachmentIds.subtracting(newAttachmentIds)
+            
+            // Find attachments to add (in new but not in current)
+            let attachmentsToAdd = newAttachmentIds.subtracting(currentAttachmentIds)
+            
+            // Remove attachments by setting attachment_of to nil
+            for attachmentId in attachmentsToRemove {
+                if let attachment = message.attachments.first(where: { $0.id == attachmentId }) {
+                    attachment.$attachmentOf.id = nil
+                    itemsToSave.append(attachment)
+                }
+            }
+            
+            // Create new attachments with data from UpdateMessageRequest
+            for attachmentId in attachmentsToAdd {
+                if let attachmentInfo = attachments.first(where: { $0.id == attachmentId }) {
+                    let resource = MediaResource(id: attachmentId,
+                                                 attachmentOf: message.id!,
+                                                 fileType: attachmentInfo.fileType,
+                                                 fileSize: attachmentInfo.fileSize,
+                                                 previewWidth: attachmentInfo.previewWidth ?? 300,
+                                                 previewHeight: attachmentInfo.previewHeight ?? 200)
+                    itemsToSave.append(resource)
+                }
+            }
         }
         
-        if update.fileExists || update.previewExists {
+        if shouldSave {
+            itemsToSave.append(message)
+        }
+        
+        if !itemsToSave.isEmpty {
+            try await core.saveAll(itemsToSave)
+        }
+        
+        if update.fileExists ?? false || update.previewExists ?? false {
             try await repo.loadAttachments(for: message)
         }
         

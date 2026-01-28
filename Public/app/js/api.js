@@ -450,6 +450,26 @@ async function apiSendMessage(chatId, localId, text, attachments = null) {
     return await handleResponse(response);
 }
 
+async function apiUpdateMessage(chatId, messageId, newText, attachments = null) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`/chats/${chatId}/messages/${messageId}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            text: newText,
+            attachments: attachments
+        })
+    });
+    return await handleResponse(response);
+}
+
 async function apiUploadFile(file, fileName, contentType, onProgress = null, onXhrCreated = null) {
     const accessToken = getAccessToken();
     if (!accessToken) {

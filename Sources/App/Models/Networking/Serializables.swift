@@ -63,8 +63,9 @@ struct PostMessageRequest: Serializable {
 struct UpdateMessageRequest: Serializable {
     var text: String?
     var isVisible: Bool?
-    var fileExists = false
-    var previewExists = false
+    var fileExists: Bool?
+    var previewExists: Bool?
+    var attachments: [MediaInfo]?
 }
 
 struct ChatNotificationRequest: Serializable {

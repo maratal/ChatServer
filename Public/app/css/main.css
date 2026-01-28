@@ -2862,3 +2862,64 @@ input[type="text"]:disabled, textarea:disabled {
     background-color: hsl(var(--background));
 }
 
+/* Edit message styles */
+#editPreviewContainer {
+    display: none;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background-color: hsl(var(--muted));
+    border-radius: calc(var(--radius) - 2px);
+    width: 100%;
+}
+
+.edit-preview-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.edit-preview-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.edit-preview-text {
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+    word-break: break-word;
+    white-space: pre-wrap;
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+.edit-cancel-button {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background-color: hsl(var(--background));
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--muted-foreground));
+    transition: all 0.2s;
+}
+
+.edit-cancel-button:hover {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+}
+
+.message-edited-icon {
+    margin-right: 4px;
+    font-size: 0.75rem;
+    opacity: 0.6;
+}

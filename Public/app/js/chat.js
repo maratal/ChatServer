@@ -6,6 +6,7 @@ let attachmentAnimationFrames = new Map(); // Map of attachmentId -> animationFr
 let isLoadingMessages = false; // Track if we're currently loading messages
 let oldestMessageId = null; // Track the oldest message ID we've loaded
 let hasMoreMessages = true; // Track if there are more messages to load
+let editingMessage = null; // Track the message being edited
 
 // Load messages for a chat
 async function loadMessages(chatId, initialLoad = false) {
@@ -276,6 +277,65 @@ function displayMessages(messages, isInitialLoad = false, hasMoreMessages = true
     }
 }
 
+// Build attachment HTML for a message
+function buildAttachmentHTML(attachments, messageId) {
+    if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
+        return '';
+    }
+    
+    // Filter out invalid attachments (must have id and fileType)
+    const validAttachments = attachments.filter(att => att && att.id && att.fileType);
+    
+    if (validAttachments.length === 0) {
+        console.warn('No valid attachments found for message:', messageId, 'attachments:', attachments);
+        return '';
+    }
+    
+    const firstAttachment = validAttachments[0];
+    const hasMultipleAttachments = validAttachments.length > 1;
+    
+    const isImage = firstAttachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
+    const isVideo = firstAttachment.fileType.match(/^(mp4|webm|mov)$/i);
+    
+    if (!isImage && !isVideo) {
+        console.warn('Unknown attachment type:', firstAttachment.fileType, 'for message:', messageId);
+    }
+    
+    return `
+        <div class="message-attachment-container" data-message-id="${messageId}" onclick="openMessageAttachmentViewer('${messageId}')" style="cursor: pointer;">
+            ${hasMultipleAttachments ? `
+            <button class="message-attachment-chevron message-attachment-chevron-left" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', -1)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m15 18-6-6 6-6"></path>
+                </svg>
+            </button>
+            ` : ''}
+            ${isImage ? `
+            <img class="message-attachment-image" src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
+            ` : isVideo ? `
+            <video class="message-attachment-video" controls onclick="event.stopPropagation();">
+                <source src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" type="video/${firstAttachment.fileType}">
+            </video>
+            ` : ''}
+            ${hasMultipleAttachments ? `
+            <button class="message-attachment-chevron message-attachment-chevron-right" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', 1)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m9 18 6-6-6-6"></path>
+                </svg>
+            </button>
+            ` : ''}
+            ${hasMultipleAttachments ? `
+            <div class="message-attachment-pagination" onclick="event.stopPropagation();">
+                ${validAttachments.map((att, index) => `
+                    <button class="message-attachment-pagination-dot ${index === 0 ? 'active' : ''}" 
+                            onclick="event.stopPropagation(); switchMessageAttachment('${messageId}', ${index})"></button>
+                `).join('')}
+            </div>
+            ` : ''}
+        </div>
+    `;
+}
+
 // Create date header element
 function createDateHeader(dateString, date) {
     const headerDiv = document.createElement('div');
@@ -339,6 +399,14 @@ function createMessageElement(message) {
         </svg>
     ` : '';
     
+    // Create edited indicator if message was edited
+    let editedIndicator = '';
+    if (message.editedAt) {
+        const editedDate = normalizeTimestamp(message.editedAt);
+        const editedFullDateTime = formatFullDateTime(editedDate);
+        editedIndicator = `<span class="message-edited-icon" title="✎ ${escapeHtml(editedFullDateTime)}">✎</span>`;
+    }
+    
     // Build avatar HTML
     const avatarAuthorId = message.authorId;
     const avatarDataAttrs = avatarAuthorId != null
@@ -351,62 +419,14 @@ function createMessageElement(message) {
     
     // Handle attachments
     const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
-    const hasMultipleAttachments = hasAttachments && message.attachments.length > 1;
     const messageId = message.id || message.localId;
     
-    let attachmentHTML = '';
-    if (hasAttachments) {
-        // Filter out invalid attachments (must have id and fileType)
+    const attachmentHTML = hasAttachments ? buildAttachmentHTML(message.attachments, messageId) : '';
+    
+    // Store valid attachments for navigation
+    if (hasAttachments && attachmentHTML) {
         const validAttachments = message.attachments.filter(att => att && att.id && att.fileType);
-        
-        if (validAttachments.length === 0) {
-            console.warn('No valid attachments found for message:', messageId, 'attachments:', message.attachments);
-        } else {
-            const firstAttachment = validAttachments[0];
-            const hasMultipleValidAttachments = validAttachments.length > 1;
-            
-            const isImage = firstAttachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
-            const isVideo = firstAttachment.fileType.match(/^(mp4|webm|mov)$/i);
-            
-            if (!isImage && !isVideo) {
-                console.warn('Unknown attachment type:', firstAttachment.fileType, 'for message:', messageId);
-            }
-            
-            attachmentHTML = `
-                <div class="message-attachment-container" data-message-id="${messageId}" onclick="openMessageAttachmentViewer('${messageId}')" style="cursor: pointer;">
-                    ${hasMultipleValidAttachments ? `
-                    <button class="message-attachment-chevron message-attachment-chevron-left" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', -1)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m15 18-6-6 6-6"></path>
-                        </svg>
-                    </button>
-                    ` : ''}
-                    ${isImage ? `
-                    <img class="message-attachment-image" src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
-                    ` : isVideo ? `
-                    <video class="message-attachment-video" controls onclick="event.stopPropagation();">
-                        <source src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" type="video/${firstAttachment.fileType}">
-                    </video>
-                    ` : ''}
-                    ${hasMultipleValidAttachments ? `
-                    <button class="message-attachment-chevron message-attachment-chevron-right" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', 1)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m9 18 6-6-6-6"></path>
-                        </svg>
-                    </button>
-                    ` : ''}
-                    ${hasMultipleValidAttachments ? `
-                    <div class="message-attachment-pagination" onclick="event.stopPropagation();">
-                        ${validAttachments.map((att, index) => `
-                            <button class="message-attachment-pagination-dot ${index === 0 ? 'active' : ''}" 
-                                    onclick="event.stopPropagation(); switchMessageAttachment('${messageId}', ${index})"></button>
-                        `).join('')}
-                    </div>
-                    ` : ''}
-                </div>
-            `;
-            
-            // Store valid attachments for navigation
+        if (validAttachments.length > 0) {
             messageDiv.dataset.attachments = JSON.stringify(validAttachments);
         }
     }
@@ -429,6 +449,7 @@ function createMessageElement(message) {
                 ${hasAttachments ? attachmentHTML : ''}
                 ${message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : ''}
                 <div class="message-timestamp-area">
+                    ${editedIndicator}
                     <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
                     ${statusIcon}
                 </div>
@@ -792,7 +813,8 @@ async function removeAttachment(attachmentId) {
     }
     
     // If attachment is uploaded, delete it from server
-    if (attachment.uploaded && attachment.uploadedId && attachment.fileType) {
+    // But NOT if we're editing an existing message (the attachment will be handled server-side)
+    if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
         try {
             const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
             await apiDeleteUpload(fileName);
@@ -1005,6 +1027,12 @@ async function sendMessage(textOverride = null) {
     if (!text && selectedAttachments.length === 0) return;
     if (!currentChatId || !currentUser || !currentUser.info.id) return;
     
+    // Check if we're editing a message
+    if (editingMessage) {
+        await updateMessage(editingMessage, text, selectedAttachments);
+        return;
+    }
+    
     // Get uploaded attachments (only send those that are ready)
     const uploadedAttachments = selectedAttachments.filter(a => a.uploaded);
     
@@ -1064,6 +1092,72 @@ async function sendMessage(textOverride = null) {
 
     // Re-display chats to re-sort by latest message
     displayChats();
+}
+
+// Update message
+async function updateMessage(message, newText, newAttachments) {
+    if (!currentChatId || !currentUser) return;
+    
+    const messageElement = document.querySelector(`[data-message-id="${message.id}"]`);
+    if (!messageElement) {
+        console.error('Message element not found for editing');
+        return;
+    }
+    
+    // Create a copy of the message to update
+    const currentMessage = { ...message };
+    
+    // Update text
+    currentMessage.text = newText;
+
+    // Get uploaded attachments (only send those that are ready)
+    const uploadedAttachments = newAttachments.filter(a => a.uploaded);
+    
+    if (uploadedAttachments.length > 0) {
+        currentMessage.attachments = uploadedAttachments.map(a => ({
+            id: a.uploadedId,
+            fileType: a.fileType,
+            fileSize: a.file.size,
+            previewWidth: a.previewWidth,
+            previewHeight: a.previewHeight
+        }));
+    } else {
+        currentMessage.attachments = [];
+    }
+
+    // Update editedAt timestamp
+    currentMessage.editedAt = new Date().toISOString();
+    
+    // Use createMessageElement to create new message element
+    const newMessageElement = createMessageElement(currentMessage);
+    
+    // Add pending state
+    newMessageElement.classList.add('sending');
+    addSendingIndicator(newMessageElement);
+    
+    // Replace old message element in DOM with new one
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (messagesContainer) {
+        messageElement.replaceWith(newMessageElement);
+        
+        // Re-calculate grouping for updated message and its neighbors
+        updateMessageGroupingIncremental(newMessageElement);
+    }
+    
+    // Clear editing state and input
+    cancelEditMessage();
+    
+    // Focus input
+    const messageInput = getMessageInputElement();
+    if (messageInput) {
+        messageInput.focus();
+    }
+    
+    // Send update to server
+    const serverMessage = await updateMessageOnServer(currentMessage);
+    
+    // Update chat list with updated message
+    updateChatListWithMessage(serverMessage);
 }
 
 // Add message to chat
@@ -1205,8 +1299,7 @@ function showMessageContextMenu(event, messageElement, message) {
 function handleMessageContextAction(action, message, messageElement) {
     switch (action) {
         case 'edit':
-            console.log('Edit message:', message);
-            // TODO: Implement edit functionality
+            editMessage(message);
             break;
         case 'quote':
             console.log('Quote message:', message);
@@ -1221,6 +1314,113 @@ function handleMessageContextAction(action, message, messageElement) {
             // TODO: Implement delete functionality
             break;
     }
+}
+
+// Edit message
+function editMessage(message) {
+    // Check if message is own message and not pending
+    if (message.authorId !== currentUser?.info.id || message.isPending) {
+        return;
+    }
+    
+    // Cancel any previous edit
+    if (editingMessage && editingMessage.id !== message.id) {
+        cancelEditMessage();
+    }
+    
+    editingMessage = message;
+    
+    const messageInput = getMessageInputElement();
+    const editPreviewContainer = document.getElementById('editPreviewContainer');
+    
+    // Build preview text
+    let previewText = '';
+    if (message.text) {
+        previewText = message.text;
+    } else if (message.attachments && message.attachments.length > 0) {
+        const createdAt = new Date(message.createdAt).toLocaleTimeString();
+        previewText = `Attachments (${message.attachments.length}) at ${createdAt}`;
+    }
+    
+    // Display edit preview with message info
+    editPreviewContainer.style.display = 'flex';
+    editPreviewContainer.innerHTML = `
+        <div class="edit-preview-content">
+            <div class="edit-preview-header">Editing</div>
+            <div class="edit-preview-text">${escapeHtml(previewText)}</div>
+        </div>
+        <button class="edit-cancel-button" onclick="cancelEditMessage()" title="Cancel editing">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"></path>
+                <path d="M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    
+    // Display attachments if they exist
+    if (message.attachments && message.attachments.length > 0) {
+        selectedAttachments = message.attachments.map(att => {
+            // Determine MIME type from fileType extension
+            let mimeType = 'application/octet-stream';
+            if (att.fileType) {
+                const fileTypeExt = att.fileType.toLowerCase();
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileTypeExt)) {
+                    mimeType = `image/${fileTypeExt === 'jpg' ? 'jpeg' : fileTypeExt}`;
+                } else if (['mp4', 'webm', 'mov'].includes(fileTypeExt)) {
+                    mimeType = `video/${fileTypeExt}`;
+                }
+            }
+            
+            return {
+                id: att.id,
+                uploadedId: att.id,
+                fileType: att.fileType || '',
+                file: { 
+                    size: att.fileSize,
+                    type: mimeType
+                },
+                preview: att.id ? `${UPLOADS_URL}/${att.id}.${att.fileType}` : null,
+                uploaded: true,
+                previewWidth: att.previewWidth,
+                previewHeight: att.previewHeight
+            };
+        });
+        updateAttachmentPreview();
+    }
+    
+    // Fill input with message text
+    messageInput.value = message.text || '';
+    messageInput.style.height = 'auto';
+    messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+    
+    // Focus input
+    messageInput.focus();
+    
+    // Update send button state
+    updateSendButtonState();
+}
+
+// Cancel edit message
+function cancelEditMessage() {
+    if (!editingMessage) return;
+    
+    const editPreviewContainer = document.getElementById('editPreviewContainer');
+    if (editPreviewContainer) {
+        editPreviewContainer.style.display = 'none';
+    }
+    
+    editingMessage = null;
+    
+    const messageInput = getMessageInputElement();
+    messageInput.value = '';
+    messageInput.style.height = '38px';
+    
+    // Clear attachments
+    selectedAttachments = [];
+    attachmentUploads.clear();
+    updateAttachmentPreview();
+    
+    updateSendButtonState();
 }
 
 // Update existing message
@@ -1305,7 +1505,7 @@ function retryMessage(localId) {
     }
 }
 
-// Send message to server (helper function)
+// Send message to server
 async function sendMessageToServer(message) {
     try {
         // Prepare attachments if present
@@ -1331,6 +1531,38 @@ async function sendMessageToServer(message) {
         updateMessageInChat(message.localId, serverMessage);
     } catch (error) {
         console.error('Error sending message:', error);
+        markMessageAsFailed(message.localId);
+    }
+}
+
+// Update message on server
+async function updateMessageOnServer(message) {
+    try {
+        // Prepare attachments if present
+        let attachments = null;
+        if (message.attachments && message.attachments.length > 0) {
+            attachments = message.attachments.map(att => ({
+                id: att.id,
+                fileType: att.fileType,
+                fileSize: att.fileSize,
+                previewWidth: att.previewWidth,
+                previewHeight: att.previewHeight
+            }));
+        }
+        
+        const serverMessage = await apiUpdateMessage(
+            message.chatId,
+            message.id,
+            message.text,
+            attachments
+        );
+        
+        pendingMessages.delete(message.localId);
+        updateMessageInChat(message.localId, serverMessage);
+        
+        return serverMessage;
+    } catch (error) {
+        console.error('Error updating message:', error);
         markMessageAsFailed(message.localId);
     }
 }
