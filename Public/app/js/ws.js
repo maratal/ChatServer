@@ -91,7 +91,7 @@ function handleWebSocketMessage(notification) {
             
             if (existingElement) {
                 // Update existing message
-                replaceMessageElement(message.localId, message, !isOwnMessage(message));
+                replaceMessageElement(message.localId, message, !isOwnMessage(message) && !message.deletedAt);
             } else {
                 // Add new message from others
                 addMessageToChat(message);

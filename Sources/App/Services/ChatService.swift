@@ -514,17 +514,25 @@ actor ChatService: ChatServiceProtocol {
     }
     
     func deleteMessage(_ id: MessageID, by userId: UserID) async throws -> MessageInfo {
-        guard let message = try await repo.findMessage(id: id), message.author.id == userId else {
-            throw ServiceError(.forbidden)
+        guard let message = try await repo.findMessage(id: id) else {
+            throw ServiceError(.notFound)
         }
         message.text = ""
         message.editedAt = Date()
         message.deletedAt = Date()
+        message.$replyTo.id = nil
         
         var itemsToSave = [message as any RepositoryItem]
         
+        // Load attachments if not already loaded
+        if message.$attachments.value == nil {
+            try await repo.loadAttachments(for: message)
+        }
+        
+        // Set attachment_of to null and delete files
         message.attachments.forEach { res in
             try? core.removeFiles(for: res)
+            res.$attachmentOf.id = nil
             res.fileSize = 0
             itemsToSave.append(res)
         }

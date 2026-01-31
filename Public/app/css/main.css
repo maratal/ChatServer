@@ -2911,3 +2911,8 @@ input[type="text"]:disabled, textarea:disabled {
     text-overflow: ellipsis;
     border-radius: 2px 4px 4px 2px;
 }
+
+.message-deleted {
+    font-style: italic;
+    opacity: 0.5;
+}

@@ -459,6 +459,12 @@ function createMessageElement(message) {
         }
     }
     
+    // Check if message is deleted
+    const isDeleted = message.deletedAt != null;
+    const messageTextContent = isDeleted 
+        ? '<div class="message-text message-deleted">Message was deleted</div>' 
+        : (message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : '');
+    
     messageDiv.innerHTML = `
         <div class="message-date-header" style="display: none;">
             <span class="date-header-text" title="${escapeHtml(fullDateTime)}">${dateHeaderText}</span>
@@ -470,9 +476,9 @@ function createMessageElement(message) {
             ${(isGroupChat && !isOwnMessageFlag) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
             ${replyPreviewHTML}
             <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
-                ${hasAttachments ? attachmentHTML : ''}
+                ${hasAttachments && !isDeleted ? attachmentHTML : ''}
                 <div class="message-text-container">
-                    ${message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : ''}
+                    ${messageTextContent}
                     <div class="message-timestamp-area">
                         ${editedIndicator}
                         <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
@@ -1309,6 +1315,11 @@ function updateMessageGroupingIncremental(newMessageElement) {
 
 // Show message context menu
 function showMessageContextMenu(event, messageElement, message) {
+    // Don't show menu for deleted messages
+    if (message.deletedAt) {
+        return;
+    }
+    
     const menuItems = [];
     
     // Add Copy Text if message has text
@@ -1323,7 +1334,7 @@ function showMessageContextMenu(event, messageElement, message) {
     
     menuItems.push(
         { id: 'reply', label: 'Reply', icon: quoteIcon },
-        { id: 'bookmark', label: 'Bookmark', icon: bookmarkIcon },
+        // { id: 'bookmark', label: 'Bookmark', icon: bookmarkIcon },
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true }
     );
     
@@ -1362,8 +1373,7 @@ function handleMessageContextAction(action, message, messageElement) {
             // TODO: Implement bookmark functionality
             break;
         case 'delete':
-            console.log('Delete message:', message);
-            // TODO: Implement delete functionality
+            deleteMessage(message);
             break;
     }
 }
@@ -1510,6 +1520,37 @@ function cancelReplyMessage() {
     replyingToMessage = null;
     
     updateSendButtonState();
+}
+
+// Delete message
+async function deleteMessage(message) {
+    // Confirm deletion
+    if (!confirm('Delete this message?')) {
+        return;
+    }
+    
+    try {
+        // Update message locally first
+        const updatedMessage = { ...message };
+        updatedMessage.text = '';
+        updatedMessage.attachments = [];
+        updatedMessage.deletedAt = new Date().toISOString();
+        
+        // Replace message element in DOM
+        replaceMessageElement(message.localId || message.id, updatedMessage, false);
+        
+        // Send delete request to server
+        const serverMessage = await apiDeleteMessage(message.chatId, message.id);
+        
+        // Update with server response
+        replaceMessageElement(message.localId || message.id, serverMessage, false);
+        
+        // Update chat list
+        updateChatListWithMessage(serverMessage);
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        alert('Failed to delete message');
+    }
 }
 
 // Cancel edit message
