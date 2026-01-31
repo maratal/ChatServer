@@ -453,11 +453,11 @@ input[type="text"], textarea {
 
 .message-row .avatar-small.incoming {
     margin-left: 15px;
-    margin-right: 5px;
+    margin-right: 10px;
 }
 
 .message-row .avatar-small.outgoing {
-    margin-left: 5px;
+    margin-left: 10px;
     margin-right: 15px;
 }
 
@@ -2451,7 +2451,7 @@ input[type="text"]:disabled, textarea:disabled {
     justify-content: center;
     align-items: center;
     padding-top: 15px;
-    padding-bottom: 5px;
+    padding-bottom: 10px;
     width: 100%;
 }
 
