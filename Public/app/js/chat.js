@@ -1276,12 +1276,18 @@ function updateMessageGroupingIncremental(newMessageElement) {
 
 // Show message context menu
 function showMessageContextMenu(event, messageElement, message) {
-    const menuItems = [
-        { id: 'edit', label: 'Edit', icon: editIcon },
+    const menuItems = [];
+    
+    // Only show Edit for own messages
+    if (message.authorId === currentUser?.info.id) {
+        menuItems.push({ id: 'edit', label: 'Edit', icon: editIcon });
+    }
+    
+    menuItems.push(
         { id: 'quote', label: 'Quote', icon: quoteIcon },
         { id: 'bookmark', label: 'Bookmark', icon: bookmarkIcon },
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true }
-    ];
+    );
     
     showContextMenu({
         items: menuItems,
