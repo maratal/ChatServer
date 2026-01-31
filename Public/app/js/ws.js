@@ -81,7 +81,7 @@ function initializeWebSocket() {
 
 // Handle WebSocket messages
 function handleWebSocketMessage(notification) {
-    if (notification.event === 'message' && notification.payload) {
+    if ((notification.event === 'message' || notification.event === 'messageUpdate') && notification.payload) {
         const message = notification.payload;
         
         // Check if this is for the current chat
@@ -95,11 +95,15 @@ function handleWebSocketMessage(notification) {
             } else {
                 // Add new message from others
                 addMessageToChat(message);
+                // Update chat display
+                displayChats();
             }
+        } else if (!chats.some(chat => chat.id === message.chatId)) {
+            // Message for a new chat, fetch chats again
+            loadChats();
+        } else {
+            // Message for a different existing chat, update chat list
+            displayChats();
         }
-        
-        // Update chat list with new message
-        updateChatListWithMessage(message);
-        displayChats();
     }
 }
