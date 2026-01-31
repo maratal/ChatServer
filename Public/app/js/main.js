@@ -161,7 +161,7 @@ function restoreSelectedChatId() {
 }
 
 // Display chats in the sidebar
-function displayChats(chatIdToSelect = null) {
+function displayChats() {
     const chatItems = document.getElementById('chatItems');
     chatItems.innerHTML = '';
     
@@ -245,32 +245,30 @@ function displayChats(chatIdToSelect = null) {
         chatItems.appendChild(chatItem);
     });
 
-    // Clear currentChatId to allow re-selection
-    currentChatId = null;
+    // Restore selected chat if applicable
+    if (currentChatId === null) {
+        // Restore selected chat if page just reloaded
+        let restoredChatId = restoreSelectedChatId();
 
-    if (chatIdToSelect) {
-        selectChat(chatIdToSelect);
-        return;
-    }
+        // Validate restoredChatId
+        if (!sortedChats.some(chat => chat.id === restoredChatId)) {
+            restoredChatId = null;
+        }
 
-    // Restore selected chat if page just reloaded
-    let restoredChatId = restoreSelectedChatId();
-    
-    // Validate restoredChatId
-    if (!sortedChats.some(chat => chat.id === restoredChatId)) {
-        restoredChatId = null;
-    }
-    
-    // Select the chat and initialize history state
-    if (restoredChatId) {
-        // Replace initial state instead of pushing
-        history.replaceState({ chatId: restoredChatId }, '', `#chat-${restoredChatId}`);
-        selectChat(restoredChatId, true); // fromHistory = true to avoid pushing another state
-    } else if (sortedChats.length > 0) {
-        // Select the first chat by default
-        selectChat(sortedChats[0].id);
+        // Select the chat and initialize history state
+        if (restoredChatId) {
+            // Replace initial state instead of pushing
+            history.replaceState({ chatId: restoredChatId }, '', `#chat-${restoredChatId}`);
+            selectChat(restoredChatId, false); // addToHistory = false to avoid pushing another state
+        } else if (sortedChats.length > 0) {
+            // Select the first chat by default
+            selectChat(sortedChats[0].id);
+        } else {
+            makeNoChatsSelected();
+        }
     } else {
-        makeNoChatsSelected();
+        // Ensure current chat is selected in the UI
+        selectChat(currentChatId, false);
     }
 }
 
@@ -394,7 +392,7 @@ function createChatItem(chat) {
 }
 
 // Select a chat and load its messages
-async function selectChat(chatId, fromHistory = false) {
+async function selectChat(chatId, addToHistory = true) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
     
@@ -468,7 +466,7 @@ async function selectChat(chatId, fromHistory = false) {
     currentChatId = chatId;
     
     // Push to history (only if not navigating from back/forward button)
-    if (!fromHistory) {
+    if (addToHistory) {
         history.pushState({ chatId: chatId }, '', `#chat-${chatId}`);
     }
     
@@ -781,7 +779,11 @@ async function createOrOpenPersonalChat(userId) {
         }
         
         // Refresh chat display and select new chat
-        displayChats(newChat.id);
+        displayChats();
+
+        // Select the newly created chat
+        selectChat(newChat.id);
+
     } catch (error) {
         console.error('Error creating chat:', error);
         alert('Error creating chat. Please try again.');
@@ -1160,7 +1162,7 @@ async function toggleMuteChat(chatId) {
         
         // Update header if this chat is selected
         if (currentChatId === chatId) {
-            selectChat(currentChatId, true);
+            selectChat(currentChatId, false);
         }
     } catch (error) {
         console.error('Error toggling mute:', error);
@@ -1183,8 +1185,14 @@ async function toggleArchiveChat(chatId) {
         // Update the local chat object
         chat.isArchived = updatedChat.isArchived;
 
+        // Clear current chat if it was the archived one
+        if (currentChatId === chatId) {
+            currentChatId = null;
+        }
+
         // Refresh the chat list display to show updated archive state
         displayChats();
+
     } catch (error) {
         console.error('Error toggling archive:', error);
         alert('Error ' + (newArchiveState ? 'archiving' : 'unarchiving') + ' chat: ' + error.message);
@@ -1210,8 +1218,14 @@ async function toggleBlockChat(chatId) {
         // Update the local chat object
         chat.isBlocked = newBlockState;
 
+        // Clear current chat if it was the blocked one
+        if (currentChatId === chatId) {
+            currentChatId = null;
+        }
+
         // Refresh the chat list display to show updated block state
         displayChats();
+
     } catch (error) {
         console.error('Error toggling block:', error);
         alert('Error ' + (newBlockState ? 'blocking' : 'unblocking') + ' chat: ' + error.message);
@@ -1240,8 +1254,14 @@ async function deleteChat(chatId) {
             chats.splice(chatIndex, 1);
         }
 
+        // Clear current chat if it was the deleted one
+        if (currentChatId === chatId) {
+            currentChatId = null;
+        }
+
         // Refresh the chat list display
         displayChats();
+
     } catch (error) {
         console.error('Error deleting chat:', error);
         alert('Error deleting chat: ' + error.message);
@@ -1525,7 +1545,7 @@ async function removeGroupChatMember(chatId, userId) {
         
         // Update header if this chat is selected
         if (currentChatId === chatId) {
-            selectChat(currentChatId, true);
+            selectChat(currentChatId, false);
         }
     } catch (error) {
         console.error('Error removing member:', error);
@@ -1585,7 +1605,7 @@ async function saveGroupChatChanges(chatId) {
         
         // Update header if this chat is selected
         if (currentChatId === chat.id) {
-            selectChat(currentChatId, true);
+            selectChat(currentChatId, false);
         }
         
         // Reset upload state
@@ -2191,7 +2211,11 @@ async function createGroupChat() {
         }
         
         // Refresh chat list and select the new chat
-        displayChats(newChat.id);
+        displayChats();
+
+        // Select the new chat
+        selectChat(newChat.id);
+        
     } catch (error) {
         console.error('Error creating group chat:', error);
         alert('Error creating group chat: ' + error.message);
@@ -2236,7 +2260,7 @@ async function addUsersToChat(chatId) {
         
         // Update header if this chat is selected
         if (currentChatId === chatId) {
-            selectChat(currentChatId, true);
+            selectChat(currentChatId, false);
         }
         
     } catch (error) {
@@ -2260,7 +2284,7 @@ document.addEventListener('click', function(event) {
 window.addEventListener('popstate', function(event) {
     if (event.state && event.state.chatId) {
         // Navigate to the chat from history
-        selectChat(event.state.chatId, true);
+        selectChat(event.state.chatId, false);
     } else {
         // No state or no chatId - clear selection
         currentChatId = null;
