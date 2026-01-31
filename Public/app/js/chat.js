@@ -1088,7 +1088,10 @@ async function sendMessage(textOverride = null) {
     updateChatListWithMessage(message);
     
     // Send to server using the shared function
-    await sendMessageToServer(message);
+    const serverMessage = await sendMessageToServer(message);
+
+    // Update message in chat with server response
+    replaceMessageElement(message.localId, serverMessage);
 
     // Re-display chats to re-sort by latest message
     displayChats();
@@ -1128,22 +1131,16 @@ async function updateMessage(message, newText, newAttachments) {
     // Update editedAt timestamp
     currentMessage.editedAt = new Date().toISOString();
     
-    // Use createMessageElement to create new message element
-    const newMessageElement = createMessageElement(currentMessage);
-    
+    // Add message to pending list
+    pendingMessages.set(currentMessage.localId, currentMessage);
+
+    // Replace old message element in DOM with new one
+    const newMessageElement = replaceMessageElement(currentMessage.localId, currentMessage);
+        
     // Add pending state
     newMessageElement.classList.add('sending');
     addSendingIndicator(newMessageElement);
-    
-    // Replace old message element in DOM with new one
-    const messagesContainer = document.getElementById('messagesContainer');
-    if (messagesContainer) {
-        messageElement.replaceWith(newMessageElement);
-        
-        // Re-calculate grouping for updated message and its neighbors
-        updateMessageGroupingIncremental(newMessageElement);
-    }
-    
+
     // Clear editing state and input
     cancelEditMessage();
     
@@ -1155,7 +1152,10 @@ async function updateMessage(message, newText, newAttachments) {
     
     // Send update to server
     const serverMessage = await updateMessageOnServer(currentMessage);
-    
+
+    // Update message in chat with server response
+    replaceMessageElement(currentMessage.localId, serverMessage);
+
     // Update chat list with updated message
     updateChatListWithMessage(serverMessage);
 }
@@ -1424,18 +1424,22 @@ function cancelEditMessage() {
 }
 
 // Update existing message
-function updateMessageInChat(localId, serverMessage) {
-    const messageElement = document.querySelector(`[data-local-id="${localId}"]`);
-    if (messageElement) {
-        messageElement.classList.remove('sending');
-        messageElement.dataset.messageId = serverMessage.id;
-        
-        // Remove sending indicator
-        const sendingIndicator = messageElement.querySelector('.message-sending');
-        if (sendingIndicator) {
-            sendingIndicator.remove();
-        }
+function replaceMessageElement(messageLocalId, updatedMessage) {
+    const oldMessageElement = document.querySelector(`[data-local-id="${messageLocalId}"]`);
+
+    if (oldMessageElement === null) {
+        console.warn('Message element to replace not found for localId:', messageLocalId);
+        return null;
     }
+    // Use createMessageElement to create new message element
+    const newMessageElement = createMessageElement(updatedMessage);
+
+    oldMessageElement.replaceWith(newMessageElement);
+
+    // Re-calculate grouping for updated message and its neighbors
+    updateMessageGroupingIncremental(newMessageElement);
+
+    return newMessageElement;
 }
 
 // Add sending indicator
@@ -1443,13 +1447,7 @@ function addSendingIndicator(messageElement) {
     const sendingIndicator = document.createElement('span');
     sendingIndicator.className = 'message-sending';
     sendingIndicator.textContent = 'Sending...';
-    
-    const messageContentRow = messageElement.querySelector('.message-content-row');
-    const messageContent = messageElement.querySelector('.message-content');
-    if (messageContentRow && messageContent) {
-        // For own messages, insert before the message content to appear on the left
-        messageContentRow.insertBefore(sendingIndicator, messageContent);
-    }
+    messageElement.appendChild(sendingIndicator);
 }
 
 // Mark message as failed
@@ -1471,18 +1469,12 @@ function markMessageAsFailed(localId) {
         errorIndicator.innerHTML = '⚠️';
         errorIndicator.title = 'Failed to send. Click to retry.';
         errorIndicator.onclick = () => retryMessage(localId);
-        
-        const messageContentRow = messageElement.querySelector('.message-content-row');
-        const messageContent = messageElement.querySelector('.message-content');
-        if (messageContentRow && messageContent) {
-            // For own messages, insert before the message content to appear on the left
-            messageContentRow.insertBefore(errorIndicator, messageContent);
-        }
+        messageElement.appendChild(errorIndicator);
     }
 }
 
 // Retry failed message
-function retryMessage(localId) {
+async function retryMessage(localId) {
     const message = pendingMessages.get(localId);
     if (message) {
         // Remove error indicator
@@ -1501,7 +1493,10 @@ function retryMessage(localId) {
         }
         
         // Retry sending
-        sendMessageToServer(message);
+        const serverMessage = await sendMessageToServer(message);
+
+        // Update message in chat with server response
+        replaceMessageElement(message.localId, serverMessage);
     }
 }
 
@@ -1527,8 +1522,10 @@ async function sendMessageToServer(message) {
             attachments
         );
         
+        message.isPending = false;
         pendingMessages.delete(message.localId);
-        updateMessageInChat(message.localId, serverMessage);
+
+        return serverMessage;
     } catch (error) {
         console.error('Error sending message:', error);
         markMessageAsFailed(message.localId);
@@ -1557,8 +1554,8 @@ async function updateMessageOnServer(message) {
             attachments
         );
         
+        message.isPending = false;
         pendingMessages.delete(message.localId);
-        updateMessageInChat(message.localId, serverMessage);
         
         return serverMessage;
     } catch (error) {

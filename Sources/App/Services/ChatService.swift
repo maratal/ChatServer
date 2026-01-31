@@ -431,6 +431,7 @@ actor ChatService: ChatServiceProtocol {
         }
         
         var shouldSave = false
+        var shouldReload = false
         if let text = update.text {
             message.text = text
             message.editedAt = Date()
@@ -461,6 +462,7 @@ actor ChatService: ChatServiceProtocol {
                 if let attachment = message.attachments.first(where: { $0.id == attachmentId }) {
                     attachment.$attachmentOf.id = nil
                     itemsToSave.append(attachment)
+                    shouldReload = true
                 }
             }
             
@@ -474,6 +476,7 @@ actor ChatService: ChatServiceProtocol {
                                                  previewWidth: attachmentInfo.previewWidth ?? 300,
                                                  previewHeight: attachmentInfo.previewHeight ?? 200)
                     itemsToSave.append(resource)
+                    shouldReload = true
                 }
             }
         }
@@ -486,7 +489,7 @@ actor ChatService: ChatServiceProtocol {
             try await core.saveAll(itemsToSave)
         }
         
-        if update.fileExists ?? false || update.previewExists ?? false {
+        if shouldReload || update.fileExists ?? false || update.previewExists ?? false {
             try await repo.loadAttachments(for: message)
         }
         

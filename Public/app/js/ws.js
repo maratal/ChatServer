@@ -91,7 +91,7 @@ function handleWebSocketMessage(notification) {
             
             if (existingElement) {
                 // Update existing message
-                updateMessageInChat(message.localId, message);
+                replaceMessageElement(message.localId, message);
             } else {
                 // Add new message from others
                 addMessageToChat(message);
@@ -105,5 +105,8 @@ function handleWebSocketMessage(notification) {
             // Message for a different existing chat, update chat list
             displayChats();
         }
+        
+        // Update chat list with new message
+        updateChatListWithMessage(message);
     }
 }
