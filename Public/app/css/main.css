@@ -2207,9 +2207,10 @@ input[type="text"]:disabled, textarea:disabled {
 
 
 .message-bubble {
-    display: flex;
-    flex-direction: column;
     max-width: 45%;
+    background-color: hsl(var(--chat-bubble-received));
+    color: hsl(var(--chat-bubble-received-foreground));
+    box-shadow: var(--shadow-soft);
 }
 
 .message-row.own .message-bubble {
@@ -2242,10 +2243,7 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-content {
-    padding: 2px; /* Even smaller padding - 4px all around */
-    background-color: hsl(var(--chat-bubble-received));
-    color: hsl(var(--chat-bubble-received-foreground));
-    box-shadow: var(--shadow-soft);
+    padding: 2px;
     display: flex;
     align-items: flex-end;
 }
@@ -2256,7 +2254,7 @@ input[type="text"]:disabled, textarea:disabled {
     background-color: transparent;
 }
 
-.message-row.own .message-content {
+.message-row.own .message-bubble {
     background-color: hsl(var(--chat-bubble-sent));
     color: hsl(var(--chat-bubble-sent-foreground));
 }
@@ -2265,43 +2263,43 @@ input[type="text"]:disabled, textarea:disabled {
 /* Border-radius order: top-left, top-right, bottom-right, bottom-left */
 
 /* Regular messages (left side - avatar on left) */
-.message-row.group-first .message-content {
+.message-row.group-first .message-bubble {
     /* First in group: normal top corners, small bottom corner near avatar (connects to next message) */
     border-radius: 10px 10px 10px 5px !important;
 }
 
-.message-row.group-middle .message-content {
+.message-row.group-middle .message-bubble {
     /* Middle: small corners near avatar (connects to prev/next), normal far corners */
     border-radius: 5px 10px 10px 5px !important;
 }
 
-.message-row.group-last .message-content {
+.message-row.group-last .message-bubble {
     /* Last in group: small top corner near avatar (connects to prev), normal bottom corners */
     border-radius: 5px 10px 10px 10px !important;
 }
 
-.message-row.group-single .message-content {
+.message-row.group-single .message-bubble {
     /* Single message: all corners normal */
     border-radius: 10px 10px 10px 10px !important;
 }
 
 /* Own messages (right side - avatar on right) */
-.message-row.own.group-first .message-content {
+.message-row.own.group-first .message-bubble {
     /* First in group: normal top corners, small bottom corner near avatar (connects to next message) */
     border-radius: 10px 10px 5px 10px !important;
 }
 
-.message-row.own.group-middle .message-content {
+.message-row.own.group-middle .message-bubble {
     /* Middle: small corners near avatar (connects to prev/next), normal far corners */
     border-radius: 10px 5px 5px 10px !important;
 }
 
-.message-row.own.group-last .message-content {
+.message-row.own.group-last .message-bubble {
     /* Last in group: small top corner near avatar (connects to prev), normal bottom corners */
     border-radius: 10px 5px 10px 10px !important;
 }
 
-.message-row.own.group-single .message-content {
+.message-row.own.group-single .message-bubble {
     /* Single message: all corners normal */
     border-radius: 10px 10px 10px 10px !important;
 }
@@ -2439,36 +2437,36 @@ input[type="text"]:disabled, textarea:disabled {
 
 /* Message grouping styles with correct corner radius logic - higher specificity */
 /* Regular messages (left side) - top-right, bottom-right always 16px (positions 1,2) */
-.message.group-first .message-content {
+.message.group-first .message-bubble {
     border-radius: 16px 16px 16px 3px !important;
 }
 
-.message.group-middle .message-content {
+.message.group-middle .message-bubble {
     border-radius: 3px 16px 16px 3px !important;
 }
 
-.message.group-last .message-content {
+.message.group-last .message-bubble {
     border-radius: 3px 16px 16px 16px !important;
 }
 
-.message.group-single .message-content {
+.message.group-single .message-bubble {
     border-radius: 16px 16px 16px 16px !important;
 }
 
 /* Own messages (right side) - top-left, bottom-left always 16px (positions 0,3) */
-.message.own.group-first .message-content {
+.message.own.group-first .message-bubble {
     border-radius: 16px 16px 3px 16px !important;
 }
 
-.message.own.group-middle .message-content {
+.message.own.group-middle .message-bubble {
     border-radius: 16px 3px 3px 16px !important;
 }
 
-.message.own.group-last .message-content {
+.message.own.group-last .message-bubble {
     border-radius: 16px 3px 16px 16px !important;
 }
 
-.message.own.group-single .message-content {
+.message.own.group-single .message-bubble {
     border-radius: 16px 16px 16px 16px !important;
 }
 
@@ -2900,4 +2898,16 @@ input[type="text"]:disabled, textarea:disabled {
     margin-right: 4px;
     font-size: 0.75rem;
     opacity: 0.6;
+}
+
+.message-reply-preview {
+    padding: 5px;
+    margin: 5px 5px 1px 5px;
+    background-color: hsl(var(--foreground) / 0.05);
+    border-left: 3px solid hsl(var(--foreground) / 0.3);
+    color: hsl(var(--foreground) / 0.6);
+    max-height: 50px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 2px 4px 4px 2px;
 }

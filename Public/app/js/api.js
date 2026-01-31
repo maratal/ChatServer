@@ -424,7 +424,7 @@ async function apiGetMessages(chatId, count = 50, before = null) {
     return await handleResponse(response);
 }
 
-async function apiSendMessage(chatId, localId, text, attachments = null) {
+async function apiSendMessage(chatId, localId, text, attachments = null, replyTo = null) {
     const accessToken = getAccessToken();
     if (!accessToken) {
         throw new Error('No access token available');
@@ -437,6 +437,10 @@ async function apiSendMessage(chatId, localId, text, attachments = null) {
     
     if (attachments && attachments.length > 0) {
         requestBody.attachments = attachments;
+    }
+    
+    if (replyTo) {
+        requestBody.replyTo = replyTo;
     }
     
     const response = await fetch(`/chats/${chatId}/messages`, {

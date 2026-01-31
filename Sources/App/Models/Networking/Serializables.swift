@@ -57,6 +57,7 @@ struct PostMessageRequest: Serializable {
     var localId: String?
     var text: String?
     var isVisible: Bool?
+    var replyTo: MessageID?
     var attachments: [MediaInfo]?
 }
 

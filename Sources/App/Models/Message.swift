@@ -34,6 +34,9 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     @Parent(key: "chat_id")
     var chat: Chat
     
+    @OptionalParent(key: "reply_to")
+    var replyTo: Message?
+    
     @Children(for: \.$message)
     var readMarks: [ReadMark]
     
@@ -74,6 +77,7 @@ extension Message {
         var editedAt: Date?
         var deletedAt: Date?
         var isVisible: Bool?
+        var replyTo: MessageID?
         var readMarks: [ReadMark.Info]?
         var attachments: [MediaInfo]?
         
@@ -88,6 +92,7 @@ extension Message {
             self.editedAt = message.editedAt
             self.deletedAt = message.deletedAt
             self.isVisible = message.isVisible
+            self.replyTo = message.$replyTo.id
             if message.$readMarks.value != nil {
                 self.readMarks = message.readMarks.map { $0.info() }
             }

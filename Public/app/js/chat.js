@@ -7,6 +7,7 @@ let isLoadingMessages = false; // Track if we're currently loading messages
 let oldestMessageId = null; // Track the oldest message ID we've loaded
 let hasMoreMessages = true; // Track if there are more messages to load
 let editingMessage = null; // Track the message being edited
+let replyingToMessage = null; // Track the message being replied to
 
 // Load messages for a chat
 async function loadMessages(chatId, initialLoad = false) {
@@ -436,6 +437,28 @@ function createMessageElement(message) {
     // Create date header text
     const dateHeaderText = formatChatGroupingDate(normalizedDate);
     
+    // Build reply preview if this is a reply
+    let replyPreviewHTML = '';
+    if (message.replyTo) {
+        const repliedToMessage = findMessageById(message.replyTo);
+        if (repliedToMessage) {
+            let replyPreviewText = '';
+            if (repliedToMessage.text) {
+                replyPreviewText = repliedToMessage.text;
+            } else if (repliedToMessage.attachments && repliedToMessage.attachments.length > 0) {
+                const date = normalizeTimestamp(repliedToMessage.createdAt);
+                const timeString = date.toLocaleTimeString();
+                replyPreviewText = `Attachments (${repliedToMessage.attachments.length}) at ${timeString}`;
+            }
+            
+            replyPreviewHTML = `
+                <div class="message-reply-preview">
+                    ${escapeHtml(replyPreviewText)}
+                </div>
+            `;
+        }
+    }
+    
     messageDiv.innerHTML = `
         <div class="message-date-header" style="display: none;">
             <span class="date-header-text" title="${escapeHtml(fullDateTime)}">${dateHeaderText}</span>
@@ -445,6 +468,7 @@ function createMessageElement(message) {
         </span>
         <div class="message-bubble">
             ${(isGroupChat && !isOwnMessageFlag) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
+            ${replyPreviewHTML}
             <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
                 ${hasAttachments ? attachmentHTML : ''}
                 <div class="message-text-container">
@@ -1062,6 +1086,13 @@ async function sendMessage(textOverride = null) {
         isPending: true
     };
     
+    // Add replyTo if replying to a message
+    if (replyingToMessage) {
+        message.replyTo = replyingToMessage.id;
+        // Clear reply state
+        cancelReplyMessage();
+    }
+    
     // Clear attachments and input (only clear attachments if we're going to send them)
     if (shouldSendAttachments) {
         selectedAttachments = [];
@@ -1291,7 +1322,7 @@ function showMessageContextMenu(event, messageElement, message) {
     }
     
     menuItems.push(
-        { id: 'quote', label: 'Quote', icon: quoteIcon },
+        { id: 'reply', label: 'Reply', icon: quoteIcon },
         { id: 'bookmark', label: 'Bookmark', icon: bookmarkIcon },
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true }
     );
@@ -1323,9 +1354,8 @@ function handleMessageContextAction(action, message, messageElement) {
         case 'edit':
             editMessage(message);
             break;
-        case 'quote':
-            console.log('Quote message:', message);
-            // TODO: Implement quote functionality
+        case 'reply':
+            replyToMessage(message);
             break;
         case 'bookmark':
             console.log('Bookmark message:', message);
@@ -1419,6 +1449,66 @@ function editMessage(message) {
     messageInput.focus();
     
     // Update send button state
+    updateSendButtonState();
+}
+
+// Reply to message
+function replyToMessage(message) {
+    // Cancel any previous edit or reply
+    if (editingMessage) {
+        cancelEditMessage();
+    }
+    if (replyingToMessage && replyingToMessage.id !== message.id) {
+        cancelReplyMessage();
+    }
+    
+    replyingToMessage = message;
+    
+    const messageInput = getMessageInputElement();
+    const editPreviewContainer = document.getElementById('editPreviewContainer');
+    
+    // Build preview text
+    let previewText = '';
+    if (message.text) {
+        previewText = message.text;
+    } else if (message.attachments && message.attachments.length > 0) {
+        const createdAt = new Date(message.createdAt).toLocaleTimeString();
+        previewText = `Attachments (${message.attachments.length}) at ${createdAt}`;
+    }
+    
+    // Display reply preview with message info
+    editPreviewContainer.style.display = 'flex';
+    editPreviewContainer.innerHTML = `
+        <div class="edit-preview-content">
+            <div class="edit-preview-header">Reply</div>
+            <div class="edit-preview-text">${escapeHtml(previewText)}</div>
+        </div>
+        <button class="edit-cancel-button" onclick="cancelReplyMessage()" title="Cancel reply">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"></path>
+                <path d="M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    
+    // Focus input
+    messageInput.focus();
+    
+    // Update send button state
+    updateSendButtonState();
+}
+
+// Cancel reply message
+function cancelReplyMessage() {
+    if (!replyingToMessage) return;
+    
+    const editPreviewContainer = document.getElementById('editPreviewContainer');
+    if (editPreviewContainer) {
+        editPreviewContainer.style.display = 'none';
+    }
+    
+    replyingToMessage = null;
+    
     updateSendButtonState();
 }
 
@@ -1574,7 +1664,8 @@ async function sendMessageToServer(message) {
             message.chatId,
             message.localId,
             message.text || null,
-            attachments
+            attachments,
+            message.replyTo || null
         );
         
         message.isPending = false;

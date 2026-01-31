@@ -311,6 +311,27 @@ function isOwnMessage(message) {
     return currentUser && message.authorId && message.authorId === currentUser.info.id;
 }
 
+// Helper function to find message by ID in DOM
+function findMessageById(messageId) {
+    // Check DOM
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageElement) return null;
+    
+    // Extract message data from DOM
+    const messageTextEl = messageElement.querySelector('.message-text');
+    const messageText = messageTextEl ? messageTextEl.textContent.trim() : '';
+    const attachmentsStr = messageElement.dataset.attachments;
+    const attachments = attachmentsStr ? JSON.parse(attachmentsStr) : [];
+    const createdAt = messageElement.dataset.createdAt;
+    
+    return {
+        id: messageId,
+        text: messageText,
+        attachments: attachments,
+        createdAt: createdAt
+    };
+}
+
 /**
  * Get the message input element
  */

@@ -369,11 +369,26 @@ actor ChatService: ChatServiceProtocol {
             }
         }
         
+        // Validate replyTo if provided
+        if let replyToId = info.replyTo {
+            // Check if the replied-to message exists and belongs to the same chat
+            guard let repliedMessage = try await repo.findMessage(id: replyToId) else {
+                throw ServiceError(.badRequest, reason: "Replied message not found.")
+            }
+            guard repliedMessage.$chat.id == chatId else {
+                throw ServiceError(.badRequest, reason: "Replied message does not belong to this chat.")
+            }
+        }
+        
         let message = Message(localId: localId,
                               authorId: userId,
                               chatId: chatId,
                               text: info.text,
                               isVisible: info.isVisible ?? true)
+        
+        if let replyToId = info.replyTo {
+            message.$replyTo.id = replyToId
+        }
         
         try await repo.saveMessage(message)
         
