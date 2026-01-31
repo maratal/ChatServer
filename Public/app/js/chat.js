@@ -1280,6 +1280,11 @@ function updateMessageGroupingIncremental(newMessageElement) {
 function showMessageContextMenu(event, messageElement, message) {
     const menuItems = [];
     
+    // Add Copy Text if message has text
+    if (message.text && message.text.trim().length > 0) {
+        menuItems.push({ id: 'copy', label: 'Copy Text', icon: copyIcon });
+    }
+    
     // Only show Edit for own messages
     if (message.authorId === currentUser?.info.id) {
         menuItems.push({ id: 'edit', label: 'Edit', icon: editIcon });
@@ -1306,6 +1311,15 @@ function showMessageContextMenu(event, messageElement, message) {
 // Handle context menu actions
 function handleMessageContextAction(action, message, messageElement) {
     switch (action) {
+        case 'copy':
+            if (message.text) {
+                navigator.clipboard.writeText(message.text).then(() => {
+                    console.log('Message text copied to clipboard');
+                }).catch(err => {
+                    console.error('Failed to copy text:', err);
+                });
+            }
+            break;
         case 'edit':
             editMessage(message);
             break;
