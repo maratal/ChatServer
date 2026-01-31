@@ -2149,29 +2149,6 @@ input[type="text"]:disabled, textarea:disabled {
     margin-top: 10px;
 }
 
-
-.personal-chat .message-wrapper {
-    margin-left: 0;
-    margin-right: 0;
-}
-
-.message-wrapper {
-    display: flex;
-    flex-direction: column;
-    max-width: 70%;
-    position: relative;
-}
-
-.message.own .message-wrapper {
-    align-items: flex-end;
-}
-
-.message-wrapper .message-content-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 0;
-}
-
 .message.own .message-content-row {
     justify-content: flex-end;
 }
@@ -2271,7 +2248,12 @@ input[type="text"]:disabled, textarea:disabled {
     box-shadow: var(--shadow-soft);
     display: flex;
     align-items: flex-end;
-    gap: 2px;
+}
+
+.message-text-container {
+    display: flex;
+    align-items: flex-end;
+    background-color: transparent;
 }
 
 .message-row.own .message-content {
@@ -2615,10 +2597,6 @@ input[type="text"]:disabled, textarea:disabled {
     
     .chat-content {
         width: 100%;
-    }
-    
-    .message-wrapper {
-        max-width: 85%;
     }
     
     .chat-item .avatar-small {

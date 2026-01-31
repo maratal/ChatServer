@@ -447,11 +447,13 @@ function createMessageElement(message) {
             ${(isGroupChat && !isOwnMessage) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
             <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
                 ${hasAttachments ? attachmentHTML : ''}
-                ${message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : ''}
-                <div class="message-timestamp-area">
-                    ${editedIndicator}
-                    <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
-                    ${statusIcon}
+                <div class="message-text-container">
+                    ${message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : ''}
+                    <div class="message-timestamp-area">
+                        ${editedIndicator}
+                        <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
+                        ${statusIcon}
+                    </div>
                 </div>
             </div>
         </div>
