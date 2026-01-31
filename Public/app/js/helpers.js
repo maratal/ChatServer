@@ -307,6 +307,10 @@ function getGroupChatDisplayName(chat) {
     return otherMembers.join(', ') + ", you";
 }
 
+function isOwnMessage(message) {
+    return currentUser && message.authorId && message.authorId === currentUser.info.id;
+}
+
 /**
  * Get the message input element
  */

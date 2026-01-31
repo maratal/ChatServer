@@ -370,8 +370,8 @@ function createMessageElement(message) {
     const otherUser = chat?.isPersonal ? chat.allUsers.find(user => user.id !== currentUser?.info.id) : null;
     const isPersonalNotesChat = chat?.isPersonal && (!otherUser || otherUser.id === currentUser?.info.id);
     
-    const isOwnMessage = currentUser && message.authorId && message.authorId === currentUser.info.id && !isPersonalNotesChat;
-    if (isOwnMessage) {
+    const isOwnMessageFlag = isOwnMessage(message) && !isPersonalNotesChat;
+    if (isOwnMessageFlag) {
         messageDiv.classList.add('own');
     }
     
@@ -392,7 +392,7 @@ function createMessageElement(message) {
     const isGroupChat = chat && !chat.isPersonal;
     
     // Create status icon for own messages
-    const statusIcon = isOwnMessage ? `
+    const statusIcon = isOwnMessageFlag ? `
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="message-status-icon">
             <path d="M18 6 7 17l-5-5"></path>
             <path d="m22 10-7.5 7.5L13 16"></path>
@@ -431,7 +431,7 @@ function createMessageElement(message) {
         }
     }
     
-    const avatarClass = isOwnMessage ? 'avatar-small outgoing' : 'avatar-small incoming';
+    const avatarClass = isOwnMessageFlag ? 'avatar-small outgoing' : 'avatar-small incoming';
     
     // Create date header text
     const dateHeaderText = formatChatGroupingDate(normalizedDate);
@@ -444,7 +444,7 @@ function createMessageElement(message) {
             ${avatarContent}
         </span>
         <div class="message-bubble">
-            ${(isGroupChat && !isOwnMessage) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
+            ${(isGroupChat && !isOwnMessageFlag) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
             <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
                 ${hasAttachments ? attachmentHTML : ''}
                 <div class="message-text-container">
@@ -1137,7 +1137,7 @@ async function updateMessage(message, newText, newAttachments) {
     pendingMessages.set(currentMessage.localId, currentMessage);
 
     // Replace old message element in DOM with new one
-    const newMessageElement = replaceMessageElement(currentMessage.localId, currentMessage);
+    const newMessageElement = replaceMessageElement(currentMessage.localId, currentMessage, true);
         
     // Add pending state
     newMessageElement.classList.add('sending');
@@ -1156,7 +1156,7 @@ async function updateMessage(message, newText, newAttachments) {
     const serverMessage = await updateMessageOnServer(currentMessage);
 
     // Update message in chat with server response
-    replaceMessageElement(currentMessage.localId, serverMessage);
+    replaceMessageElement(currentMessage.localId, serverMessage, false);
 
     // Update chat list with updated message
     updateChatListWithMessage(serverMessage);
@@ -1432,21 +1432,54 @@ function cancelEditMessage() {
 }
 
 // Update existing message
-function replaceMessageElement(messageLocalId, updatedMessage) {
+function replaceMessageElement(messageLocalId, updatedMessage, animated = false) {
     const oldMessageElement = document.querySelector(`[data-local-id="${messageLocalId}"]`);
 
     if (oldMessageElement === null) {
         console.warn('Message element to replace not found for localId:', messageLocalId);
         return null;
     }
-    // Use createMessageElement to create new message element
+    
+    // If not animated, just replace immediately
+    if (!animated) {
+        const newMessageElement = createMessageElement(updatedMessage);
+        oldMessageElement.replaceWith(newMessageElement);
+        updateMessageGroupingIncremental(newMessageElement);
+        return newMessageElement;
+    }
+    
+    // Determine if this is an outgoing message (has 'own' class)
+    const isOutgoing = oldMessageElement.classList.contains('own');
+    const slideDirection = isOutgoing ? 'translateX(100%)' : 'translateX(-100%)';
+    
+    // Create the new message element
     const newMessageElement = createMessageElement(updatedMessage);
-
-    oldMessageElement.replaceWith(newMessageElement);
-
-    // Re-calculate grouping for updated message and its neighbors
-    updateMessageGroupingIncremental(newMessageElement);
-
+    
+    // Step 1: Slide out the old message
+    oldMessageElement.style.transition = 'transform 0.2s ease-in';
+    oldMessageElement.style.transform = slideDirection;
+    
+    // Step 2: After slide-out completes, replace and prepare new element off-screen
+    setTimeout(() => {
+        // Position new element off-screen in same direction
+        newMessageElement.style.transform = slideDirection;
+        newMessageElement.style.transition = 'none';
+        
+        // Replace the element
+        oldMessageElement.replaceWith(newMessageElement);
+        
+        // Update grouping
+        updateMessageGroupingIncremental(newMessageElement);
+        
+        // Step 3: Slide in the new message after a brief delay
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                newMessageElement.style.transition = 'transform 0.2s ease-out';
+                newMessageElement.style.transform = 'translateX(0)';
+            });
+        });
+    }, 200); // Match the slide-out duration
+    
     return newMessageElement;
 }
 
