@@ -2127,6 +2127,7 @@ input[type="text"]:disabled, textarea:disabled {
     min-height: 100%;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden; /* Prevent horizontal scrollbars during message animations */
 }
 
 .messages-container:has(.no-messages),

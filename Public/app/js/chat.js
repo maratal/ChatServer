@@ -1121,7 +1121,7 @@ async function sendMessage(textOverride = null) {
     pendingMessages.set(localId, message);
     
     // Display message immediately with sending state
-    addMessageToChat(message);
+    await addMessageToChat(message);
     
     // Update chat list with new message
     updateChatListWithMessage(message);
@@ -1169,19 +1169,19 @@ async function updateMessage(message, newText, newAttachments) {
 
     // Update editedAt timestamp
     currentMessage.editedAt = new Date().toISOString();
-    
-    // Add message to pending list
-    pendingMessages.set(currentMessage.localId, currentMessage);
-
-    // Replace old message element in DOM with new one
-    const newMessageElement = replaceMessageElement(currentMessage.localId, currentMessage, true);
-        
-    // Add pending state
-    newMessageElement.classList.add('sending');
-    addSendingIndicator(newMessageElement);
 
     // Clear editing state and input
     cancelEditMessage();
+
+    // Replace old message element in DOM with new one with animation
+    const newMessageElement = await replaceMessageElement(currentMessage.localId, currentMessage, true); // animated
+        
+    // Add message to pending list
+    pendingMessages.set(currentMessage.localId, currentMessage);
+
+    // Add pending state
+    newMessageElement.classList.add('sending');
+    addSendingIndicator(newMessageElement);
     
     // Focus input
     const messageInput = getMessageInputElement();
@@ -1201,7 +1201,7 @@ async function updateMessage(message, newText, newAttachments) {
 
 // Add message to chat
 // bulkAddition: when true, skips animation, grouping update, and scroll
-function addMessageToChat(message, bulkAddition = false, prepend = false) {
+async function addMessageToChat(message, bulkAddition = false, prepend = false) {
     const animated = !bulkAddition;
     const updateGrouping = !bulkAddition;
     const scroll = !bulkAddition;
@@ -1242,30 +1242,42 @@ function addMessageToChat(message, bulkAddition = false, prepend = false) {
         messagesContainer.appendChild(messageElement);
     }
 
-    if (animated) {
+    // Re-calculate grouping for the new message and potentially the previous one
+    if (updateGrouping) {
+        updateMessageGroupingIncremental(messageElement);
+    }
+
+    // Scroll to bottom before animation to avoid jumpiness
+    if (scroll) {
+        scrollMessagesToBottom();
+    }
+
+    if (!animated) {
+        // No animation, return immediately
+        return messageElement;
+    }
+
+    // Hide scrollbar during animation
+    messagesContainer.style.overflowY = 'hidden';
+
+    // Wrap animation in a Promise to wait for completion
+    return new Promise((resolve) => {
         // Trigger animation
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 messageElement.style.transition = 'all 0.3s ease';
                 messageElement.style.opacity = '1';
                 messageElement.style.transform = 'translateY(0)';
+                
+                // Wait for animation to complete
+                setTimeout(() => {
+                    // Restore scrollbar
+                    messagesContainer.style.overflowY = 'auto';
+                    resolve(messageElement);
+                }, 350); // Match the transition duration
             });
         });
-    }
-
-    // Re-calculate grouping for the new message and potentially the previous one
-    if (updateGrouping) {
-        updateMessageGroupingIncremental(messageElement);
-    }
-    
-    // Scroll to bottom
-    if (scroll) {
-        setTimeout(() => {
-            scrollMessagesToBottom();
-        }, animated ? 300 : 0);
-    }
-    
-    return messageElement;
+    });
 }
 
 // Update message grouping incrementally for newly added message
@@ -1577,7 +1589,7 @@ function cancelEditMessage() {
 }
 
 // Update existing message
-function replaceMessageElement(messageLocalId, updatedMessage, animated = false) {
+async function replaceMessageElement(messageLocalId, updatedMessage, animated = false) {
     const oldMessageElement = document.querySelector(`[data-local-id="${messageLocalId}"]`);
 
     if (oldMessageElement === null) {
@@ -1593,39 +1605,45 @@ function replaceMessageElement(messageLocalId, updatedMessage, animated = false)
         return newMessageElement;
     }
     
-    // Determine if this is an outgoing message (has 'own' class)
-    const isOutgoing = oldMessageElement.classList.contains('own');
-    const slideDirection = isOutgoing ? 'translateX(100%)' : 'translateX(-100%)';
-    
-    // Create the new message element
-    const newMessageElement = createMessageElement(updatedMessage);
-    
-    // Step 1: Slide out the old message
-    oldMessageElement.style.transition = 'transform 0.2s ease-in';
-    oldMessageElement.style.transform = slideDirection;
-    
-    // Step 2: After slide-out completes, replace and prepare new element off-screen
-    setTimeout(() => {
-        // Position new element off-screen in same direction
-        newMessageElement.style.transform = slideDirection;
-        newMessageElement.style.transition = 'none';
+    // Wrap animation in a Promise to wait for completion
+    return new Promise((resolve) => {
+        // Determine if this is an outgoing message (has 'own' class)
+        const isOutgoing = oldMessageElement.classList.contains('own');
+        const slideDirection = isOutgoing ? 'translateX(100%)' : 'translateX(-100%)';
         
-        // Replace the element
-        oldMessageElement.replaceWith(newMessageElement);
+        // Create the new message element
+        const newMessageElement = createMessageElement(updatedMessage);
         
-        // Update grouping
-        updateMessageGroupingIncremental(newMessageElement);
+        // Step 1: Slide out the old message
+        oldMessageElement.style.transition = 'transform 0.2s ease-in';
+        oldMessageElement.style.transform = slideDirection;
         
-        // Step 3: Slide in the new message after a brief delay
-        requestAnimationFrame(() => {
+        // Step 2: After slide-out completes, replace and prepare new element off-screen
+        setTimeout(() => {
+            // Position new element off-screen in same direction
+            newMessageElement.style.transform = slideDirection;
+            newMessageElement.style.transition = 'none';
+            
+            // Replace the element
+            oldMessageElement.replaceWith(newMessageElement);
+            
+            // Update grouping
+            updateMessageGroupingIncremental(newMessageElement);
+            
+            // Step 3: Slide in the new message after a brief delay
             requestAnimationFrame(() => {
-                newMessageElement.style.transition = 'transform 0.2s ease-out';
-                newMessageElement.style.transform = 'translateX(0)';
+                requestAnimationFrame(() => {
+                    newMessageElement.style.transition = 'transform 0.2s ease-out';
+                    newMessageElement.style.transform = 'translateX(0)';
+                    
+                    // Step 4: Resolve Promise after slide-in completes
+                    setTimeout(() => {
+                        resolve(newMessageElement);
+                    }, 250); // Match the slide-in duration
+                });
             });
-        });
-    }, 200); // Match the slide-out duration
-    
-    return newMessageElement;
+        }, 250); // Match the slide-out duration
+    });
 }
 
 // Add sending indicator
