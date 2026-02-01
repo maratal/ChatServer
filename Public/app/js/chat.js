@@ -463,7 +463,7 @@ function createMessageElement(message) {
     const isDeleted = message.deletedAt != null;
     const messageTextContent = isDeleted 
         ? '<div class="message-text message-deleted">Message was deleted</div>' 
-        : (message.text ? `<div class="message-text">${convertLinksToClickable(message.text)}</div>` : '');
+        : `<div class="message-text">${convertLinksToClickable(message.text)}</div>`;
     
     messageDiv.innerHTML = `
         <div class="message-date-header" style="display: none;">
