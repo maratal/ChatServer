@@ -2178,18 +2178,18 @@ input[type="text"]:disabled, textarea:disabled {
     margin-top: 3px !important; /* Small gap within group */
 }
 
-/* Message Row Styles */
-.message-row {
-    display: flex;
-    flex-wrap: wrap;
-}
-
 .message-row.menu-active {
     background-color: hsl(var(--muted));
 }
 
-.message-row.own {
+.message-row-content {
+    display: flex;
+    max-width: 45%;
+}
+
+.message-row.own .message-row-content {
     flex-direction: row-reverse;
+    margin-left: auto;
 }
 
 /* Spacing for message groups */
@@ -2206,24 +2206,22 @@ input[type="text"]:disabled, textarea:disabled {
     margin-bottom: 1rem; /* Space after group ends */
 }
 
-
 .message-bubble {
-    max-width: 45%;
+    max-width: 100%;
     background-color: hsl(var(--chat-bubble-received));
     color: hsl(var(--chat-bubble-received-foreground));
     box-shadow: var(--shadow-soft);
-}
-
-.message-row.own .message-bubble {
-    align-items: flex-end;
+    padding: 2px;
 }
 
 .message-author-name {
     font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     margin-bottom: 0.25rem;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+}
+
+.message-row.own .message-author-name {
+    display: none; /* Hide author name for own messages */
 }
 
 /* Author name visibility: show only for first message in group */
@@ -2241,12 +2239,6 @@ input[type="text"]:disabled, textarea:disabled {
 .message-row.group-first .message-author-name,
 .message-row.group-single .message-author-name {
     display: block;
-}
-
-.message-content {
-    padding: 2px;
-    display: flex;
-    align-items: flex-end;
 }
 
 .message-text-container {

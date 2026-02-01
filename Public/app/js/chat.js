@@ -469,20 +469,24 @@ function createMessageElement(message) {
         <div class="message-date-header" style="display: none;">
             <span class="date-header-text" title="${escapeHtml(fullDateTime)}">${dateHeaderText}</span>
         </div>
-        <span class="${avatarClass}" ${avatarDataAttrs}>
-            ${avatarContent}
-        </span>
-        <div class="message-bubble">
-            ${(isGroupChat && !isOwnMessageFlag) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
-            ${replyPreviewHTML}
-            <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
-                ${hasAttachments && !isDeleted ? attachmentHTML : ''}
-                <div class="message-text-container">
-                    ${messageTextContent}
-                    <div class="message-timestamp-area">
-                        ${editedIndicator}
-                        <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
-                        ${statusIcon}
+        <div class="message-row-content">
+            <span class="${avatarClass}" ${avatarDataAttrs}>
+                ${avatarContent}
+            </span>
+            <div class="message-content-wrapper">
+                ${(isGroupChat && !isOwnMessageFlag) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
+                <div class="message-bubble">
+                    ${replyPreviewHTML}
+                    <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
+                        ${hasAttachments && !isDeleted ? attachmentHTML : ''}
+                        <div class="message-text-container">
+                            ${messageTextContent}
+                            <div class="message-timestamp-area">
+                                ${editedIndicator}
+                                <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
+                                ${statusIcon}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1659,7 +1663,12 @@ function addSendingIndicator(messageElement) {
     const sendingIndicator = document.createElement('span');
     sendingIndicator.className = 'message-sending';
     sendingIndicator.textContent = 'Sending...';
-    messageElement.appendChild(sendingIndicator);
+    const messageRowContent = messageElement.querySelector('.message-row-content');
+    if (messageRowContent) {
+        messageRowContent.appendChild(sendingIndicator);
+    } else {
+        console.warn('Message row content not found for sending indicator');
+    }
 }
 
 // Mark message as failed
@@ -1670,7 +1679,7 @@ function markMessageAsFailed(localId) {
         messageElement.classList.add('error');
         
         // Remove sending indicator
-        const sendingIndicator = messageElement.querySelector('.message-sending');
+        const sendingIndicator = messageElement.querySelector('.message-row-content .message-sending');
         if (sendingIndicator) {
             sendingIndicator.remove();
         }
