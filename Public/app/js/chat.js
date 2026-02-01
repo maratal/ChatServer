@@ -1027,7 +1027,15 @@ function initializeMessageInput() {
     messageInput.addEventListener('input', adjustHeight);
     
     messageInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            // Cancel edit or reply if active
+            if (editingMessage) {
+                cancelEditMessage();
+            } else if (replyingToMessage) {
+                cancelReplyMessage();
+            }
+        } else if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             const text = this.value.trim();
             
