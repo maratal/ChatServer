@@ -2560,10 +2560,8 @@ input[type="text"]:disabled, textarea:disabled {
 .message-sending {
     color: #888;
     font-size: 0.75rem;
-    margin-right: 4px;
+    margin: 4px;
     align-self: flex-end;
-    padding-bottom: 7px;
-    flex-shrink: 0;
 }
 
 .message.sending {
@@ -2916,4 +2914,5 @@ input[type="text"]:disabled, textarea:disabled {
 .message-deleted {
     font-style: italic;
     opacity: 0.5;
+    font-size: 0.9rem;
 }
