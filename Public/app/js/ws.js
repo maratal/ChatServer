@@ -12,7 +12,7 @@ function initializeWebSocket() {
         return;
     }
     
-    const protocol = 'ws:'; // window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/${deviceSessionId}?token=${encodeURIComponent(accessToken)}`;
     
     try {
