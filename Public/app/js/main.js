@@ -307,11 +307,7 @@ function createChatItem(chat) {
     const isBlocked = chat.isBlocked || false;
     const isArchived = chat.isArchived || false;
     const isMuted = chat.isMuted || false;
-    const hasAttachments = chat.lastMessage && chat.lastMessage.attachments && chat.lastMessage.attachments.length > 0;
-    const lastMessageText = chat.lastMessage ? 
-        truncateText(chat.lastMessage.text || (hasAttachments ? '[Media]' : '[Message was deleted]'), 30) :
-        'No messages yet';
-        
+    const lastMessageText = getChatLastMessageText(chat);
     const messageDate = getChatLastMessageDate(chat);
     const messageDateString = messageDate ? formatMessageTime(messageDate) : null;
     
@@ -542,9 +538,7 @@ function updateChatListWithMessage(message) {
         if (chatItem) {
             const lastMessageElement = chatItem.querySelector('.chat-last-message');
             if (lastMessageElement) {
-                const hasAttachments = message.attachments && message.attachments.length > 0;
-                const lastMessageText = message.text ? 
-                    truncateText(message.text, 30) : (hasAttachments ? '[Media]' : '[Message was deleted]');
+                const lastMessageText = getChatLastMessageText(chat);
                 lastMessageElement.textContent = lastMessageText;
             }
         }

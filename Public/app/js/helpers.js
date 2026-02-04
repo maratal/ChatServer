@@ -339,6 +339,22 @@ function getMessageInputElement() {
     return document.getElementById('messageInput');
 }
 
+function getChatLastMessageText(chat) {
+    if (!chat) return '';
+    if (!chat.lastMessage) return 'No messages';
+
+    if (chat.lastMessage.deletedAt != null) {
+        return '[Message was deleted]';
+    }
+    if (chat.lastMessage.text) {
+        return truncateText(chat.lastMessage.text, 30);
+    }
+    if (chat.lastMessage.attachments && chat.lastMessage.attachments.length > 0) {
+        return '[Media]';
+    }
+    return 'No messages';
+}
+
 // Check if a string is a debug command prefix
 function stringIsDebugPrefix(str) {
     return str.startsWith('/debug') || str.startsWith('/d');
