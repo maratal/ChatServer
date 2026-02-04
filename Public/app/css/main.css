@@ -2330,14 +2330,19 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-status-icon {
-    width: 18px;
-    height: 18px;
-    color: hsl(var(--primary));
-    padding-right: 4px;
+    color: hsl(var(--chat-bubble-sent-foreground) / 0.8);
 }
 
-.message-row.own .message-status-icon {
+.message-sending-icon {
     color: hsl(var(--chat-bubble-sent-foreground) / 0.8);
+}
+
+.message-status-area {
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 6px;
 }
 
 /* Context Menu - Unified menu styles */
@@ -2547,17 +2552,6 @@ input[type="text"]:disabled, textarea:disabled {
     align-self: flex-end;
     padding-bottom: 3px;
     flex-shrink: 0;
-}
-
-.message-sending {
-    color: #888;
-    font-size: 0.75rem;
-    margin: 4px;
-    align-self: flex-end;
-}
-
-.message.sending {
-    opacity: 0.7;
 }
 
 @media (max-width: 768px) {

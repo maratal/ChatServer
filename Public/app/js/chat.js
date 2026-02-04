@@ -392,13 +392,8 @@ function createMessageElement(message) {
     // Check if this is a group chat (show author names only for group chats)
     const isGroupChat = chat && !chat.isPersonal;
     
-    // Create status icon for own messages
-    const statusIcon = isOwnMessageFlag ? `
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="message-status-icon">
-            <path d="M18 6 7 17l-5-5"></path>
-            <path d="m22 10-7.5 7.5L13 16"></path>
-        </svg>
-    ` : '';
+    // Create status icon for own messages (show sending clock if pending, checkmark if sent)
+    const statusIcon = isOwnMessageFlag ? (message.isPending ? messageSendingIcon : messageStatusIcon) : '';
     
     // Create edited indicator if message was edited
     let editedIndicator = '';
@@ -484,7 +479,7 @@ function createMessageElement(message) {
                             <div class="message-timestamp-area">
                                 ${editedIndicator}
                                 <span class="message-time" title="${escapeHtml(fullDateTime)}">${messageTime}</span>
-                                ${statusIcon}
+                                ${isOwnMessageFlag ? `<span class="message-status-area">${statusIcon}</span>` : ''}
                             </div>
                         </div>
                     </div>
@@ -1180,20 +1175,17 @@ async function updateMessage(message, newText, newAttachments) {
     }
 
     // Update editedAt timestamp
+    currentMessage.isPending = true;
     currentMessage.editedAt = new Date().toISOString();
 
     // Clear editing state and input
     cancelEditMessage();
 
     // Replace old message element in DOM with new one with animation
-    const newMessageElement = await replaceMessageElement(currentMessage.localId, currentMessage, true); // animated
+    await replaceMessageElement(currentMessage.localId, currentMessage, true); // animated
         
     // Add message to pending list
     pendingMessages.set(currentMessage.localId, currentMessage);
-
-    // Add pending state
-    newMessageElement.classList.add('sending');
-    addSendingIndicator(newMessageElement);
     
     // Focus input
     const messageInput = getMessageInputElement();
@@ -1236,11 +1228,6 @@ async function addMessageToChat(message, bulkAddition = false, prepend = false) 
     // No need to check for date headers here
     
     const messageElement = createMessageElement(message);
-    
-    if (message.isPending) {
-        messageElement.classList.add('sending');
-        addSendingIndicator(messageElement);
-    }
     
     if (animated) {
         messageElement.style.opacity = '0';
@@ -1658,24 +1645,10 @@ async function replaceMessageElement(messageLocalId, updatedMessage, animated = 
     });
 }
 
-// Add sending indicator
-function addSendingIndicator(messageElement) {
-    const sendingIndicator = document.createElement('span');
-    sendingIndicator.className = 'message-sending';
-    sendingIndicator.textContent = 'Sending...';
-    const messageRowContent = messageElement.querySelector('.message-row-content');
-    if (messageRowContent) {
-        messageRowContent.appendChild(sendingIndicator);
-    } else {
-        console.warn('Message row content not found for sending indicator');
-    }
-}
-
 // Mark message as failed
 function markMessageAsFailed(localId) {
     const messageElement = document.querySelector(`[data-local-id="${localId}"]`);
     if (messageElement) {
-        messageElement.classList.remove('sending');
         messageElement.classList.add('error');
         
         // Remove sending indicator
@@ -1706,12 +1679,13 @@ async function retryMessage(localId) {
         }
         
         messageElement?.classList.remove('error');
-        messageElement?.classList.add('sending');
         
-        // Add sending indicator back
-        if (messageElement) {
-            addSendingIndicator(messageElement);
-        }
+        // Set message as pending and recreate to show sending icon
+        message.isPending = true;
+        pendingMessages.set(localId, message);
+        
+        // Update message element to show sending icon
+        replaceMessageElement(message.localId, message, false);
         
         // Retry sending
         const serverMessage = await sendMessageToServer(message);
