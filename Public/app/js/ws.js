@@ -109,4 +109,17 @@ function handleWebSocketMessage(notification) {
         // Update chat list with new message
         updateChatListWithMessage(message);
     }
+    else if (notification.event === 'chatDeleted' && notification.payload) {
+        const chatId = notification.payload.id;
+        // Remove deleted chat from list
+        const chatIndex = chats.findIndex(chat => chat.id === chatId);
+        if (chatIndex !== -1) {
+            chats.splice(chatIndex, 1);
+            displayChats();
+            if (currentChatId === chatId) {
+                currentChatId = null;
+                makeNoChatsSelected();
+            }
+        }
+    }
 }

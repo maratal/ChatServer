@@ -119,6 +119,21 @@ extension Chat {
             self.addedUsers = addedUsers
             self.removedUsers = removedUsers
         }
+        
+        init(from chat: Chat) {
+            self.id = chat.id
+            self.title = chat.title
+            self.isPersonal = chat.isPersonal
+            self.owner = chat.owner.info()
+            if let lastMessage = chat.lastMessage {
+                self.lastMessage = lastMessage.info()
+            }
+            if chat.$images.value != nil {
+                self.images = chat.images.map { $0.info() }
+            }
+            self.updatedAt = chat.updatedAt ?? Date()
+            self.createdAt = chat.createdAt ?? Date()
+        }
     }
 }
 

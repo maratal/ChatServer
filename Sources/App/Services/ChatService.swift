@@ -246,7 +246,8 @@ actor ChatService: ChatServiceProtocol {
             }
         }
         try await core.saveAll(itemsToSave)
-        try await core.notificator.notify(chat: chat, in: repo, about: .chatDeleted, from: sourceRelation.user, with: nil)
+        let info = ChatInfo(from: chat)
+        try await core.notificator.notify(chat: chat, in: repo, about: .chatDeleted, from: sourceRelation.user, with: info.jsonObject())
     }
     
     private func setUser(_ targetId: UserID, in chatId: ChatID, blocked: Bool, by userId: UserID) async throws {
