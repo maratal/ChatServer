@@ -103,11 +103,16 @@ actor ChatService: ChatServiceProtocol {
         }
     }
     
-    func chat(_ id: ChatID, with userId: UserID) async throws -> ChatInfo {
-        guard let relation = try await repo.findRelation(of: id, userId: userId) else {
+    func chat(_ chatId: ChatID, with userId: UserID) async throws -> ChatInfo {
+        let relations = try await repo.findRelations(of: chatId, isUserBlocked: nil)
+        guard let _ = relations.first(where: { $0.user.id == currentUser?.id }) else {
+            throw ServiceError(.forbidden)
+        }
+        guard let userRelation = relations.first(where: { $0.user.id == userId }) else {
             throw ServiceError(.notFound)
         }
-        return ChatInfo(from: relation, fullInfo: true)
+        let blockedUsers = relations.filter({ $0.isUserBlocked }).map { $0.user.info() }
+        return ChatInfo(from: userRelation, blockedUsers: blockedUsers, fullInfo: true)
     }
     
     func createChat(with info: CreateChatRequest, by ownerId: UserID) async throws -> ChatInfo {

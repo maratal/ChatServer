@@ -1047,6 +1047,10 @@ input[type="text"]:disabled, textarea:disabled {
     background-color: hsl(var(--muted));
 }
 
+.group-chat-member-cell.blocked {
+    opacity: 0.6;
+}
+
 .inline-link-button {
     background: none;
     border: none;

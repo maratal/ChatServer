@@ -1320,6 +1320,13 @@ async function showGroupChatInfo(chatId) {
 
     try {
         const chat = await apiGetChat(chatId);
+
+        // Update the local chat object with the latest info
+        const chatIndex = chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            chats[chatIndex] = chat;
+        }
+
         displayGroupChatInfo(chat);
     } catch (error) {
         console.error('Error fetching group chat info:', error);
@@ -1401,8 +1408,10 @@ function displayGroupChatInfo(chat) {
                 ${otherMembers.map(user => {
                     const userName = user.name || user.username || 'Unknown User';
                     const avatarHtml = getAvatarInitialsHtml(userName, user.id);
+                    const isBlocked = chat.blockedUsers && chat.blockedUsers.some(bu => bu.id === user.id);
+                    const blockedClass = isBlocked ? ' blocked' : '';
                     return `
-                        <div class="group-chat-member-cell" onclick="showGroupMemberMenu(event, '${chat.id}', ${user.id})">
+                        <div class="group-chat-member-cell${blockedClass}" onclick="showGroupMemberMenu(event, '${chat.id}', ${user.id})">
                             <div class="avatar-small">${avatarHtml}</div>
                             <div class="group-chat-member-name">${escapeHtml(userName)}</div>
                         </div>
@@ -1511,8 +1520,9 @@ function showGroupMemberMenu(event, chatId, userId) {
 
     // Show block/remove options only if current user is the owner of the group chat
     if (chat.owner?.id === currentUser?.info?.id) {
+        const isBlocked = chat.blockedUsers && chat.blockedUsers.some(bu => bu.id === userId);
         items.push(
-            { id: 'block', label: 'Block', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"></line></svg>', separator: true },
+            { id: 'block', label: isBlocked ? 'Unblock in Group' : 'Block in Group', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"></line></svg>', separator: true },
             { id: 'remove', label: 'Remove from Group', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line></svg>' }
         );
     }
@@ -1529,7 +1539,7 @@ function showGroupMemberMenu(event, chatId, userId) {
             } else if (action === 'view_info') {
                 showUserInfo(userId);
             } else if (action === 'block') {
-                await blockGroupChatMember(chatId, userId);
+                await toggleBlockGroupChatMember(chatId, userId);
             } else if (action === 'remove') {
                 await removeGroupChatMember(chatId, userId);
             }
@@ -1539,11 +1549,35 @@ function showGroupMemberMenu(event, chatId, userId) {
     });
 }
 
-async function blockGroupChatMember(chatId, userId) {
-    if (!confirm('Block this member in this group chat?')) return;
+async function toggleBlockGroupChatMember(chatId, userId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
     
-    // TODO: Implement block user in chat API call
-    alert(`Blocking user ${userId} in chat ${chatId}`);
+    const isBlocked = chat.blockedUsers && chat.blockedUsers.some(bu => bu.id === userId);
+    const action = isBlocked ? 'unblock' : 'block';
+    const confirmMessage = isBlocked ? 'Unblock this member in this group chat?' : 'Block this member in this group chat?';
+    
+    if (!confirm(confirmMessage)) return;
+    
+    try {
+        if (isBlocked) {
+            await apiUnblockUserInChat(chatId, userId);
+        } else {
+            await apiBlockUserInChat(chatId, userId);
+        }
+        
+        // Refresh the chat from server to get updated blockedUsers
+        const updatedChat = await apiGetChat(chatId);
+        const chatIndex = chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            chats[chatIndex] = updatedChat;
+        }
+        
+        displayGroupChatInfo(updatedChat);
+    } catch (error) {
+        console.error(`Error ${action}ing user:`, error);
+        alert(`Error ${action}ing user: ` + error.message);
+    }
 }
 
 async function removeGroupChatMember(chatId, userId) {

@@ -76,6 +76,7 @@ async function loadMessages(chatId, initialLoad = false) {
             });
         }
     } catch (error) {
+        messagesContainer.innerHTML = `<div class="no-messages">Can't load messages</div>`;
         console.error('Error loading messages:', error);
     } finally {
         isLoadingMessages = false;
@@ -1136,6 +1137,11 @@ async function sendMessage(textOverride = null) {
     // Send to server using the shared function
     const serverMessage = await sendMessageToServer(message);
 
+    if (!serverMessage) {
+        console.error('Failed to send message to server');
+        return;
+    }
+
     // Update message in chat with server response
     replaceMessageElement(message.localId, serverMessage);
 
@@ -1650,20 +1656,18 @@ function markMessageAsFailed(localId) {
     const messageElement = document.querySelector(`[data-local-id="${localId}"]`);
     if (messageElement) {
         messageElement.classList.add('error');
-        
-        // Remove sending indicator
-        const sendingIndicator = messageElement.querySelector('.message-row-content .message-sending');
-        if (sendingIndicator) {
-            sendingIndicator.remove();
-        }
-        
+                
         // Add error indicator in front of the message balloon
         const errorIndicator = document.createElement('span');
         errorIndicator.className = 'message-error';
         errorIndicator.innerHTML = '⚠️';
         errorIndicator.title = 'Failed to send. Click to retry.';
         errorIndicator.onclick = () => retryMessage(localId);
-        messageElement.appendChild(errorIndicator);
+        
+        const messageRowContent = messageElement.querySelector('.message-row-content');
+        if (messageRowContent) {
+            messageRowContent.appendChild(errorIndicator);
+        }
     }
 }
 

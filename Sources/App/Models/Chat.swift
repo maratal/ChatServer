@@ -68,6 +68,7 @@ extension Chat {
         var allUsers: [UserInfo]?
         var addedUsers: [UserInfo]?
         var removedUsers: [UserInfo]?
+        var blockedUsers: [UserInfo]?
         var lastMessage: MessageInfo?
         var images: [MediaInfo]?
         var updatedAt: Date
@@ -77,7 +78,7 @@ extension Chat {
         var isArchived: Bool?
         var isBlocked: Bool?
         
-        init(from relation: ChatRelation, fullInfo: Bool = false) {
+        init(from relation: ChatRelation, blockedUsers: [UserInfo]? = nil, fullInfo: Bool = false) {
             let chat = relation.chat
             self.id = chat.id
             self.title = chat.title
@@ -96,6 +97,7 @@ extension Chat {
             self.isBlocked = relation.isChatBlocked
             if fullInfo {
                 self.allUsers = chat.users.map { $0.fullInfo() }
+                self.blockedUsers = blockedUsers
             }
         }
         
