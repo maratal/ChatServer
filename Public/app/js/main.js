@@ -734,6 +734,9 @@ async function selectUser(userId) {
     // Close modal
     closeUserSelection();
     
+    // Close all open user info modals
+    closeAllModalInfoPanels();
+
     // Create or find chat with this user
     await createOrOpenPersonalChat(userId);
 }
@@ -1399,7 +1402,7 @@ function displayGroupChatInfo(chat) {
                     const userName = user.name || user.username || 'Unknown User';
                     const avatarHtml = getAvatarInitialsHtml(userName, user.id);
                     return `
-                        <div class="group-chat-member-cell" onclick="${isOwner ? `showGroupMemberMenu(event, '${chat.id}', ${user.id})` : `showUserInfo(${user.id})`}">
+                        <div class="group-chat-member-cell" onclick="showGroupMemberMenu(event, '${chat.id}', ${user.id})">
                             <div class="avatar-small">${avatarHtml}</div>
                             <div class="group-chat-member-name">${escapeHtml(userName)}</div>
                         </div>
@@ -1423,6 +1426,14 @@ function displayGroupChatInfo(chat) {
                     </svg>
                     <span>${memberCount} ${memberCount === 1 ? 'member' : 'members'}</span>
                 </div>
+                ${chat.owner ? `
+                <div class="user-info-meta-item" style="cursor: pointer;" onclick="showUserInfo(${chat.owner.id})">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.735H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294l2.952-5.605z"></path>
+                    </svg>
+                    <span>Owner: ${escapeHtml(chat.owner.name || chat.owner.username || 'Unknown')}</span>
+                </div>
+                ` : ''}
                 ${chat.createdAt ? `
                 <div class="user-info-meta-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1487,13 +1498,27 @@ function showGroupMemberMenu(event, chatId, userId) {
     const cell = event.currentTarget;
     const rect = cell.getBoundingClientRect();
     
-    showContextMenu({
-        items: [
-            { id: 'personal_chat', label: 'Personal Chat', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>' },
-            { id: 'view_info', label: 'View Info', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="16" y2="12"></line><line x1="12" x2="12.01" y1="8" y2="8"></line></svg>' },
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error('Chat not found:', chatId);
+        return;
+    }
+
+    let items = [
+        { id: 'personal_chat', label: 'Personal Chat', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>' },
+        { id: 'view_info', label: 'View Info', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="16" y2="12"></line><line x1="12" x2="12.01" y1="8" y2="8"></line></svg>' }
+    ];
+
+    // Show block/remove options only if current user is the owner of the group chat
+    if (chat.owner?.id === currentUser?.info?.id) {
+        items.push(
             { id: 'block', label: 'Block', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"></line></svg>', separator: true },
             { id: 'remove', label: 'Remove from Group', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line></svg>' }
-        ],
+        );
+    }
+
+    showContextMenu({
+        items: items,
         x: event.x,
         y: event.y,
         anchor: 'top-left',
