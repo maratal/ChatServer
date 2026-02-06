@@ -91,7 +91,7 @@ struct ChatController: RouteCollection {
     
     func exitChat(_ req: Request) async throws -> HTTPStatus {
         let currentUser = try await req.requireCurrentUser()
-        try await service.with(currentUser).exitChat(req.objectUUID(), by: currentUser.requireID())
+        try await service.with(currentUser).exitChat(req.objectUUID())
         return .ok
     }
     

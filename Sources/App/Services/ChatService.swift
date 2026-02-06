@@ -46,7 +46,7 @@ protocol ChatServiceProtocol: LoggedIn {
     func unblockChat(_ id: ChatID, by userId: UserID) async throws
     
     /// A participant of a multiuser chat uses this method to leave the chat. One can't exit personal chat (results in an error).
-    func exitChat(_ id: ChatID, by userId: UserID) async throws
+    func exitChat(_ id: ChatID) async throws
     
     /// Deletes all messages in a chat.
     func clearChat(_ id: ChatID, by userId: UserID) async throws
@@ -139,7 +139,7 @@ actor ChatService: ChatServiceProtocol {
         }
         else {
             guard let relation = try await repo.findRelation(of: chat!.id!, userId: ownerId) else {
-                throw ServiceError(.notFound)
+                throw ServiceError(.forbidden)
             }
             return ChatInfo(from: relation, fullInfo: true)
         }
@@ -302,14 +302,22 @@ actor ChatService: ChatServiceProtocol {
         return relations.map { $0.user.info() }
     }
     
-    func exitChat(_ id: ChatID, by userId: UserID) async throws {
-        guard let relation = try await repo.findRelation(of: id, userId: userId) else {
+    func exitChat(_ id: ChatID) async throws {
+        guard let currentUser else {
+            throw ServiceError(.forbidden)
+        }
+        guard let relation = try await repo.findRelation(of: id, userId: currentUser.requireID()) else {
             throw ServiceError(.forbidden)
         }
         guard !relation.chat.isPersonal else {
             throw ServiceError(.badRequest)
         }
-        try await repo.deleteRelation(relation)
+        if relation.isChatBlocked {
+            relation.isRemovedOnDevice = true
+            try await core.saveItem(relation)
+        } else {
+            try await repo.deleteRelation(relation)
+        }
     }
     
     func clearChat(_ id: ChatID, by userId: UserID) async throws {
@@ -422,10 +430,11 @@ actor ChatService: ChatServiceProtocol {
             itemsToSave.append(authorRelation)
         }
         
-        if let otherUserRelation {
-            if otherUserRelation.isRemovedOnDevice {
-                otherUserRelation.isRemovedOnDevice = false
-                itemsToSave.append(otherUserRelation)
+        // Undo removed on device (even for blocked chats for unblock option)
+        recipientsRelations.forEach { rel in
+            if rel.isRemovedOnDevice {
+                rel.isRemovedOnDevice = false
+                itemsToSave.append(rel)
             }
         }
         

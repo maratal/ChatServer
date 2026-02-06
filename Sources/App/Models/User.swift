@@ -57,11 +57,27 @@ extension User {
     struct Info: Serializable {
         var id: Int?
         var name: String?
-        var username: String
+        var username: String?
         var about: String?
         var lastSeen: Date?
-        var createdAt: Date
+        var createdAt: Date?
         var photos: [MediaInfo]?
+        
+        init(id: UserID?,
+             name: String? = nil,
+             username: String? = nil,
+             about: String? = nil,
+             lastSeen: Date? = nil,
+             createdAt: Date? = nil,
+             photos: [MediaInfo]? = nil) {
+            self.id = id
+            self.name = name
+            self.username = username
+            self.about = about
+            self.lastSeen = lastSeen
+            self.createdAt = createdAt
+            self.photos = photos
+        }
         
         init(from user: User, fullInfo: Bool) {
             self.id = user.id

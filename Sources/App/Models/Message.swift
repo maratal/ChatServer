@@ -70,7 +70,7 @@ extension Message {
         var id: MessageID?
         var localId: String?
         var chatId: ChatID?
-        var authorId: UserID?
+        var author: UserInfo?
         var text: String?
         var createdAt: Date?
         var updatedAt: Date?
@@ -85,7 +85,11 @@ extension Message {
             self.id = message.id
             self.localId = message.localId
             self.chatId = message.$chat.id
-            self.authorId = message.$author.id
+            if message.$author.value != nil {
+                self.author = message.author.info()
+            } else {
+                self.author = UserInfo(id: message.$author.id)
+            }
             self.text = message.text
             self.createdAt = message.createdAt
             self.updatedAt = message.updatedAt
@@ -112,7 +116,7 @@ typealias MessageInfo = Message.Info
 extension MessageInfo: JSONSerializable {
     
     var readAt: Date? {
-        readMarks?.first(where: { $0.user?.id != authorId })?.createdAt
+        readMarks?.first(where: { $0.user?.id != author?.id })?.createdAt
     }
     
     func jsonObject() throws -> JSON {

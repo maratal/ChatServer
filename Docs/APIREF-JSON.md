@@ -72,7 +72,7 @@ ________________________________________________________________________________
    id: <UUID>,
    localId: "…",
    chatId: <UUID>,
-   authorId: <Int>,
+   author: <UserInfo>,
    text: "…",
    createdAt: "…",
    updatedAt: "…",

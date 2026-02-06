@@ -308,7 +308,7 @@ function getGroupChatDisplayName(chat) {
 }
 
 function isOwnMessage(message) {
-    return currentUser && message.authorId && message.authorId === currentUser.info.id;
+    return currentUser && message.author.id && message.author.id === currentUser.info.id;
 }
 
 // Helper function to find message by ID in DOM

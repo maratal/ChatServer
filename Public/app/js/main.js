@@ -493,7 +493,7 @@ async function selectChat(chatId, addToHistory = true) {
         // For blocked chats, show load messages button instead of loading automatically
         messagesContainer.innerHTML = `
             <div class="no-messages">
-                This chat is blocked. Click <span class="blocked-chat-load-btn" onclick="loadMessagesAndPrepareInputForChat('${chatId}')">here</span> to load messages.
+                You have blocked this chat. Click <span class="blocked-chat-load-btn" onclick="loadMessagesAndPrepareInputForChat('${chatId}')">here</span> to load messages.
             </div>
         `;
     } else {
@@ -1096,23 +1096,39 @@ function showChatMenu(point, chatId) {
     const isArchived = chat.isArchived || false;
     const isBlocked = chat.isBlocked || false;
     const isPersonalNotesChat = isPersonalNotes(chat);
-    
+    const isOwner = chat.owner.id === currentUser?.info.id;
+
     const menuItems = [
         { id: 'info', label: 'Info', icon: infoIcon },
     ];
     
-    // Don't show mute and block options for Personal Notes
+    // Don't show mute option for Personal Notes
     if (!isPersonalNotesChat) {
         menuItems.push(
             { id: 'mute', label: isMuted ? 'Unmute' : 'Mute', icon: isMuted ? unmuteIcon : muteIcon },
-            { id: 'block', label: isBlocked ? 'Unblock' : 'Block', icon: blockIcon }
         );
     }
     
     menuItems.push(
         { id: 'archive', label: isArchived ? 'Unarchive' : 'Archive', icon: archiveIcon },
-        { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
     );
+    
+    // Don't show block option for Personal Notes
+    if (!isPersonalNotesChat) {
+        menuItems.push(
+            { id: 'block', label: isBlocked ? 'Unblock' : 'Block', icon: blockIcon }
+        );
+    }
+    
+    if (isOwner || chat.isPersonal) {
+        menuItems.push(
+            { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
+        );
+    } else {
+        menuItems.push(
+            { id: 'leave', label: 'Leave', icon: deleteIcon, separator: true }
+        );
+    }
     
     showContextMenu({
         items: menuItems,
@@ -1149,6 +1165,9 @@ function handleChatHeaderMenuAction(action, chatId) {
             break;
         case 'delete':
             deleteChat(chatId);
+            break;
+        case 'leave':
+            leaveChat(chatId);
             break;
     }
 }
@@ -1276,6 +1295,42 @@ async function deleteChat(chatId) {
     } catch (error) {
         console.error('Error deleting chat:', error);
         alert('Error deleting chat: ' + error.message);
+    }
+}
+
+async function leaveChat(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error('Chat not found:', chatId);
+        return;
+    }
+    
+    // Confirm leaving
+    if (!confirm('Are you sure you want to leave this chat?')) {
+        return;
+    }
+    
+    try {
+        // Call the API to exit the chat
+        await apiExitChat(chatId);
+        
+        // Remove the chat from the local chats array
+        const chatIndex = chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            chats.splice(chatIndex, 1);
+        }
+
+        // Clear current chat if it was the one we left
+        if (currentChatId === chatId) {
+            currentChatId = null;
+        }
+
+        // Refresh the chat list display
+        displayChats();
+
+    } catch (error) {
+        console.error('Error leaving chat:', error);
+        alert('Error leaving chat: ' + error.message);
     }
 }
 

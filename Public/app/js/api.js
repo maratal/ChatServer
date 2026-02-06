@@ -411,6 +411,21 @@ async function apiDeleteChat(chatId) {
     return await handleResponse(response);
 }
 
+async function apiExitChat(chatId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`/chats/${chatId}/me`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`
+        }
+    });
+    return await handleResponse(response);
+}
+
 async function apiAddChatImage(chatId, imageId, fileType, fileSize) {
     const accessToken = getAccessToken();
     if (!accessToken) {

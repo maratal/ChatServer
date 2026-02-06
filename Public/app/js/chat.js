@@ -353,7 +353,7 @@ function createMessageElement(message) {
     messageDiv.className = 'message-row';
     
     // Set the author ID, timestamp, and IDs as data attributes
-    messageDiv.dataset.authorId = message.authorId || '';
+    messageDiv.dataset.authorId = message.author.id || '';
     
     // Normalize timestamp and store as ISO string
     const normalizedDate = normalizeTimestamp(message.createdAt);
@@ -378,9 +378,8 @@ function createMessageElement(message) {
     }
     
     // Find author info
-    const author = chat?.allUsers.find(user => user.id === message.authorId);
-    const authorName = author ? author.name : 'Unknown';
-    const authorInitials = author ? getInitials(author.name) : '?';
+    const author = message.author;
+    const authorName = author?.name ? author?.name : (chat.allUsers.find(user => user.id === author.id)?.name ?? 'Unknown');
     const authorMainPhoto = mainPhotoForUser(author);
     
     // Format time using normalized date
@@ -405,14 +404,14 @@ function createMessageElement(message) {
     }
     
     // Build avatar HTML
-    const avatarAuthorId = message.authorId;
+    const avatarAuthorId = message.author.id;
     const avatarDataAttrs = avatarAuthorId != null
         ? `data-author-id="${avatarAuthorId}" data-clickable="true"` 
         : '';
     
     const avatarContent = authorMainPhoto 
         ? `<img src="${getUploadUrl(authorMainPhoto.id, authorMainPhoto.fileType)}" alt="">`
-        : getAvatarInitialsHtml(authorName, message.authorId);
+        : getAvatarInitialsHtml(authorName, message.author.id);
     
     // Handle attachments
     const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
@@ -1085,6 +1084,11 @@ async function sendMessage(textOverride = null) {
     const message = {
         localId: localId,
         chatId: currentChatId,
+        author: {
+            id: currentUser.info.id,
+            name: currentUser.info.name,
+            username: currentUser.info.username
+        },
         authorId: currentUser.info.id,
         text: text,
         createdAt: new Date().toISOString(),
@@ -1345,7 +1349,7 @@ function showMessageContextMenu(event, messageElement, message) {
     }
     
     // Only show Edit for own messages
-    if (message.authorId === currentUser?.info.id) {
+    if (message.author.id === currentUser?.info.id) {
         menuItems.push({ id: 'edit', label: 'Edit', icon: editIcon });
     }
     
@@ -1398,7 +1402,7 @@ function handleMessageContextAction(action, message, messageElement) {
 // Edit message
 function editMessage(message) {
     // Check if message is own message and not pending
-    if (message.authorId !== currentUser?.info.id || message.isPending) {
+    if (message.author.id !== currentUser?.info.id || message.isPending) {
         return;
     }
     
