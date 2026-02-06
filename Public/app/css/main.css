@@ -2518,6 +2518,11 @@ input[type="text"]:disabled, textarea:disabled {
     text-align: center;
 }
 
+.blocked-chat-load-btn {
+    color: hsl(var(--primary));
+    cursor: pointer;
+}
+
 .no-chats-container {
     display: flex;
     align-items: center;

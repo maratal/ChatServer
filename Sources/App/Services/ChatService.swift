@@ -353,7 +353,7 @@ actor ChatService: ChatServiceProtocol {
                 throw ServiceError(.internalServerError, reason: "Personal chat should have only one recipient.")
             }
             if let isChatBlocked = otherUserRelation?.isChatBlocked, isChatBlocked {
-                throw ServiceError(.forbidden, reason: "This chat was blocked.")
+                throw ServiceError(.forbidden, reason: "You can't post into this chat.")
             }
         }
         

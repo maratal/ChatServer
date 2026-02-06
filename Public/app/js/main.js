@@ -486,18 +486,19 @@ async function selectChat(chatId, addToHistory = true) {
     
     // Show message input
     const messageInputContainer = document.getElementById('messageInputContainer');
-    messageInputContainer.style.display = 'flex';
     
-    // Load messages
-    await loadMessages(chatId, true);
-    
-    // Setup infinite scroll for this chat
-    setupInfiniteScroll(chatId);
-    
-    // Focus message input field
-    const messageInput = getMessageInputElement();
-    if (messageInput) {
-        messageInput.focus();
+    if (chat.isBlocked || false) {
+        // Hide message input for blocked chats
+        messageInputContainer.style.display = 'none';
+        // For blocked chats, show load messages button instead of loading automatically
+        messagesContainer.innerHTML = `
+            <div class="no-messages">
+                This chat is blocked. Click <span class="blocked-chat-load-btn" onclick="loadMessagesAndPrepareInputForChat('${chatId}')">here</span> to load messages.
+            </div>
+        `;
+    } else {
+        loadMessagesAndPrepareInputForChat(chatId);
+        messageInputContainer.style.display = 'flex';
     }
 }
 
@@ -1046,6 +1047,18 @@ function closeAllModalInfoPanels() {
     // Close all user info modals
     while (userInfoModalStack.length > 0) {
         closeTopModalInfoPanel();
+    }
+}
+
+async function loadMessagesAndPrepareInputForChat(chatId) {
+    // Load messages and setup infinite scroll
+    await loadMessages(chatId, true);
+    setupInfiniteScroll(chatId);
+    
+    // Focus message input field
+    const messageInput = getMessageInputElement();
+    if (messageInput) {
+        messageInput.focus();
     }
 }
 
