@@ -1,4 +1,5 @@
-import Foundation
+import Vapor
+import Crypto
 
 protocol PushSender: Sendable {
     func send(_ notification: CoreService.Notification, to device: DeviceInfo) async
@@ -36,28 +37,53 @@ actor ApplePushSender: PushSender {
 
 actor PushManager: PushSender {
     private let core: CoreService
-    private let apns: ApplePushSender
-    private let fcm: FirebasePushSender
+    private let apns: ApplePushSender?
+    private let fcm: FirebasePushSender?
+    private let web: WebPushSender?
     
-    init(core: CoreService, apnsKeyPath: String, fcmKeyPath: String) {
+    init(core: CoreService, app: Application) {
         self.core = core
-        self.apns = ApplePushSender(core: core, apnsKeyPath: fcmKeyPath)
-        self.fcm = FirebasePushSender(core: core, fcmKeyPath: apnsKeyPath)
+        
+        if let apnsKeyPath = Environment.get("APNS_KEY_PATH") {
+            self.apns = ApplePushSender(core: core, apnsKeyPath: apnsKeyPath)
+        } else {
+            self.apns = nil
+        }
+        
+        if let fcmKeyPath = Environment.get("FCM_KEY_PATH") {
+            self.fcm = FirebasePushSender(core: core, fcmKeyPath: fcmKeyPath)
+        } else {
+            self.fcm = nil
+        }
+        
+        if let vapidPrivateKey = Environment.get("VAPID_PRIVATE_KEY"),
+           let vapidPublicKey = Environment.get("VAPID_PUBLIC_KEY"),
+           let vapidSubject = Environment.get("VAPID_SUBJECT") {
+            self.web = WebPushSender(
+                core: core,
+                app: app,
+                vapidPrivateKey: vapidPrivateKey,
+                vapidPublicKey: vapidPublicKey,
+                vapidSubject: vapidSubject
+            )
+        } else {
+            self.web = nil
+        }
     }
     
     func send(_ notification: CoreService.Notification, to device: DeviceInfo) async {
-        guard let deviceToken = device.token else {
+        guard let _ = device.token else {
             return core.logger.debug("Can't send push without device token.")
         }
         switch device.transport {
         case .none:
-            core.logger.info("Push transport is not set, skipping push to device with token = \(deviceToken)")
+            core.logger.info("Push transport is not set for device id = \(device.id)")
         case .apns:
-            await apns.send(notification, to: device)
+            await apns?.send(notification, to: device)
         case .fcm:
-            await fcm.send(notification, to: device)
+            await fcm?.send(notification, to: device)
         case .web:
-            core.logger.info("Web push transport is not supported yet, skipping push to device with token = \(deviceToken)")
+            await web?.send(notification, to: device)
         }
     }
 }

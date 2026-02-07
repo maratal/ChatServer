@@ -84,6 +84,11 @@ function handleWebSocketMessage(notification) {
     if ((notification.event === 'message' || notification.event === 'messageUpdate') && notification.payload) {
         const message = notification.payload;
         
+        // Play sound for new messages from others
+        if (notification.event === 'message' && !isOwnMessage(message)) {
+            playNotificationSound();
+        }
+        
         // Check if this is for the current chat
         if (message.chatId === currentChatId) {
             // Check if we already have this message (by localId)

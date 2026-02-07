@@ -355,6 +355,17 @@ function getChatLastMessageText(chat) {
     return 'No messages';
 }
 
+// Play sound when receiving a new message
+function playNotificationSound() {
+    // Load notification sound (M4A format works in both Safari and Firefox)
+    const notificationSound = new Audio('/app/sounds/notification.m4a');
+    notificationSound.volume = 0.5;
+    
+    notificationSound.play().catch(error => {
+        console.log('Could not play notification sound:', error);
+    });
+}
+
 // Check if a string is a debug command prefix
 function stringIsDebugPrefix(str) {
     return str.startsWith('/debug') || str.startsWith('/d');

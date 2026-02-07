@@ -40,7 +40,9 @@
         </div>
     </div>
     
+    <script src="/app/js/constants.js"></script>
     <script src="/app/js/api.js"></script>
+    <script src="/app/js/webpush.js"></script>
     <script src="/app/js/login.js"></script>
 </body>
 </html>

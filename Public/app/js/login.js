@@ -55,7 +55,7 @@ function getDeviceInfo() {
         id: generateUUID(),
         name: deviceName,
         model: deviceModel,
-        token: null, // No push support for web yet
+        token: null, // Will be set after getting push subscription
         transport: 'web'
     };
 }
@@ -110,10 +110,12 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     button.textContent = 'Signing in...';
     button.disabled = true;
     
+    const deviceInfo = await getDeviceInfoWithPush();
+    
     const formData = {
         username: document.getElementById('username').value.trim(),
         password: document.getElementById('password').value,
-        deviceInfo: getDeviceInfo()
+        deviceInfo: deviceInfo
     };
     
     // Basic validation

@@ -63,8 +63,10 @@
             <a href="/login">Already have an account? Sign in</a>
         </div>
     </div>
-    
+
+    <script src="/app/js/constants.js"></script>
     <script src="/app/js/api.js"></script>
+    <script src="/app/js/webpush.js"></script>
     <script src="/app/js/register.js"></script>
 </body>
 </html>

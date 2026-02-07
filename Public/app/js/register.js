@@ -55,7 +55,7 @@ function getDeviceInfo() {
         id: generateUUID(),
         name: deviceName,
         model: deviceModel,
-        token: null, // No push support for web yet
+        token: null, // Will be set after getting push subscription
         transport: 'web'
     };
 }
@@ -123,12 +123,14 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     button.textContent = 'Creating Account...';
     button.disabled = true;
     
+    const deviceInfo = await getDeviceInfoWithPush();
+    
     const formData = {
         name: document.getElementById('name').value.trim(),
         username: document.getElementById('username').value.trim(),
         password: document.getElementById('password').value,
         confirmPassword: document.getElementById('confirmPassword').value,
-        deviceInfo: getDeviceInfo()
+        deviceInfo: deviceInfo
     };
     
     // Validation

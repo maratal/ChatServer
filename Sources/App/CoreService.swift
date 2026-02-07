@@ -54,7 +54,7 @@ extension CoreService {
         var service = CoreService(app: app)
         
         let wsManager = WebSocketManager(core: service)
-        let pushSender = PushManager(core: service, apnsKeyPath: "", fcmKeyPath: "")
+        let pushSender = PushManager(core: service, app: app)
         
         service.wsServer = wsManager
         service.notificator = NotificationManager(webSocket: wsManager, push: pushSender)
