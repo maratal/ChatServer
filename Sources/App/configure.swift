@@ -7,6 +7,8 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.logger = Logger(label: "Default 👉")
     
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    
+    app.directory.viewsDirectory = app.directory.publicDirectory + "app/html"
     app.views.use(.leaf)
     
     // Configure database - prefer DATABASE_URL for Heroku, fallback to individual env vars
