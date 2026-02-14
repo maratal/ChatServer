@@ -16,6 +16,7 @@ let hasMoreUsers = true;
 // User info avatar state
 let userInfoPhotos = [];
 let userInfoCurrentPhotoIndex = 0;
+let userInfoCurrentUserId = null;
 
 // Enhanced authentication check to get current user
 async function checkAuth() {
@@ -42,7 +43,7 @@ async function checkAuth() {
         }
         
         try {
-            updateCurrentUserDisplay();
+            updateCurrentUserButton();
         } catch (error) {
             console.error('Error updating current user display:', error);
         }
@@ -503,9 +504,7 @@ async function selectChat(chatId, addToHistory = true) {
 }
 
 // Update current user display in chat list header
-function updateCurrentUserDisplay() {
-    console.log('updateCurrentUserDisplay called', currentUser);
-    
+function updateCurrentUserButton() {
     if (!currentUser || !currentUser.info) {
         console.log('No currentUser or currentUser.info');
         return;
@@ -705,8 +704,7 @@ function displayUsers() {
     
     let html = '';
     fetchedUsers.forEach(user => {
-        const userName = user.name || user.username || '?';
-        const avatarHtml = getAvatarInitialsHtml(userName, user.id);
+        const avatarHtml = getAvatarHtml(user);
         html += `
             <div class="user-item" onclick="selectUser(${user.id})">
                 <div class="avatar-small">${avatarHtml}</div>
@@ -882,6 +880,7 @@ function displayUserInfo(user) {
     // Store photos globally
     userInfoPhotos = user.photos || [];
     userInfoCurrentPhotoIndex = 0;
+    userInfoCurrentUserId = user.id;
     
     // Get current photo
     const currentPhoto = userInfoPhotos.length > 0 ? userInfoPhotos[userInfoCurrentPhotoIndex] : null;
@@ -890,7 +889,7 @@ function displayUserInfo(user) {
     
     let html = `
         <div class="user-info-avatar-container">
-            <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
+            <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper_${user.id}">
                 ${hasMultiplePhotos ? `
                 <button class="user-profile-avatar-chevron user-profile-avatar-chevron-left" onclick="event.stopPropagation(); navigateUserInfoPhoto(-1)" title="Previous photo">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -898,8 +897,8 @@ function displayUserInfo(user) {
                     </svg>
                 </button>
                 ` : ''}
-                <div class="user-info-avatar" id="userInfoAvatar">
-                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(name)}</span>`}
+                <div class="user-info-avatar" id="userInfoAvatar_${user.id}">
+                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg_${user.id}">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(name)}</span>`}
                 </div>
                 ${hasMultiplePhotos ? `
                 <button class="user-profile-avatar-chevron user-profile-avatar-chevron-right" onclick="event.stopPropagation(); navigateUserInfoPhoto(1)" title="Next photo">
@@ -974,7 +973,7 @@ function displayUserInfo(user) {
     body.innerHTML = html;
     
     // Add click handler to avatar after HTML is inserted
-    const avatar = document.getElementById('userInfoAvatar');
+    const avatar = document.getElementById(`userInfoAvatar_${user.id}`);
     if (avatar && photoUrl) {
         avatar.addEventListener('click', function(event) {
             // Don't open viewer if clicking on chevrons
@@ -1006,8 +1005,10 @@ function switchUserInfoPhoto(index) {
 }
 
 function updateUserInfoAvatarDisplay() {
-    const avatar = document.getElementById('userInfoAvatar');
-    const avatarImg = document.getElementById('userInfoAvatarImg');
+    if (!userInfoCurrentUserId) return;
+    
+    const avatar = document.getElementById(`userInfoAvatar_${userInfoCurrentUserId}`);
+    const avatarImg = document.getElementById(`userInfoAvatarImg_${userInfoCurrentUserId}`);
     const currentPhoto = userInfoPhotos[userInfoCurrentPhotoIndex];
     
     if (!avatar) return;
@@ -1018,20 +1019,24 @@ function updateUserInfoAvatarDisplay() {
         const img = document.createElement('img');
         img.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
         img.alt = '';
-        img.id = 'userInfoAvatarImg';
+        img.id = `userInfoAvatarImg_${userInfoCurrentUserId}`;
         avatar.innerHTML = '';
         avatar.appendChild(img);
     }
     
-    // Update pagination dots
-    const dots = document.querySelectorAll('#userInfoBody .user-profile-avatar-pagination-dot');
-    dots.forEach((dot, index) => {
-        if (index === userInfoCurrentPhotoIndex) {
-            dot.classList.add('active');
-        } else {
-            dot.classList.remove('active');
-        }
-    });
+    // Update pagination dots for the current user's modal
+    const bodyId = `userInfoModal_${userInfoCurrentUserId}_body`;
+    const body = document.getElementById(bodyId);
+    if (body) {
+        const dots = body.querySelectorAll('.user-profile-avatar-pagination-dot');
+        dots.forEach((dot, index) => {
+            if (index === userInfoCurrentPhotoIndex) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
 }
 
 function openUserInfoViewer() {
@@ -1443,11 +1448,17 @@ function displayGroupChatInfo(chat) {
                         •••
                     </button>
                 </div>
-                <input type="file" id="groupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleGroupChatAvatarFileSelect(event)">
+                <input type="file" id="groupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleExistingGroupChatAvatarFileSelect(event)">
             </div>
             <div class="user-profile-section">
                 <div class="user-profile-section-title">Group Name</div>
-                <input type="text" class="user-profile-name-input" id="groupChatNameInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Enter group name">
+                <div class="group-name-input-container">
+                    <input type="text" class="user-profile-name-input" id="groupChatNameInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Enter group name" data-original-value="${escapeHtml(chat.title || '')}">
+                    <button class="group-name-save-btn" id="groupChatNameSaveBtn_${chat.id}" style="display: none;" onclick="saveGroupChatTitle('${chat.id}')" title="Save">
+                        ${checkmarkSaveIcon}
+                        ${checkmarkSaveIconSaving}
+                    </button>
+                </div>
             </div>
         `;
     } else {
@@ -1474,14 +1485,13 @@ function displayGroupChatInfo(chat) {
             <div class="user-info-section-title">Members${isOwner ? ' <button class="inline-link-button" onclick="openGroupChatModal(\'' + chat.id + '\')">Add</button>' : ''}</div>
             <div class="group-chat-members-grid" id="groupChatMembersGrid">
                 ${otherMembers.map(user => {
-                    const userName = user.name || user.username || 'Unknown User';
-                    const avatarHtml = getAvatarInitialsHtml(userName, user.id);
+                    const avatarHtml = getAvatarHtml(user);
                     const isBlocked = chat.blockedUsers && chat.blockedUsers.some(bu => bu.id === user.id);
                     const blockedClass = isBlocked ? ' blocked' : '';
                     return `
                         <div class="group-chat-member-cell${blockedClass}" onclick="showGroupMemberMenu(event, '${chat.id}', ${user.id})">
                             <div class="avatar-small">${avatarHtml}</div>
-                            <div class="group-chat-member-name">${escapeHtml(userName)}</div>
+                            <div class="group-chat-member-name">${escapeHtml(user.name || user.username || 'Unknown User')}</div>
                         </div>
                     `;
                 }).join('')}
@@ -1526,15 +1536,6 @@ function displayGroupChatInfo(chat) {
         </div>
     `;
     
-    // Save button for owner
-    if (isOwner) {
-        html += `
-            <div class="user-profile-actions">
-                <button class="user-profile-save-btn" onclick="saveGroupChatChanges('${chat.id}')">Save Changes</button>
-            </div>
-        `;
-    }
-    
     body.innerHTML = html;
     
     // Add click handler to avatar
@@ -1550,7 +1551,30 @@ function displayGroupChatInfo(chat) {
                 if (chat.images && chat.images.length > 0) {
                     openGroupChatImageViewer(chat);
                 } else {
-                    openGroupChatAvatarFileDialog();
+                    openExistingGroupChatAvatarFileDialog();
+                }
+            });
+        }
+        
+        // Add input change listener
+        const nameInput = document.getElementById(`groupChatNameInput_${chat.id}`);
+        const saveBtn = document.getElementById(`groupChatNameSaveBtn_${chat.id}`);
+        if (nameInput && saveBtn) {
+            nameInput.addEventListener('input', function() {
+                const originalValue = this.getAttribute('data-original-value') || '';
+                const currentValue = this.value.trim();
+                if (currentValue !== originalValue) {
+                    saveBtn.style.display = 'flex';
+                } else {
+                    saveBtn.style.display = 'none';
+                }
+            });
+            
+            // Add Enter key handler
+            nameInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && saveBtn.style.display !== 'none') {
+                    e.preventDefault();
+                    saveGroupChatTitle(chat.id);
                 }
             });
         }
@@ -1562,6 +1586,63 @@ function displayGroupChatInfo(chat) {
             });
         }
     }
+}
+
+function showGroupChatAvatarMenu(event) {
+    const menuButton = document.getElementById('groupChatAvatarMenuButton');
+    const rect = menuButton.getBoundingClientRect();
+
+    const chatId = currentChatId;
+    const chat = chats.find(c => c.id === chatId);
+
+    if (!chat) {
+        console.error('Chat not found for avatar menu:', chatId);
+        return;
+    }
+
+    let menuItems = [];
+
+    // Only one image is supported for group chat avatar
+    if (chat.images && chat.images.length > 0) {
+        menuItems.push({ id: 'delete', label: 'Delete', icon: trashIcon });
+    } else {
+        menuItems.push({ id: 'upload', label: 'Upload', icon: uploadIcon });
+    }
+
+    showContextMenu({
+        items: menuItems,
+        x: rect.left,
+        y: rect.bottom + 5,
+        onAction: async (action) => {
+            if (action === 'upload') {
+                openExistingGroupChatAvatarFileDialog();
+            } else if (action === 'delete') {
+                if (!chat.images || chat.images.length === 0) return;
+                const currentImage = chat.images[0];
+                if (!currentImage) return;
+
+                if (!confirm('Are you sure you want to delete this photo?')) return;
+
+                try {
+                    await apiDeleteChatImage(chatId, currentImage.id);
+                    // Refresh the group chat info
+                    const updatedChat = await apiGetChat(chatId);
+                    const chatIndex = chats.findIndex(c => c.id === chatId);
+                    if (chatIndex !== -1) {
+                        chats[chatIndex] = updatedChat;
+                    }
+                    displayGroupChatInfo(updatedChat);
+                    displayChats();
+                    if (currentChatId === chatId) {
+                        selectChat(currentChatId, false);
+                    }
+                } catch (error) {
+                    console.error('Error deleting group chat avatar:', error);
+                    alert('Error deleting avatar: ' + error.message);
+                }
+            }
+        }
+    });
 }
 
 function openGroupChatImageViewer(chat) {
@@ -1675,53 +1756,92 @@ async function removeGroupChatMember(chatId, userId) {
     }
 }
 
-async function saveGroupChatChanges(chatId) {
-    console.log('Saving group chat changes for chat:', chatId);
-    
+async function saveGroupChatTitle(chatId) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) {
         console.error('Chat not found:', chatId);
         return;
     }
 
+    const nameInput = document.getElementById(`groupChatNameInput_${chatId}`);
+    const saveBtn = document.getElementById(`groupChatNameSaveBtn_${chatId}`);
+    if (!nameInput || !saveBtn) return;
+
+    const newTitle = nameInput.value.trim() || null;
+    const originalValue = nameInput.getAttribute('data-original-value') || '';
+    
+    // No changes
+    if (newTitle === originalValue) {
+        saveBtn.style.display = 'none';
+        return;
+    }
+
+    // Show saving state
+    saveBtn.classList.remove('idle', 'success');
+    saveBtn.classList.add('saving');
+    saveBtn.disabled = true;
+
     try {
-        // Get the group name input value (using chat-specific ID)
-        const nameInput = document.getElementById(`groupChatNameInput_${chatId}`);
-        const newTitle = nameInput ? nameInput.value.trim() || null : null;
+        await apiUpdateChat(chat.id, { title: newTitle });
+        chat.title = newTitle;
         
-        // Update chat title if it changed
-        if (newTitle !== chat.title) {
-            await apiUpdateChat(chat.id, { title: newTitle });
-            chat.title = newTitle;
+        // Update original value
+        nameInput.setAttribute('data-original-value', newTitle || '');
+        
+        // Show success state
+        saveBtn.classList.remove('saving');
+        saveBtn.classList.add('success');
+        
+        // Update UI
+        displayChats();
+        if (currentChatId === chat.id) {
+            selectChat(currentChatId, false);
         }
+        
+        // Fade out button after success animation
+        setTimeout(() => {
+            saveBtn.classList.add('hiding');
+            // Wait for fade transition to complete before hiding
+            setTimeout(() => {
+                saveBtn.style.display = 'none';
+                saveBtn.classList.remove('success', 'hiding');
+                saveBtn.classList.add('idle');
+                saveBtn.disabled = false;
+            }, 300);
+        }, 500);
+    } catch (error) {
+        console.error('Error saving group chat title:', error);
+        alert('Error saving title: ' + error.message);
+        
+        // Reset to idle state
+        saveBtn.classList.remove('saving');
+        saveBtn.classList.add('idle');
+        saveBtn.disabled = false;
+    }
+}
 
-        // Upload avatar if one was selected
-        if (groupChatUploadedAvatarInfo) {
-            await apiAddChatImage(
-                chat.id,
-                groupChatUploadedAvatarInfo.id,
-                groupChatUploadedAvatarInfo.fileType,
-                groupChatUploadedAvatarInfo.fileSize
-            );
+async function saveGroupChatAvatar(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat || !groupChatUploadedAvatarInfo) {
+        return;
+    }
 
-            // Update local state
-            let images = chat.images || [];
-            images.push({
-                id: groupChatUploadedAvatarInfo.id,
-                fileType: groupChatUploadedAvatarInfo.fileType,
-                fileSize: groupChatUploadedAvatarInfo.fileSize
-            });
-            chat.images = images;
-        }
-        
-        // Refresh chat from server to get updated data
-        const updatedChat = await apiGetChat(chat.id);
-        
-        // Update the chat in the chats array
-        const chatIndex = chats.findIndex(c => c.id === updatedChat.id);
-        if (chatIndex !== -1) {
-            chats[chatIndex] = updatedChat;
-        }
+    try {
+        await apiAddChatImage(
+            chat.id,
+            groupChatUploadedAvatarInfo.id,
+            groupChatUploadedAvatarInfo.fileType,
+            groupChatUploadedAvatarInfo.fileSize
+        );
+
+        // Update local state
+        let images = chat.images || [];
+        images.push({
+            id: groupChatUploadedAvatarInfo.id,
+            fileType: groupChatUploadedAvatarInfo.fileType,
+            fileSize: groupChatUploadedAvatarInfo.fileSize
+        });
+        chat.images = images;
         
         displayChats();
         
@@ -1733,8 +1853,9 @@ async function saveGroupChatChanges(chatId) {
         // Reset upload state
         groupChatUploadedAvatarInfo = null;
     } catch (error) {
-        console.error('Error saving group chat changes:', error);
-        alert('Error saving changes: ' + error.message);
+        console.error('Error saving group chat avatar:', error);
+        alert('Error saving avatar: ' + error.message);
+        throw error;
     }
 }
 
@@ -2033,8 +2154,7 @@ function displayGroupChatUsers(error = null) {
     
     let html = '';
     availableUsers.forEach(user => {
-        const userName = user.name || user.username || '?';
-        const avatarHtml = getAvatarInitialsHtml(userName, user.id);
+        const avatarHtml = getAvatarHtml(user);
         const isSelected = groupChatSelectedUsers.some(u => u.id === user.id);
         
         html += `
@@ -2102,7 +2222,7 @@ function openNewGroupChatAvatarFileDialog() {
     }
 }
 
-function openGroupChatAvatarFileDialog() {
+function openExistingGroupChatAvatarFileDialog() {
     if (groupChatAvatarUploadInProgress) return;
     const input = document.getElementById('groupChatAvatarInput');
     if (input) {
@@ -2110,7 +2230,28 @@ function openGroupChatAvatarFileDialog() {
     }
 }
 
-function handleGroupChatAvatarFileSelect(event) {
+function handleNewGroupChatAvatarFileSelect(event) {
+    handleGroupChatAvatarFileSelect(event, (error) => {
+        if (error) {
+            resetNewGroupAvatarDisplay();
+            alert('Error uploading avatar: ' + error.message);
+        }
+    });
+}
+
+function handleExistingGroupChatAvatarFileSelect(event) {
+    handleGroupChatAvatarFileSelect(event, async (error) => {
+        if (error) {
+            resetExistingGroupAvatarDisplay();
+            alert('Error uploading avatar: ' + error.message);
+            return;
+        }
+        // Save avatar immediately after upload
+        await saveGroupChatAvatar(currentChatId);
+    });
+}
+
+function handleGroupChatAvatarFileSelect(event, callback) {
     const file = event.target.files[0];
     if (!file) return;
     
@@ -2159,12 +2300,12 @@ function handleGroupChatAvatarFileSelect(event) {
     };
     
     // Upload group avatar
-    uploadGroupChatAvatar(containerInfo, file);
+    uploadGroupChatAvatar(containerInfo, file, callback);
     
     event.target.value = '';
 }
 
-async function uploadGroupChatAvatar(containerInfo, file) {
+async function uploadGroupChatAvatar(containerInfo, file, callback) {
     groupChatAvatarUploadInProgress = true;
     
     const { progressBar, progressCircle, avatar } = containerInfo;
@@ -2230,6 +2371,8 @@ async function uploadGroupChatAvatar(containerInfo, file) {
         
         // Animate the last 25% smoothly over 500ms
         await animateToComplete(75, 500);
+
+        callback && callback(null);
         
     } catch (error) {
         console.error('Error uploading group avatar:', error);
@@ -2239,7 +2382,8 @@ async function uploadGroupChatAvatar(containerInfo, file) {
         }
         // Reset on error
         groupChatUploadedAvatarInfo = null;
-        resetGroupAvatarDisplay();
+        
+        callback && callback(error);
     } finally {
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
@@ -2260,10 +2404,10 @@ async function removeGroupAvatar() {
         }
         groupChatUploadedAvatarInfo = null;
     }
-    resetGroupAvatarDisplay();
+    resetNewGroupAvatarDisplay();
 }
 
-function resetGroupAvatarDisplay() {
+function resetNewGroupAvatarDisplay() {
     const avatar = document.getElementById('groupChatAvatar');
     avatar.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2274,6 +2418,36 @@ function resetGroupAvatarDisplay() {
     
     // Hide remove button
     document.getElementById('groupChatAvatarRemove').style.display = 'none';
+}
+
+function resetExistingGroupAvatarDisplay() {
+    // Get the current chat to restore its original avatar
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) {
+        console.error('Chat not found for reset');
+        return;
+    }
+
+    const avatar = document.getElementById('groupChatAvatarDisplay');
+    if (!avatar) {
+        console.error('Avatar element not found');
+        return;
+    }
+
+    const groupName = getGroupChatDisplayName(chat, currentUser);
+    const chatImage = chat.images && chat.images.length > 0 ? chat.images[0] : null;
+    const avatarColor = getAvatarColorForUser(`group_${chat.id}`);
+    const photoUrl = chatImage ? getUploadUrl(chatImage.id, chatImage.fileType) : null;
+
+    // Reset to original state
+    if (photoUrl) {
+        avatar.innerHTML = `<img src="${photoUrl}" alt="" id="groupChatAvatarImg">`;
+    } else {
+        avatar.innerHTML = `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(groupName)}</span>`;
+    }
+
+    // Clear uploaded avatar info
+    groupChatUploadedAvatarInfo = null;
 }
 
 async function handleGroupChatAction() {

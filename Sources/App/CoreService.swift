@@ -139,7 +139,11 @@ extension CoreService {
     
     func removeFiles(for resource: MediaResource) throws {
         try removeFile(for: resource)
-        try removePreview(for: resource)
+        do {
+            try removePreview(for: resource)
+        } catch {
+            logger.debug("Failed to remove preview for \(resource): \(error)")
+        }
     }
     
     func removeFileAtPath(_ filePath: String) throws {

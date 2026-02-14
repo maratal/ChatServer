@@ -444,6 +444,9 @@ actor ChatService: ChatServiceProtocol {
             try await repo.loadAttachments(for: message)
         }
         
+        // Set the author explicitly so it's included in the message info with photos
+        message.$author.value = authorRelation.user
+        
         let info = message.info()
         try await core.notificator.notify(chat: chat, via: .all, in: repo, about: .message, from: authorRelation.user, with: info.jsonObject())
         return info

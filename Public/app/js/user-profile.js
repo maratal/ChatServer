@@ -33,10 +33,10 @@ async function openCurrentUserProfile() {
             currentUser.info = userPrivateInfo.info;
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             // Update sidebar avatar display
-            updateCurrentUserDisplay();
+            updateCurrentUserButton();
         }
         
-        displayCurrentUserProfile(userPrivateInfo.info);
+        displayCurrentUserProfile();
     } catch (error) {
         console.error('Error fetching current user info:', error);
         body.innerHTML = `<div class="user-profile-error">Error loading profile: ${error.message}</div>`;
@@ -50,9 +50,15 @@ async function openCurrentUserProfile() {
     });
 }
 
-function displayCurrentUserProfile(user) {
+function displayCurrentUserProfile() {
+    if (!currentUser || !currentUser.info) {
+        console.error('Cannot display profile: currentUser is not set');
+        return;
+    }
+
     const body = document.getElementById('userProfileBody');
     
+    const user = currentUser.info;
     const name = user.name || user.username || 'Unknown User';
     const avatarColor = getAvatarColorForUser(user.id);
     const username = user.username || 'unknown';
@@ -182,7 +188,7 @@ async function saveCurrentUserProfile() {
         }
         
         // Update display
-        updateCurrentUserDisplay();
+        updateCurrentUserButton();
         
         // Reload profile to show updated data
         await openCurrentUserProfile();
@@ -351,20 +357,19 @@ async function uploadAvatarFile(file) {
         });
         
         // Add photo to user profile
-        const addPhotoResponse = await apiAddUserPhoto(uploadedFileId, fileExtension, file.size);
+        const updatedUserInfo = await apiAddUserPhoto(uploadedFileId, fileExtension, file.size);
         
-        if (!addPhotoResponse.ok) {
-            const errorText = await addPhotoResponse.text();
-            throw new Error(`Failed to add photo: ${addPhotoResponse.status} ${errorText}`);
+        // Update local current user with the response
+        if (currentUser) {
+            currentUser.info = updatedUserInfo;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
         }
         
-        // Reload profile to show updated avatar
-        // Set index to last photo (newly uploaded)
-        const reloadedUser = await apiGetCurrentUser();
+        updateCurrentUserButton();
         
+        // Display profile again to refresh avatar and photos
         currentPhotoIndex = 0;
-        
-        await openCurrentUserProfile();
+        displayCurrentUserProfile();
         
     } catch (error) {
         console.error('Error uploading avatar:', error);
@@ -385,7 +390,6 @@ async function uploadAvatarFile(file) {
         avatar.style.opacity = '1';
     }
 }
-
 
 function showAvatarUploadError(errorMessage) {
     const avatarContainer = document.querySelector('.user-profile-avatar-container');
