@@ -89,6 +89,15 @@ function getAvatarImageHtml(imageInfo) {
     return `<img src="${getUploadUrl(imageInfo.id, imageInfo.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
 }
 
+// Get avatar HTML (image or initials)
+function getAvatarHtml(user) {
+    const mainPhoto = mainPhotoForUser(user);
+    const avatarHtml = mainPhoto 
+            ? getAvatarImageHtml(mainPhoto)
+            : getAvatarInitialsHtml(user.name || user.username || '?', user.id);
+    return avatarHtml;
+}
+
 // Apply avatar color to an existing element
 function applyAvatarColor(element, name, userId) {
     const color = getAvatarColorForUser(userId);

@@ -1087,7 +1087,8 @@ async function sendMessage(textOverride = null) {
         author: {
             id: currentUser.info.id,
             name: currentUser.info.name,
-            username: currentUser.info.username
+            username: currentUser.info.username,
+            photos: currentUser.info.photos || []
         },
         authorId: currentUser.info.id,
         text: text,

@@ -411,6 +411,7 @@ input[type="text"], textarea {
     font-weight: 600;
     font-size: 18pt;
     font-family: 'Chalkduster';
+    cursor: default;
 }
 
 .avatar-initials.avatar-personal-notes-chat-list {
@@ -1576,6 +1577,23 @@ input[type="text"]:disabled, textarea:disabled {
     z-index: 30;
 }
 
+/* Group chat avatar menu button */
+#groupChatAvatarMenuButton {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    border: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    opacity: 0;
+}
+
+.user-info-avatar-wrapper:hover #groupChatAvatarMenuButton {
+    opacity: 1;
+}
+
 .user-profile-avatar-chevron {
     position: absolute;
     top: 50%;
@@ -1850,6 +1868,85 @@ input[type="text"]:disabled, textarea:disabled {
 .user-profile-name-input:focus {
     outline: none;
     border-color: hsl(var(--primary));
+}
+
+/* Group name input container with inline save button */
+.group-name-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.group-name-input-container .user-profile-name-input {
+    flex: 1;
+}
+
+.group-name-save-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-left: -30px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: all 0.2s ease, opacity 0.3s ease, transform 0.3s ease;
+    flex-shrink: 0;
+    opacity: 1;
+}
+
+.group-name-save-btn:hover:not(:disabled) {
+    background: hsl(var(--sidebar-accent-foreground) / 0.1);
+    transform: scale(1.05);
+}
+
+.group-name-save-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.group-name-save-btn .checkmark-save-icon {
+    display: none;
+}
+
+/* Idle/default state - show checkmark */
+.group-name-save-btn:not(.saving):not(.success) .checkmark-save-icon:not(.checkmark-save-icon-saving) {
+    display: block;
+}
+
+/* Saving state - show spinner */
+.group-name-save-btn.saving .checkmark-save-icon-saving {
+    display: block;
+    animation: spin 1s linear infinite;
+}
+
+/* Success state - show green filled checkmark */
+.group-name-save-btn.success {
+    background: hsl(var(--primary));
+    color: white;
+}
+
+.group-name-save-btn.success .checkmark-save-icon:not(.checkmark-save-icon-saving) {
+    display: block;
+}
+
+/* Hiding state - fade out */
+.group-name-save-btn.hiding {
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .user-profile-username {

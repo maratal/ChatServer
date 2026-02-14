@@ -52,10 +52,12 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         return try await query
             .with(\.$user) { user in
                 user.with(\.$deviceSessions)
+                user.with(\.$photos)
             }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage)
+                chat.with(\.$images)
                 chat.with(\.$users) // TODO: optimise
             }
             .all()
@@ -165,7 +167,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     func findMessage(id: MessageID) async throws -> Message? {
         try await Message.query(on: database)
             .filter(\.$id == id)
-            .with(\.$author)
+            .with(\.$author) { author in
+                author.with(\.$photos)
+            }
             .with(\.$readMarks) { reaction in
                 reaction.with(\.$user)
             }
@@ -183,7 +187,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
                 .with(\.$attachments)
-                .with(\.$author)
+                .with(\.$author) { author in
+                    author.with(\.$photos)
+                }
                 .sort(\.$createdAt, .descending)
                 .filter(\.$id < before)
                 .range(..<count)
@@ -192,7 +198,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
                 .with(\.$attachments)
-                .with(\.$author)
+                .with(\.$author) { author in
+                    author.with(\.$photos)
+                }
                 .sort(\.$createdAt, .descending)
                 .range(..<count)
                 .all()
