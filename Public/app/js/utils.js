@@ -202,6 +202,7 @@ function showContextMenu(options) {
     
     menu.style.left = `${left}px`;
     menu.style.top = `${top}px`;
+    menu.style.zIndex = '10000'; // Ensure menu is above all modals
     
     // Add highlight to element if provided
     if (highlightElement) {

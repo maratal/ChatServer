@@ -812,6 +812,9 @@ async function showUserInfo(userId) {
     modalElement.innerHTML = `
         <div class="user-info-content">
             <div class="user-info-header">
+                <button class="ellipsis-button" id="userInfoMenuButton_${userId}" onclick="event.stopPropagation(); showUserInfoMenu(${userId})" title="Chat menu">
+                    •••
+                </button>
                 <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
                 <button class="user-panel-close-btn" onclick="closeTopModalInfoPanel()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
@@ -1081,17 +1084,16 @@ function closeTopModalInfoPanel() {
     }, 300);
 }
 
-
 function showChatHeaderMenu(event) {
     const menuButton = document.getElementById('chatHeaderMenuButton');
     if (!menuButton) return;
     
     const rect = menuButton.getBoundingClientRect();
     
-    showChatMenu({ x: rect.left, y: rect.bottom + 2 }, currentChatId);
+    showChatMenu({ x: rect.left, y: rect.bottom + 2 }, currentChatId, false);
 }
 
-function showChatMenu(point, chatId) {
+function showChatMenu(point, chatId, fromModal = true) {
     if (!chatId) return;
     
     const chat = chats.find(chat => chat.id === chatId);
@@ -1100,13 +1102,14 @@ function showChatMenu(point, chatId) {
     const isMuted = chat.isMuted || false;
     const isArchived = chat.isArchived || false;
     const isBlocked = chat.isBlocked || false;
+    const isPersonal = chat.isPersonal || false;
     const isPersonalNotesChat = isPersonalNotes(chat);
     const isOwner = chat.owner.id === currentUser?.info.id;
 
-    const menuItems = [
+    const menuItems = fromModal ? [] : [
         { id: 'info', label: 'Info', icon: infoIcon },
     ];
-    
+
     // Don't show mute option for Personal Notes
     if (!isPersonalNotesChat) {
         menuItems.push(
@@ -1140,13 +1143,13 @@ function showChatMenu(point, chatId) {
         x: point.x,
         y: point.y,
         anchor: 'top-left',
-        onAction: (action) => {
-            handleChatHeaderMenuAction(action, chatId);
+        onAction: async (action) => {
+            await handleChatMenuAction(action, chatId, fromModal);
         }
     });
 }
 
-function handleChatHeaderMenuAction(action, chatId) {
+async function handleChatMenuAction(action, chatId, fromModal) {
     const chat = chats.find(chat => chat.id === chatId);
     if (!chat) return;
     
@@ -1158,7 +1161,7 @@ function handleChatHeaderMenuAction(action, chatId) {
             } else {
                 showGroupChatInfo(chat.id);
             }
-            break;
+            return;
         case 'mute':
             toggleMuteChat(chatId);
             break;
@@ -1174,6 +1177,9 @@ function handleChatHeaderMenuAction(action, chatId) {
         case 'leave':
             leaveChat(chatId);
             break;
+    }
+    if (fromModal) {
+        closeTopModalInfoPanel();
     }
 }
 
@@ -1339,6 +1345,48 @@ async function leaveChat(chatId) {
     }
 }
 
+function showChatInfoMenu(chatId) {
+    const menuButton = document.getElementById(`chatInfoMenuButton_${chatId}`);
+    if (!menuButton) return;
+    
+    const rect = menuButton.getBoundingClientRect();
+    
+    showChatMenu({ x: rect.left, y: rect.bottom + 2 }, chatId);
+}
+
+async function showUserInfoMenu(userId) {
+    const menuButton = document.getElementById(`userInfoMenuButton_${userId}`);
+    if (!menuButton) return;
+
+    const rect = menuButton.getBoundingClientRect();
+    
+    // Find if a personal chat exists with this user
+    const personalChat = findPersonalChatByUserId(userId);
+    
+    if (personalChat && currentChatId === personalChat.id) {
+        // Show chat menu if personal chat exists
+        showChatMenu({ x: rect.left, y: rect.bottom + 2 }, personalChat.id);
+    } else {
+        // Show menu with option to start chat
+        const menuItems = [
+            { id: 'open_chat', label: 'Open Chat', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>' }
+        ];
+        
+        showContextMenu({
+            items: menuItems,
+            x: rect.left,
+            y: rect.bottom + 2,
+            anchor: 'top-left',
+            onAction: async (action) => {
+                if (action === 'open_chat') {
+                    await createOrOpenPersonalChat(userId);
+                    closeAllModalInfoPanels();
+                }
+            }
+        });
+    }
+}
+
 async function showGroupChatInfo(chatId) {
     if (!chatId) return;
     
@@ -1353,6 +1401,9 @@ async function showGroupChatInfo(chatId) {
     modalElement.innerHTML = `
         <div class="user-info-content">
             <div class="user-info-header">
+                <button class="ellipsis-button" id="chatInfoMenuButton_${chatId}" onclick="event.stopPropagation(); showChatInfoMenu('${chatId}')" title="Chat menu">
+                    •••
+                </button>
                 <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
                 <button class="user-panel-close-btn" onclick="closeTopModalInfoPanel()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
