@@ -252,6 +252,9 @@
     <div class="user-profile-modal" id="userProfileModal">
         <div class="user-profile-content">
             <div class="user-profile-header">
+                <button class="ellipsis-button" id="userProfileMenuButton" onclick="event.stopPropagation(); showUserProfileMenu()" title="Profile menu">
+                    •••
+                </button>
                 <button class="user-panel-close-btn" onclick="closeCurrentUserProfile()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                         <path d="M18 6 6 18"></path>

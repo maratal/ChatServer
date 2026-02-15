@@ -132,12 +132,6 @@ function displayCurrentUserProfile() {
         </div>
         <div class="user-profile-actions">
             <button class="user-profile-save-btn" onclick="saveCurrentUserProfile()">Save Changes</button>
-            <button class="user-profile-logout-btn" onclick="logout()">
-                Logout
-                <svg class="user-profile-logout-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6 14H3C2.46957 14 1.96086 13.7893 1.58579 13.4142C1.21071 13.0391 1 12.5304 1 12V4C1 3.46957 1.21071 2.96086 1.58579 2.58579C1.96086 2.21071 2.46957 2 3 2H6M10 11L14 8M14 8L10 5M14 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
         </div>
     `;
     
@@ -207,6 +201,207 @@ async function saveCurrentUserProfile() {
     } catch (error) {
         console.error('Error updating profile:', error);
         alert('Error updating profile: ' + error.message);
+    }
+}
+
+function showUserProfileMenu() {
+    const menuButton = document.getElementById('userProfileMenuButton');
+    if (!menuButton) return;
+    
+    const rect = menuButton.getBoundingClientRect();
+    
+    const menuItems = [
+        { id: 'change_password', label: 'Change Password', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' },
+        { id: 'logout', label: 'Logout', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>', separator: true }
+    ];
+    
+    showContextMenu({
+        items: menuItems,
+        x: rect.left,
+        y: rect.bottom + 2,
+        anchor: 'top-left',
+        onAction: (action) => {
+            handleUserProfileMenuAction(action);
+        }
+    });
+}
+
+function handleUserProfileMenuAction(action) {
+    switch (action) {
+        case 'change_password':
+            showChangePasswordModal();
+            break;
+        case 'logout':
+            logout();
+            break;
+    }
+}
+
+function showChangePasswordModal() {
+    // Create a new modal container similar to user profile modal (slides from left)
+    const modalId = 'changePasswordModal';
+    const modalElement = document.createElement('div');
+    modalElement.id = modalId;
+    modalElement.className = 'user-profile-modal';
+    modalElement.style.zIndex = 1010 + userInfoModalStack.length * 10;
+    
+    modalElement.innerHTML = `
+        <div class="user-profile-content">
+            <div class="user-profile-header">
+                <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
+                <button class="user-panel-close-btn" onclick="closeTopModalInfoPanel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="user-profile-body" id="${modalId}_body">
+                <div class="change-password-form">
+                    <div class="form-group">
+                        <label for="currentPasswordInput">Current Password</label>
+                        <input type="password" id="currentPasswordInput" placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPasswordInput">New Password</label>
+                        <input type="password" id="newPasswordInput" placeholder="Enter new password">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPasswordInput">Confirm New Password</label>
+                        <input type="password" id="confirmPasswordInput" placeholder="Confirm new password">
+                    </div>
+                    <div id="passwordChangeError" class="user-profile-error" style="display: none; margin-top: 1rem;"></div>
+                    <div id="passwordChangeSuccess" class="user-profile-success" style="display: none; margin-top: 1rem;"></div>
+                    <div class="user-profile-actions">
+                        <button class="user-profile-save-btn" onclick="handleChangePassword()" id="changePasswordBtn">Change Password</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalElement);
+    
+    // Close on backdrop click
+    modalElement.addEventListener('click', function(event) {
+        if (event.target === modalElement) {
+            closeTopModalInfoPanel();
+        }
+    });
+    
+    // Show modal
+    modalElement.style.display = 'block';
+    modalElement.offsetHeight;
+    
+    // Trigger animation after display is set (double RAF ensures transition works)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            modalElement.classList.add('show');
+        });
+    });
+    
+    // Add to stack
+    userInfoModalStack.push({ type: 'changePassword', element: modalElement, bodyId: `${modalId}_body` });
+    
+    // Focus on first input
+    setTimeout(() => {
+        const currentPasswordInput = document.getElementById('currentPasswordInput');
+        if (currentPasswordInput) {
+            currentPasswordInput.focus();
+        }
+    }, 100);
+    
+    // Handle Enter key on inputs
+    const inputs = ['currentPasswordInput', 'newPasswordInput', 'confirmPasswordInput'];
+    inputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleChangePassword();
+                }
+            });
+        }
+    });
+}
+
+async function handleChangePassword() {
+    const currentPasswordInput = document.getElementById('currentPasswordInput');
+    const newPasswordInput = document.getElementById('newPasswordInput');
+    const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+    const errorDiv = document.getElementById('passwordChangeError');
+    const successDiv = document.getElementById('passwordChangeSuccess');
+    const changeBtn = document.getElementById('changePasswordBtn');
+    
+    // Hide previous messages
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    
+    const currentPassword = currentPasswordInput.value;
+    const newPassword = newPasswordInput.value;
+    const confirmPassword = confirmPasswordInput.value;
+    
+    // Validation
+    if (!currentPassword) {
+        errorDiv.textContent = 'Please enter your current password';
+        errorDiv.style.display = 'block';
+        currentPasswordInput.focus();
+        return;
+    }
+    
+    if (!newPassword) {
+        errorDiv.textContent = 'Please enter a new password';
+        errorDiv.style.display = 'block';
+        newPasswordInput.focus();
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        errorDiv.textContent = 'Password must be at least 6 characters long';
+        errorDiv.style.display = 'block';
+        newPasswordInput.focus();
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        errorDiv.textContent = 'Passwords do not match';
+        errorDiv.style.display = 'block';
+        confirmPasswordInput.focus();
+        return;
+    }
+    
+    if (currentPassword === newPassword) {
+        errorDiv.textContent = 'New password must be different from current password';
+        errorDiv.style.display = 'block';
+        newPasswordInput.focus();
+        return;
+    }
+    
+    // Disable button during request
+    changeBtn.disabled = true;
+    changeBtn.textContent = 'Changing...';
+    
+    try {
+        await apiChangePassword(currentPassword, newPassword);
+        
+        // Show success message
+        successDiv.textContent = 'Password changed successfully';
+        successDiv.style.display = 'block';
+        
+        // Close modal after 1 second
+        setTimeout(() => {
+            closeTopModalInfoPanel();
+        }, 500);
+        
+    } catch (error) {
+        console.error('Error changing password:', error);
+        errorDiv.textContent = error.message || 'Failed to change password';
+        errorDiv.style.display = 'block';
+        
+        // Re-enable button
+        changeBtn.disabled = false;
+        changeBtn.textContent = 'Change Password';
     }
 }
 

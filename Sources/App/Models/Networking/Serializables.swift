@@ -8,7 +8,7 @@ struct RegistrationRequest: Serializable {
 }
 
 struct ChangePasswordRequest: Serializable {
-    var oldPassword: String
+    var currentPassword: String
     var newPassword: String
 }
 

@@ -22,8 +22,8 @@ struct UserController: RouteCollection {
         let protectedPath = usersPath.grouped(DeviceSession.authenticator())
         protectedPath.group("me") { route in
             route.get(use: current)
-            route.put("changePassword", use: changePassword)
-            route.put("setAccountKey", use: setAccountKey)
+            route.put("password", use: changePassword)
+            route.put("accountKey", use: setAccountKey)
             route.post("logout", use: logout)
             route.delete(use: deregister)
             route.put(use: update)
@@ -66,7 +66,7 @@ struct UserController: RouteCollection {
     
     func changePassword(_ req: Request) async throws -> HTTPStatus {
         let content = try req.content.decode(ChangePasswordRequest.self)
-        try await service.changePassword(req.authenticatedUser(), currentPassword: content.oldPassword, newPassword: content.newPassword)
+        try await service.changePassword(req.authenticatedUser(), currentPassword: content.currentPassword, newPassword: content.newPassword)
         return .ok
     }
     

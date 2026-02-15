@@ -107,6 +107,26 @@ async function apiUpdateCurrentUser(name, about) {
     return await handleResponse(response);
 }
 
+async function apiChangePassword(currentPassword, newPassword) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch('/users/me/password', {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            currentPassword,
+            newPassword
+        })
+    });
+    return await handleResponse(response);
+}
+
 async function apiGetUser(userId) {
     const accessToken = getAccessToken();
     if (!accessToken) {

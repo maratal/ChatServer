@@ -1,28 +1,6 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+@import url('common.css');
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    background: #f5f5f5;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #333;
-}
-
-.login-container {
-    background: white;
-    padding: 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 400px;
-    border: 1px solid #ddd;
-}
+/* Auth page specific styles */
 
 .logo {
     text-align: center;
@@ -41,75 +19,23 @@ body {
     font-size: 0.9rem;
 }
 
-.form-group {
-    margin-bottom: 20px;
-    position: relative;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-    color: #333;
-    font-size: 0.9rem;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #ddd;
-    border-radius: 10px;
-    font-size: 1rem;
-    transition: border-color 0.3s ease;
-    background: #f9f9f9;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #666;
+.login-container,
+.register-container {
     background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid #ddd;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
-.form-group.error input {
-    border-color: #e74c3c;
-    background: #fdf2f2;
-}
-
-.error-popup {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: #e74c3c;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 5px;
-    font-size: 0.85rem;
-    margin-top: 5px;
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
-    z-index: 10;
-}
-
-.error-popup::before {
-    content: '';
-    position: absolute;
-    top: -5px;
-    left: 15px;
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-bottom: 5px solid #e74c3c;
-}
-
-.form-group.error .error-popup {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.login-button {
+.login-button,
+.register-button {
     width: 100%;
     padding: 12px;
     background: #333;
@@ -122,16 +48,19 @@ body {
     transition: background 0.3s ease;
 }
 
-.login-button:hover {
+.login-button:hover,
+.register-button:hover {
     background: #555;
 }
 
-.login-button:disabled {
+.login-button:disabled,
+.register-button:disabled {
     background: #ccc;
     cursor: not-allowed;
 }
 
-.login-button.loading {
+.login-button.loading,
+.register-button.loading {
     background: #999;
     cursor: wait;
 }
@@ -162,11 +91,13 @@ body {
     z-index: 2;
 }
 
-.register-link {
+.register-link,
+.login-link {
     text-align: center;
 }
 
-.register-link a {
+.register-link a,
+.login-link a {
     color: #333;
     text-decoration: none;
     font-weight: 500;
@@ -174,7 +105,8 @@ body {
     transition: border-color 0.3s ease;
 }
 
-.register-link a:hover {
+.register-link a:hover,
+.login-link a:hover {
     border-bottom-color: #333;
 }
 
@@ -198,8 +130,82 @@ body {
     border: 1px solid #f5c6cb;
 }
 
+/* Register page specific */
+
+.info-button {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: #333;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 10px;
+    line-height: 16px;
+    font-weight: bold;
+    font-style: normal;
+    font-family: serif;
+    margin-left: 2px;
+    margin-bottom: 2px;
+    position: relative;
+    vertical-align: middle;
+}
+
+.info-button:hover {
+    background: #555;
+}
+
+.password-requirements-tooltip {
+    position: absolute;
+    background: #333;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    width: 280px;
+    top: 25px;
+    left: 0;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.password-requirements-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid #333;
+}
+
+.password-requirements-tooltip ul {
+    margin: 5px 0 0 15px;
+    color: #fff;
+}
+
+.password-requirements-tooltip li {
+    margin-bottom: 2px;
+    color: #fff;
+}
+
+.password-requirements-tooltip strong {
+    color: #fff;
+}
+
+.info-button:hover + .password-requirements-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
 @media (max-width: 480px) {
-    .login-container {
+    .login-container,
+    .register-container {
         margin: 20px;
         padding: 30px 25px;
     }
