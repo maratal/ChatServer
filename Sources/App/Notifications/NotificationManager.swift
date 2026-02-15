@@ -40,7 +40,9 @@ actor NotificationManager: Notificator {
                 else {
                     continue
                 }
-                await push.send(notification, to: device)
+                Task.detached {
+                    await self.push.send(notification, to: device)
+                }
             }
         }
     }
