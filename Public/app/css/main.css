@@ -2442,9 +2442,12 @@ input[type="text"]:disabled, textarea:disabled {
 .message-status-area {
     width: 20px;
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 6px;
+    justify-content: center;
+    padding-right: 3px;
+}
+
+.message-status-read-mark {
+    display: none;
 }
 
 /* Context Menu - Unified menu styles */
