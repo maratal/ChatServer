@@ -157,6 +157,7 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
     
     // Check date difference for date header visibility
     let dateDiffersFromPrev = false;
+    let dateDiffersFromNext = false;
     
     if (prevElement && prevElement.dataset.createdAt && currentCreatedAt) {
         const prevTime = normalizeTimestamp(prevElement.dataset.createdAt);
@@ -178,6 +179,11 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
         const currentTime = normalizeTimestamp(currentCreatedAt);
         const timeDiff = Math.abs(currentTime - nextTime) / (1000 * 60); // minutes
         timeGapWithNext = timeDiff > 10;
+        
+        // Check if dates differ
+        const nextDateString = nextTime.toDateString();
+        const currentDateString = currentTime.toDateString();
+        dateDiffersFromNext = nextDateString !== currentDateString;
     }
     
     // Show/hide date header based on date difference
@@ -195,11 +201,11 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
     const prevHasAttachments = prevElement && prevElement.querySelector('.message-attachment-container') !== null;
     const nextHasAttachments = nextElement && nextElement.querySelector('.message-attachment-container') !== null;
     
-    // Messages should be grouped if same author AND within 10 minutes AND no attachments
+    // Messages should be grouped if same author AND within 10 minutes AND no attachments AND same date
     const shouldGroupWithPrev = sameAuthorAsPrev && !timeGapWithPrev && 
-        !currentHasAttachments && !prevHasAttachments;
+        !currentHasAttachments && !prevHasAttachments && !dateDiffersFromPrev;
     const shouldGroupWithNext = sameAuthorAsNext && !timeGapWithNext && 
-        !currentHasAttachments && !nextHasAttachments;
+        !currentHasAttachments && !nextHasAttachments && !dateDiffersFromNext;
     
     let groupPosition;
     if (!shouldGroupWithPrev && !shouldGroupWithNext) {
