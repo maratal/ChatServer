@@ -39,7 +39,16 @@ final class DeviceSession: RepositoryItem, @unchecked Sendable /* https://blog.v
     
     init() { }
 
-    init(id: SessionID? = nil, accessToken: String, userID: UserID, deviceId: DeviceID, deviceName: String, deviceModel: String, deviceToken: String?, pushTransport: String) {
+    init(id: SessionID? = nil,
+         accessToken: String,
+         userID: UserID,
+         deviceId: DeviceID,
+         deviceName: String,
+         deviceModel: String,
+         deviceToken: String?,
+         pushTransport: String,
+         ipAddress: String?
+    ) {
         self.id = id
         self.accessToken = accessToken
         self.$user.id = userID
@@ -48,6 +57,7 @@ final class DeviceSession: RepositoryItem, @unchecked Sendable /* https://blog.v
         self.deviceModel = deviceModel
         self.deviceToken = deviceToken
         self.pushTransport = pushTransport
+        self.ipAddress = ipAddress
     }
 }
 

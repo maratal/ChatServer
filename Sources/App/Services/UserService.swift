@@ -6,20 +6,23 @@ import Foundation
 protocol UserServiceProtocol: LoggedIn {
 
     /// Registers a new user account and authenticates it.
-    func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo
+    func register(_ request: RegistrationRequest, ipAddress: String?) async throws -> User.PrivateInfo
     
     /// Deregisters user's account and deletes all associated data.
     func deregister(_ user: User) async throws
     
     /// Authenticates user by checking username-password pair and generating an access token.
     /// In Vapor it happens semi-automatically (see `ModelAuthenticatable`), so this method only generates a token.
-    func login(_ user: User, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo
+    func login(_ user: User, deviceInfo: DeviceInfo, ipAddress: String?) async throws -> User.PrivateInfo
     
     /// Resets user's current authentication (in Vapor) and token to `nil`.
     func logout(_ user: User) async throws
     
     /// Returns full information about current user including all logged in sessions.
-    func current(_ user: User) async throws -> User.PrivateInfo
+    func me(_ user: User) async throws -> User.PrivateInfo
+    
+    /// Returns full information about current user and active session.
+    func current(_ session: DeviceSession) async throws -> User.PrivateInfo
     
     /// Changes password by providing user's current password..
     func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws
@@ -70,42 +73,52 @@ actor UserService: UserServiceProtocol {
         return self
     }
     
-    func register(_ request: RegistrationRequest) async throws -> User.PrivateInfo {
+    func register(_ request: RegistrationRequest, ipAddress: String?) async throws -> User.PrivateInfo {
         let registration = try validate(registration: request)
         let user = User(name: registration.name,
                         username: registration.username,
                         passwordHash: registration.password.bcryptHash(),
                         accountKeyHash: nil)
         try await repo.save(user)
-        return try await login(user, deviceInfo: request.deviceInfo)
+        return try await login(user, deviceInfo: request.deviceInfo, ipAddress: ipAddress)
     }
     
     func deregister(_ user: User) async throws {
         try await repo.delete(user)
     }
     
-    func login(_ user: User, deviceInfo: DeviceInfo) async throws -> User.PrivateInfo {
+    func login(_ user: User, deviceInfo: DeviceInfo, ipAddress: String?) async throws -> User.PrivateInfo {
         let deviceSession = DeviceSession(accessToken: generateAccessToken(),
                                           userID: user.id!,
                                           deviceId: deviceInfo.id,
                                           deviceName: deviceInfo.name,
                                           deviceModel: deviceInfo.model,
                                           deviceToken: deviceInfo.token,
-                                          pushTransport: deviceInfo.transport.rawValue)
+                                          pushTransport: deviceInfo.transport.rawValue,
+                                          ipAddress: ipAddress)
         try await repo.saveSession(deviceSession)
         try await repo.reloadPhotos(of: user)
-        try await repo.loadSessions(of: user)
-        return user.privateInfo()
+        let sessions = try await repo.loadSessions(of: user)
+        let sessionId = try deviceSession.requireID()
+        return user.privateInfo(with: sessions.first(where: { $0.id == sessionId }))
     }
     
     func logout(_ user: User) async throws {
         try await repo.deleteSession(of: user)
     }
     
-    func current(_ user: User) async throws -> User.PrivateInfo {
+    func me(_ user: User) async throws -> User.PrivateInfo {
         try await repo.reloadPhotos(of: user)
         try await repo.loadSessions(of: user)
         return user.privateInfo()
+    }
+    
+    func current(_ session: DeviceSession) async throws -> User.PrivateInfo {
+        let user = session.user
+        try await repo.reloadPhotos(of: user)
+        let sessions = try await repo.loadSessions(of: user)
+        let sessionId = try session.requireID()
+        return user.privateInfo(with: sessions.first(where: { $0.id == sessionId }))
     }
     
     func changePassword(_ user: User, currentPassword: String, newPassword: String) async throws {
@@ -162,7 +175,7 @@ actor UserService: UserServiceProtocol {
         }
         try await repo.saveSession(session)
         try await repo.loadSessions(of: session.user)
-        return session.user.privateInfo()
+        return session.user.privateInfo(with: session)
     }
     
     func addPhoto(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo {

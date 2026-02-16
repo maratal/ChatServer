@@ -41,7 +41,7 @@ struct UserController: RouteCollection {
     
     func register(req: Request) async throws -> User.PrivateInfo {
         let content = try req.content.decode(RegistrationRequest.self)
-        return try await service.register(content)
+        return try await service.register(content, ipAddress: req.ipAddress)
     }
     
     func deregister(req: Request) async throws -> HTTPStatus {
@@ -51,7 +51,7 @@ struct UserController: RouteCollection {
     
     func login(_ req: Request) async throws -> User.PrivateInfo {
         let deviceInfo = try req.content.decode(DeviceInfo.self)
-        return try await service.login(try req.authenticatedUser(), deviceInfo: deviceInfo)
+        return try await service.login(try req.authenticatedUser(), deviceInfo: deviceInfo, ipAddress: req.ipAddress)
     }
     
     func logout(_ req: Request) async throws -> HTTPStatus {
@@ -61,7 +61,7 @@ struct UserController: RouteCollection {
     }
     
     func current(_ req: Request) async throws -> User.PrivateInfo {
-        try await service.current(req.authenticatedUser())
+        try await service.current(req.deviceSession())
     }
     
     func changePassword(_ req: Request) async throws -> HTTPStatus {

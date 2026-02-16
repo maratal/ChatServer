@@ -83,6 +83,10 @@ extension Request {
         // Limit count to a reasonable maximum
         return min(max(count, 1), 100)
     }
+    
+    var ipAddress: String {
+        peerAddress?.ipAddress ?? "::0"
+    }
 }
 
 extension PathComponent {

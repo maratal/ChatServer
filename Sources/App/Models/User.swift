@@ -106,9 +106,13 @@ extension User {
         var info: Info
         var deviceSessions: [DeviceSession.Info]
         
-        init(from user: User) {
+        init(from user: User, deviceSession: DeviceSession?) {
             self.info = user.fullInfo()
-            self.deviceSessions = user.deviceSessions.map { $0.info() }
+            if let deviceSession = deviceSession {
+                self.deviceSessions = [deviceSession.info()]
+            } else {
+                self.deviceSessions = user.deviceSessions.map { $0.info() }
+            }
         }
     }
     
@@ -120,8 +124,8 @@ extension User {
         Info(from: self, fullInfo: true)
     }
     
-    func privateInfo() -> PrivateInfo {
-        PrivateInfo(from: self)
+    func privateInfo(with deviceSession: DeviceSession? = nil) -> PrivateInfo {
+        PrivateInfo(from: self, deviceSession: deviceSession)
     }
 }
 
