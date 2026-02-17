@@ -375,6 +375,38 @@ function playNotificationSound() {
     });
 }
 
+// Helper functions for managing unread count in localStorage
+function getStorageUnreadCount(chat) {
+    if (!chat || !chat.id) return null;
+    const key = `unreadCount_${chat.id}`;
+    const value = localStorage.getItem(key);
+    return value ? parseInt(value, 10) : null;
+}
+
+function setStorageUnreadCount(chat, count) {
+    if (!chat || !chat.id) return;
+    const key = `unreadCount_${chat.id}`;
+    if (count > 0) {
+        localStorage.setItem(key, count.toString());
+    } else {
+        localStorage.removeItem(key);
+    }
+}
+
+function isMessageReadByCurrentUser(message) {
+    if (!message || isOwnMessage(message)) return true;
+    if (!message.readMarks) return false;
+    return message.readMarks.some(mark => mark.user.id === currentUser.info.id);
+}
+
+function getUnreadCount(chat) {
+    let unreadCount = getStorageUnreadCount(chat);
+    if (!unreadCount) {
+        unreadCount = isMessageReadByCurrentUser(chat.lastMessage) ? 0 : 1;
+    }
+    return unreadCount;
+}
+
 // Check if a string is a debug command prefix
 function stringIsDebugPrefix(str) {
     return str.startsWith('/debug') || str.startsWith('/d');

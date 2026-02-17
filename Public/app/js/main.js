@@ -103,7 +103,11 @@ if (document.readyState === 'loading') {
 async function loadChats() {
     try {
         chats = await apiGetChats(true);
+        
         displayChats();
+
+        // Update page title badge
+        updatePageTitleBadge();
     } catch (error) {
         console.error('Error loading chats:', error);
     }
@@ -159,6 +163,57 @@ function restoreSelectedChatId() {
     }
 
     return chatIdToSelect;
+}
+
+// Update page title with unread chats count
+let originalTitle = document.title;
+
+async function markChatAsRead(chatId) {
+    if (!chatId) return;
+    
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+    
+    if (getUnreadCount(chat) > 0) {
+        setStorageUnreadCount(chat, 0);
+        
+        // Update the DOM to remove badge and bold style
+        const chatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
+        if (chatItem) {
+            const lastMessageElement = chatItem.querySelector('.chat-last-message');
+            if (lastMessageElement) {
+                lastMessageElement.classList.remove('unread');
+            }
+            
+            const badgeElement = chatItem.querySelector('.chat-badge');
+            if (badgeElement) {
+                badgeElement.remove();
+            }
+        }
+        
+        // Update page title badge
+        updatePageTitleBadge();
+    }
+    
+    // Mark messages as read on server
+    if (chat.lastMessage && chat.lastMessage.id && !isMessageReadByCurrentUser(chat.lastMessage)) {
+        try {
+            await apiMarkAsRead(chatId, chat.lastMessage.id);
+        } catch (error) {
+            console.error('Failed to mark messages as read:', error);
+        }
+    }
+}
+
+function updatePageTitleBadge() {
+    // Count chats with unread messages
+    const unreadChatsCount = chats.filter(chat => getUnreadCount(chat) > 0).length;
+    
+    if (unreadChatsCount > 0 && document.hidden) {
+        document.title = `(${unreadChatsCount}) ${originalTitle}`;
+    } else {
+        document.title = originalTitle;
+    }
 }
 
 // Display chats in the sidebar
@@ -312,8 +367,8 @@ function createChatItem(chat) {
     const messageDate = getChatLastMessageDate(chat);
     const messageDateString = messageDate ? formatMessageTime(messageDate) : null;
     
-    // Check if there are unread messages (placeholder for now)
-    const unreadCount = 0; // This would come from the API
+    // Get unread count from chat
+    const unreadCount = getUnreadCount(chat);
     
     // Generate avatar HTML
     let avatarHtml;
@@ -368,7 +423,7 @@ function createChatItem(chat) {
                     `<span class="chat-muted-indicator">
                         <span class="chat-muted-text">Muted</span>
                     </span>` : 
-                    `<p class="chat-last-message">${escapeHtml(lastMessageText)}</p>`
+                    `<p class="chat-last-message${unreadCount > 0 ? ' unread' : ''}">${escapeHtml(lastMessageText)}</p>`
                 }
                 ${unreadCount > 0 ? `<div class="chat-badge">${unreadCount}</div>` : ''}
             </div>
@@ -498,7 +553,7 @@ async function selectChat(chatId, addToHistory = true) {
             </div>
         `;
     } else {
-        loadMessagesAndPrepareInputForChat(chatId);
+        await loadMessagesAndPrepareInputForChat(chatId);
         messageInputContainer.style.display = 'flex';
     }
 }
@@ -530,19 +585,66 @@ function updateCurrentUserButton() {
 // Update chat list when new message arrives
 function updateChatListWithMessage(message) {
     const chat = chats.find(c => c.id === message.chatId);
-    if (chat) {
-        chat.lastMessage = message;
-        
-        // Find the specific chat item in the DOM and update only the last message text
-        const chatItem = document.querySelector(`[data-chat-id="${message.chatId}"]`);
-        if (chatItem) {
-            const lastMessageElement = chatItem.querySelector('.chat-last-message');
-            if (lastMessageElement) {
-                const lastMessageText = getChatLastMessageText(chat);
-                lastMessageElement.textContent = lastMessageText;
-            }
+    if (!chat) {
+        console.warn('Received message for unknown chat:', message.chatId);
+        return;
+    }
+
+    const chatItem = document.querySelector(`[data-chat-id="${message.chatId}"]`);
+    if (!chatItem) {
+        console.warn('Chat item not found for message:', message.chatId);
+        return;
+    }
+
+    chat.lastMessage = message;
+
+    const lastMessageElement = chatItem.querySelector('.chat-last-message');
+    if (lastMessageElement) {
+        const lastMessageText = getChatLastMessageText(chat);
+        lastMessageElement.textContent = lastMessageText;
+    }
+
+    // If the message is from the current user, don't increment unread count
+    if (isOwnMessage(message)) {
+        return;
+    }
+
+    var unreadCount = getStorageUnreadCount(chat) || 0;
+
+    // If chat is not currently open or the page is hidden, increment the unread count
+    if (message.chatId !== currentChatId || document.hidden) {
+        setStorageUnreadCount(chat, ++unreadCount);
+    }
+
+    if (lastMessageElement) {
+        // Update bold style based on unread count
+        if (unreadCount > 0) {
+            lastMessageElement.classList.add('unread');
+        } else {
+            lastMessageElement.classList.remove('unread');
         }
     }
+    
+    // Update or add badge
+    const messageRow = chatItem.querySelector('.chat-message-row');
+    if (messageRow) {
+        let badgeElement = messageRow.querySelector('.chat-badge');
+        if (unreadCount > 0) {
+            if (badgeElement) {
+                badgeElement.textContent = unreadCount;
+            } else {
+                badgeElement = document.createElement('div');
+                badgeElement.className = 'chat-badge';
+                badgeElement.textContent = unreadCount;
+                messageRow.appendChild(badgeElement);
+            }
+        } else if (badgeElement) {
+            badgeElement.remove();
+        }
+    }
+
+    // Update page title badge
+    updatePageTitleBadge();
 }
 
 

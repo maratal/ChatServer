@@ -554,6 +554,21 @@ async function apiDeleteMessage(chatId, messageId) {
     return await handleResponse(response);
 }
 
+async function apiMarkAsRead(chatId, messageId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`/chats/${chatId}/messages/${messageId}/read`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`
+        }
+    });
+    return await handleResponse(response);
+}
+
 async function apiUploadFile(file, fileName, contentType, onProgress = null, onXhrCreated = null) {
     const accessToken = getAccessToken();
     if (!accessToken) {

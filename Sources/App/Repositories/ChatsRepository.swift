@@ -96,7 +96,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .filter(\.$isRemovedOnDevice == false)
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
-                chat.with(\.$lastMessage)
+                chat.with(\.$lastMessage) { message in
+                    message.with(\.$readMarks)
+                }
                 chat.with(\.$images)
                 if (fullInfo) {
                     chat.with(\.$users) { user in
@@ -187,6 +189,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
                 .with(\.$attachments)
+                .with(\.$readMarks)
                 .with(\.$author) { author in
                     author.with(\.$photos)
                 }
@@ -198,6 +201,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
                 .with(\.$attachments)
+                .with(\.$readMarks)
                 .with(\.$author) { author in
                     author.with(\.$photos)
                 }

@@ -115,10 +115,6 @@ typealias MessageInfo = Message.Info
 
 extension MessageInfo: JSONSerializable {
     
-    var readAt: Date? {
-        readMarks?.first(where: { $0.user?.id != author?.id })?.createdAt
-    }
-    
     func jsonObject() throws -> JSON {
         var dict = try json() as! JSON
 //        if let createdAt {

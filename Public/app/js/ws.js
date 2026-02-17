@@ -127,4 +127,29 @@ function handleWebSocketMessage(notification) {
             }
         }
     }
+    else if (notification.event === 'messageRead' && notification.payload) {
+        const message = notification.payload;
+        
+        // Update lastReferenceReadMessageId if this is an outgoing message with readMarks from other users
+        if (isOwnMessage(message) && message.readMarks) {
+            // Only update if this ID is greater than current lastReferenceReadMessageId
+            if (!lastReferenceReadMessageId || message.id > lastReferenceReadMessageId) {
+                lastReferenceReadMessageId = message.id;
+            }
+        }
+        
+        // Update the chat's lastMessage with new readMarks
+        const chat = chats.find(c => c.id === message.chatId);
+        if (chat) {
+            // If this is the last message, update it with new readMarks
+            if (chat.lastMessage && chat.lastMessage.id === message.id) {
+                chat.lastMessage = message;
+            }
+            
+            // Update read status display if this is the current chat
+            if (message.chatId === currentChatId) {
+                showCurrentChatMessagesAsRead();
+            }
+        }
+    }
 }

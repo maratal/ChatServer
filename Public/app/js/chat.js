@@ -8,6 +8,7 @@ let oldestMessageId = null; // Track the oldest message ID we've loaded
 let hasMoreMessages = true; // Track if there are more messages to load
 let editingMessage = null; // Track the message being edited
 let replyingToMessage = null; // Track the message being replied to
+var lastReferenceReadMessageId = null; // Track the ID of either last outgoing message that has been read by others or last incoming message (as a reference point for read status)
 
 // Load messages for a chat
 async function loadMessages(chatId, initialLoad = false) {
@@ -63,7 +64,7 @@ async function loadMessages(chatId, initialLoad = false) {
         }
         
         // Display messages (will prepend if not initial load, clear and append if initial)
-        displayMessages(messages, initialLoad, hasMoreMessages);
+        displayMessages(messages, initialLoad);
         
         // Restore scroll position after DOM update (only if not initial load)
         if (!initialLoad) {
@@ -228,7 +229,7 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
 }
 
 // Display messages in the chat area
-function displayMessages(messages, isInitialLoad = false, hasMoreMessages = true) {
+function displayMessages(messages, isInitialLoad = false) {
     const prepend = !isInitialLoad;
     console.log(`Displaying ${messages.length} messages... (prepend: ${prepend})`);
 
@@ -262,8 +263,6 @@ function displayMessages(messages, isInitialLoad = false, hasMoreMessages = true
     let previousMessageInBatch = null;
     for (let i = 0; i < messages.length; i++) {
         const message = messages[i];
-        // If there are no more messages, the very first (top) message should have a date header
-        const isTopMessage = !hasMoreMessages && i === messages.length - 1;
         addMessageToChat(message, true, prepend);
         if (prepend) {
             previousMessageInBatch = message;
@@ -275,7 +274,10 @@ function displayMessages(messages, isInitialLoad = false, hasMoreMessages = true
     messageElements.forEach((messageElement, index) => {
         updateSingleMessageGrouping(messageElement, index, messageElements);
     });
-    
+
+    // Mark messages as read
+    showCurrentChatMessagesAsRead();
+
     // Handle scrolling (only for initial load)
     if (isInitialLoad) {
         // Scroll to bottom instantly when loading messages
@@ -498,6 +500,14 @@ function createMessageElement(message) {
     if (hasAttachments && messageDiv.dataset.attachments) {
         messageDiv.dataset.currentAttachmentIndex = '0';
     }
+
+    if (isOwnMessage(message) && message.id <= lastReferenceReadMessageId) {
+        // remove hidden class to show read mark
+        const readMark = messageDiv.querySelector('.message-status-read-mark');
+        if (readMark) {
+            readMark.classList.remove('hidden');
+        }
+    }
     
     // Add long press handler for context menu
     addLongPressHandler(messageDiv, {
@@ -512,7 +522,28 @@ function createMessageElement(message) {
     return messageDiv;
 }
 
-// Navigate message attachments
+function showCurrentChatMessagesAsRead() {
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (!messagesContainer || !lastReferenceReadMessageId) return;
+
+    // Query only hidden read marks (more efficient - only elements that need updating)
+    const hiddenReadMarks = messagesContainer.querySelectorAll('.message-status-read-mark.hidden');
+    
+    hiddenReadMarks.forEach(readMark => {
+        // Find the parent message element
+        const messageElement = readMark.closest('.message-row.own');
+        if (!messageElement) return;
+        
+        const messageId = messageElement.dataset.messageId;
+        if (!messageId) return;
+        
+        // If this message ID is <= the reference message ID, show as read
+        if (messageId <= lastReferenceReadMessageId) {
+            readMark.classList.remove('hidden');
+        }
+    });
+}
+
 function navigateMessageAttachment(messageId, direction) {
     const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row');
     if (!messageDiv) return;
@@ -1031,6 +1062,13 @@ function initializeMessageInput() {
     
     messageInput.addEventListener('input', adjustHeight);
     
+    messageInput.addEventListener('focus', function() {
+        // Mark chat as read when message input is focused
+        if (currentChatId) {
+            markChatAsRead(currentChatId);
+        }
+    });
+    
     messageInput.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -1241,6 +1279,18 @@ async function addMessageToChat(message, bulkAddition = false, prepend = false) 
         noMessages.remove();
     }
     
+    // Check if message has read marks from other users to update lastReferenceReadMessageId
+    const hasOtherUserReadMarks = message.readMarks?.some(mark =>
+        mark.user && mark.user.id !== currentUser.info.id
+    );
+
+    if (hasOtherUserReadMarks || !isOwnMessage(message)) {
+        // Only update if this ID is greater than current lastReferenceReadMessageId
+        if (!lastReferenceReadMessageId || message.id > lastReferenceReadMessageId) {
+            lastReferenceReadMessageId = message.id;
+        }
+    }
+
     // Date header is now handled inside the message element by updateSingleMessageGrouping
     // No need to check for date headers here
     

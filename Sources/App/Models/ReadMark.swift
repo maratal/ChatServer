@@ -34,7 +34,7 @@ extension ReadMark {
         
         init(from source: ReadMark) {
             self.id = source.id
-            self.user = source.user.info()
+            self.user = UserInfo(id: source.$user.id)
             self.createdAt = source.createdAt
         }
     }

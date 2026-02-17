@@ -10,6 +10,7 @@ struct CoreService: Sendable {
         /// Chat related events
         case message
         case messageUpdate
+        case messageRead
         case chatUpdate
         case userUpdate
         case addedUsers

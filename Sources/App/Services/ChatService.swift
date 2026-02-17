@@ -572,8 +572,10 @@ actor ChatService: ChatServiceProtocol {
         if message.readMarks.first(where: { $0.user.id == userId }) == nil {
             let readMark = ReadMark(messageId: id, userId: userId)
             try await core.saveItem(readMark)
-            let info = message.info()
-            try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: readerRelation.user, with: info.jsonObject())
+            var messageInfo = message.info()
+            let readMarkinfo = readMark.info()
+            messageInfo.readMarks = (messageInfo.readMarks ?? []) + [readMarkinfo]
+            try await core.notificator.notify(chat: message.chat, in: repo, about: .messageRead, from: readerRelation.user, with: messageInfo.jsonObject())
         }
     }
     
