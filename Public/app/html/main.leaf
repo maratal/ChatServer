@@ -39,9 +39,9 @@
                     </div>
                     <div class="chat-filters">
                         <button class="chat-filter-pill active" data-filter="all" onclick="setChatFilter('all')">All</button>
-                        <button class="chat-filter-pill" data-filter="archived" onclick="setChatFilter('archived')">Archived</button>
-                        <button class="chat-filter-pill" data-filter="blocked" onclick="setChatFilter('blocked')">Blocked</button>
+                        <button class="chat-filter-pill" data-filter="unread" onclick="setChatFilter('unread')">Unread</button>
                         <button class="chat-filter-pill" data-filter="muted" onclick="setChatFilter('muted')">Muted</button>
+                        <button class="chat-filter-pill" data-filter="more" id="moreFiltersButton" onclick="showMoreFiltersMenu(event)">More...</button>
                     </div>
                 </div>
 

@@ -4,7 +4,7 @@ let currentChatId = null;
 let chats = [];
 let websocket = null;
 let deviceSessionId = null;
-let currentChatFilter = 'all'; // 'all', 'archived', 'blocked', 'muted'
+let currentChatFilter = 'all'; // 'all', 'unread', 'archived', 'muted', 'blocked'
 
 // User selection variables
 let fetchedUsers = [];
@@ -231,6 +231,8 @@ function displayChats() {
             case 'all':
                 // Show all chats except blocked and archived
                 return !isBlocked && !isArchived;
+            case 'unread':
+                return getUnreadCount(chat) > 0 && !isBlocked && !isArchived;
             case 'archived':
                 return isArchived;
             case 'blocked':
@@ -257,9 +259,13 @@ function displayChats() {
                 </div>
             `;
         } else {
+            const filterLabel = currentChatFilter === 'unread' ? 'unread' :
+                               currentChatFilter === 'archived' ? 'archived' :
+                               currentChatFilter === 'blocked' ? 'blocked' :
+                               currentChatFilter === 'muted' ? 'muted' : '';
             chatItems.innerHTML = `
                 <div class="no-chats-container">
-                    <span class="no-chats-label">No chats</span>
+                    <span class="no-chats-label">No ${filterLabel} chats</span>
                 </div>
             `;
         }
@@ -2781,5 +2787,41 @@ function updateFilterPills() {
         } else {
             pill.classList.remove('active');
         }
+    });
+    
+    // Update "More" button to show active state for archived/blocked
+    const moreButton = document.getElementById('moreFiltersButton');
+    if (moreButton) {
+        if (currentChatFilter === 'archived' || currentChatFilter === 'blocked') {
+            moreButton.classList.add('active');
+        } else {
+            moreButton.classList.remove('active');
+        }
+    }
+}
+
+function showMoreFiltersMenu(event) {
+    event.stopPropagation();
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    
+    const selectedIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(82, 82, 86)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6" fill="rgb(82, 82, 86)"></circle></svg>';
+    const unselectedIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(82, 82, 86)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>';
+    
+    const menuItems = [
+        { id: 'archived', label: 'Archived', icon: currentChatFilter === 'archived' ? selectedIcon : unselectedIcon },
+        { id: 'blocked', label: 'Blocked', icon: currentChatFilter === 'blocked' ? selectedIcon : unselectedIcon }
+    ];
+    
+    showContextMenu({
+        items: menuItems,
+        x: rect.left,
+        y: rect.bottom + 4,
+        anchor: 'top-left',
+        onAction: (action) => {
+            setChatFilter(action);
+        },
+        highlightElement: button,
+        highlightClass: 'menu-active'
     });
 }
