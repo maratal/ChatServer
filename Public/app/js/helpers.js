@@ -376,16 +376,16 @@ function playNotificationSound() {
 }
 
 // Helper functions for managing unread count in localStorage
-function getStorageUnreadCount(chat) {
-    if (!chat || !chat.id) return null;
-    const key = `unreadCount_${chat.id}`;
+function getStorageUnreadCount(chatId) {
+    if (!chatId) return null;
+    const key = `unreadCount_${chatId}`;
     const value = localStorage.getItem(key);
     return value ? parseInt(value, 10) : null;
 }
 
-function setStorageUnreadCount(chat, count) {
-    if (!chat || !chat.id) return;
-    const key = `unreadCount_${chat.id}`;
+function setStorageUnreadCount(chatId, count) {
+    if (!chatId) return;
+    const key = `unreadCount_${chatId}`;
     if (count > 0) {
         localStorage.setItem(key, count.toString());
     } else {
@@ -399,10 +399,13 @@ function isMessageReadByCurrentUser(message) {
     return message.readMarks.some(mark => mark.user.id === currentUser.info.id);
 }
 
-function getUnreadCount(chat) {
-    let unreadCount = getStorageUnreadCount(chat);
+function resolveUnreadCount(chat) {
+    let unreadCount = getStorageUnreadCount(chat.id);
     if (!unreadCount) {
         unreadCount = isMessageReadByCurrentUser(chat.lastMessage) ? 0 : 1;
+        if (unreadCount > 0) {
+            setStorageUnreadCount(chat.id, unreadCount);
+        }
     }
     return unreadCount;
 }

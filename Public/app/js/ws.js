@@ -91,6 +91,9 @@ function handleWebSocketMessage(notification) {
         
         // Check if this is for the current chat
         if (message.chatId === currentChatId) {
+            // Update chat list item with new message
+            updateChatListWithMessage(message);
+
             // Check if we already have this message (by localId)
             const existingElement = document.querySelector(`[data-local-id="${message.localId}"]`);
             
@@ -107,12 +110,11 @@ function handleWebSocketMessage(notification) {
             // Message for a new chat, fetch chats again
             loadChats();
         } else {
-            // Message for a different existing chat, update chat list
+            // Update chat list item with new message
+            updateChatListWithMessage(message);
+            // Message for a different existing chat, re-sort chat list
             displayChats();
         }
-        
-        // Update chat list with new message
-        updateChatListWithMessage(message);
     }
     else if (notification.event === 'chatDeleted' && notification.payload) {
         const chatId = notification.payload.id;
@@ -120,6 +122,7 @@ function handleWebSocketMessage(notification) {
         const chatIndex = chats.findIndex(chat => chat.id === chatId);
         if (chatIndex !== -1) {
             chats.splice(chatIndex, 1);
+            setStorageUnreadCount(chatId, 0);
             displayChats();
             if (currentChatId === chatId) {
                 currentChatId = null;

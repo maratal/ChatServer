@@ -103,11 +103,7 @@ if (document.readyState === 'loading') {
 async function loadChats() {
     try {
         chats = await apiGetChats(true);
-        
         displayChats();
-
-        // Update page title badge
-        updatePageTitleBadge();
     } catch (error) {
         console.error('Error loading chats:', error);
     }
@@ -174,8 +170,8 @@ async function markChatAsRead(chatId) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
     
-    if (getUnreadCount(chat) > 0) {
-        setStorageUnreadCount(chat, 0);
+    if (resolveUnreadCount(chat) > 0) {
+        setStorageUnreadCount(chat.id, 0);
         
         // Update the DOM to remove badge and bold style
         const chatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
@@ -207,7 +203,7 @@ async function markChatAsRead(chatId) {
 
 function updatePageTitleBadge() {
     // Count chats with unread messages
-    const unreadChatsCount = chats.filter(chat => getUnreadCount(chat) > 0).length;
+    const unreadChatsCount = chats.filter(chat => resolveUnreadCount(chat) > 0).length;
     
     if (unreadChatsCount > 0 && document.hidden) {
         document.title = `(${unreadChatsCount}) ${originalTitle}`;
@@ -217,7 +213,7 @@ function updatePageTitleBadge() {
 }
 
 // Display chats in the sidebar
-function displayChats() {
+function displayChats(restoreSelection = true) {
     const chatItems = document.getElementById('chatItems');
     chatItems.innerHTML = '';
     
@@ -232,7 +228,7 @@ function displayChats() {
                 // Show all chats except blocked and archived
                 return !isBlocked && !isArchived;
             case 'unread':
-                return getUnreadCount(chat) > 0 && !isBlocked && !isArchived;
+                return resolveUnreadCount(chat) > 0 && !isBlocked && !isArchived;
             case 'archived':
                 return isArchived;
             case 'blocked':
@@ -307,31 +303,35 @@ function displayChats() {
         chatItems.appendChild(chatItem);
     });
 
-    // Restore selected chat if applicable
-    if (currentChatId === null) {
-        // Restore selected chat if page just reloaded
-        let restoredChatId = restoreSelectedChatId();
+    if (restoreSelection) {
+        // Restore selected chat if applicable
+        if (currentChatId === null) {
+            // Restore selected chat if page just reloaded
+            let restoredChatId = restoreSelectedChatId();
 
-        // Validate restoredChatId
-        if (!sortedChats.some(chat => chat.id === restoredChatId)) {
-            restoredChatId = null;
-        }
+            // Validate restoredChatId
+            if (!sortedChats.some(chat => chat.id === restoredChatId)) {
+                restoredChatId = null;
+            }
 
-        // Select the chat and initialize history state
-        if (restoredChatId) {
-            // Replace initial state instead of pushing
-            history.replaceState({ chatId: restoredChatId }, '', `#chat-${restoredChatId}`);
-            selectChat(restoredChatId, false); // addToHistory = false to avoid pushing another state
-        } else if (sortedChats.length > 0) {
-            // Select the first chat by default
-            selectChat(sortedChats[0].id);
+            // Select the chat and initialize history state
+            if (restoredChatId) {
+                // Replace initial state instead of pushing
+                history.replaceState({ chatId: restoredChatId }, '', `#chat-${restoredChatId}`);
+                selectChat(restoredChatId, false); // addToHistory = false to avoid pushing another state
+            } else if (sortedChats.length > 0) {
+                // Select the first chat by default
+                selectChat(sortedChats[0].id);
+            } else {
+                makeNoChatsSelected();
+            }
         } else {
-            makeNoChatsSelected();
+            // Ensure current chat is selected in the UI
+            selectChat(currentChatId, false);
         }
-    } else {
-        // Ensure current chat is selected in the UI
-        selectChat(currentChatId, false);
     }
+    // Update page title badge
+    updatePageTitleBadge();
 }
 
 // Create a chat item element
@@ -374,7 +374,7 @@ function createChatItem(chat) {
     const messageDateString = messageDate ? formatMessageTime(messageDate) : null;
     
     // Get unread count from chat
-    const unreadCount = getUnreadCount(chat);
+    const unreadCount = resolveUnreadCount(chat);
     
     // Generate avatar HTML
     let avatarHtml;
@@ -559,8 +559,8 @@ async function selectChat(chatId, addToHistory = true) {
             </div>
         `;
     } else {
-        await loadMessagesAndPrepareInputForChat(chatId);
         messageInputContainer.style.display = 'flex';
+        await loadMessagesAndPrepareInputForChat(chatId);
     }
 }
 
@@ -591,7 +591,7 @@ function updateCurrentUserButton() {
 // Update chat list when new message arrives
 function updateChatListWithMessage(message) {
     const chat = chats.find(c => c.id === message.chatId);
-    if (!chat) {
+    if (!chat || !chat.id) {
         console.warn('Received message for unknown chat:', message.chatId);
         return;
     }
@@ -615,11 +615,11 @@ function updateChatListWithMessage(message) {
         return;
     }
 
-    var unreadCount = getStorageUnreadCount(chat) || 0;
+    var unreadCount = getStorageUnreadCount(chat.id) || 0;
 
     // If chat is not currently open or the page is hidden, increment the unread count
     if (message.chatId !== currentChatId || document.hidden) {
-        setStorageUnreadCount(chat, ++unreadCount);
+        setStorageUnreadCount(chat.id, ++unreadCount);
     }
 
     if (lastMessageElement) {
@@ -648,9 +648,6 @@ function updateChatListWithMessage(message) {
             badgeElement.remove();
         }
     }
-
-    // Update page title badge
-    updatePageTitleBadge();
 }
 
 
@@ -883,8 +880,8 @@ async function createOrOpenPersonalChat(userId) {
             chats.unshift(newChat);
         }
         
-        // Refresh chat display and select new chat
-        displayChats();
+        // Refresh chat display
+        displayChats(false);
 
         // Select the newly created chat
         selectChat(newChat.id);
@@ -2665,8 +2662,8 @@ async function createGroupChat() {
             chats.unshift(newChat);
         }
         
-        // Refresh chat list and select the new chat
-        displayChats();
+        // Refresh chat list
+        displayChats(false);
 
         // Select the new chat
         selectChat(newChat.id);
