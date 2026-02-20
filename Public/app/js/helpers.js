@@ -380,7 +380,7 @@ function getStorageUnreadCount(chatId) {
     if (!chatId) return null;
     const key = `unreadCount_${chatId}`;
     const value = localStorage.getItem(key);
-    return value ? parseInt(value, 10) : null;
+    return value ? parseInt(value, 10) : 0;
 }
 
 function setStorageUnreadCount(chatId, count) {
@@ -394,18 +394,17 @@ function setStorageUnreadCount(chatId, count) {
 }
 
 function isMessageReadByCurrentUser(message) {
-    if (!message || isOwnMessage(message)) return true;
+    if (!message) return false;
+    if (isOwnMessage(message)) return true;
     if (!message.readMarks) return false;
     return message.readMarks.some(mark => mark.user.id === currentUser.info.id);
 }
 
 function resolveUnreadCount(chat) {
-    let unreadCount = getStorageUnreadCount(chat.id);
-    if (!unreadCount) {
-        unreadCount = isMessageReadByCurrentUser(chat.lastMessage) ? 0 : 1;
-        if (unreadCount > 0) {
-            setStorageUnreadCount(chat.id, unreadCount);
-        }
+    var unreadCount = getStorageUnreadCount(chat.id);
+    if (unreadCount === 0 && chat.lastMessage && !isMessageReadByCurrentUser(chat.lastMessage)) {
+        unreadCount = 1;
+        setStorageUnreadCount(chat.id, unreadCount);
     }
     return unreadCount;
 }

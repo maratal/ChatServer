@@ -339,7 +339,7 @@ __Path__:
 ```
 PUT /chats/<id>/messages/<id>/read
 ```
-__Response__: `OK`
+__Response__: [`MessageInfo`](APIREF-JSON.md#messageinfo) object with updated read marks.
 _________________________________________________________________________________
 
 ### 24. Send notification

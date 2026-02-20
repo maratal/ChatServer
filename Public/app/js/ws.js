@@ -80,7 +80,7 @@ function initializeWebSocket() {
 }
 
 // Handle WebSocket messages
-function handleWebSocketMessage(notification) {
+async function handleWebSocketMessage(notification) {
     if ((notification.event === 'message' || notification.event === 'messageUpdate') && notification.payload) {
         const message = notification.payload;
         
@@ -92,7 +92,7 @@ function handleWebSocketMessage(notification) {
         // Check if this is for the current chat
         if (message.chatId === currentChatId) {
             // Update chat list item with new message
-            updateChatListWithMessage(message);
+            await updateChatListWithMessage(message);
 
             // Check if we already have this message (by localId)
             const existingElement = document.querySelector(`[data-local-id="${message.localId}"]`);
@@ -111,7 +111,7 @@ function handleWebSocketMessage(notification) {
             loadChats();
         } else {
             // Update chat list item with new message
-            updateChatListWithMessage(message);
+            await updateChatListWithMessage(message);
             // Message for a different existing chat, re-sort chat list
             displayChats();
         }

@@ -170,40 +170,40 @@ async function markChatAsRead(chatId) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
     
-    if (resolveUnreadCount(chat) > 0) {
-        setStorageUnreadCount(chat.id, 0);
-        
-        // Update the DOM to remove badge and bold style
-        const chatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
-        if (chatItem) {
-            const lastMessageElement = chatItem.querySelector('.chat-last-message');
-            if (lastMessageElement) {
-                lastMessageElement.classList.remove('unread');
-            }
-            
-            const badgeElement = chatItem.querySelector('.chat-badge');
-            if (badgeElement) {
-                badgeElement.remove();
-            }
+    const lastMessage = chat.lastMessage;
+    if (!lastMessage || !lastMessage.id || isMessageReadByCurrentUser(lastMessage)) return;
+    
+    setStorageUnreadCount(chat.id, 0);
+    
+    // Update the DOM to remove badge and bold style
+    const chatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
+    if (chatItem) {
+        const lastMessageElement = chatItem.querySelector('.chat-last-message');
+        if (lastMessageElement) {
+            lastMessageElement.classList.remove('unread');
         }
         
-        // Update page title badge
-        updatePageTitleBadge();
+        const badgeElement = chatItem.querySelector('.chat-badge');
+        if (badgeElement) {
+            badgeElement.remove();
+        }
     }
     
-    // Mark messages as read on server
-    if (chat.lastMessage && chat.lastMessage.id && !isMessageReadByCurrentUser(chat.lastMessage)) {
-        try {
-            await apiMarkAsRead(chatId, chat.lastMessage.id);
-        } catch (error) {
-            console.error('Failed to mark messages as read:', error);
-        }
+    // Call API to mark messages as read
+    try {
+        const message = await apiMarkAsRead(chatId, lastMessage.id);
+        lastMessage.readMarks = message.readMarks; // Update readMarks for the last message
+    } catch (error) {
+        console.error('Failed to mark messages as read:', error);
     }
+
+    // Update page title badge
+    updatePageTitleBadge();
 }
 
 function updatePageTitleBadge() {
     // Count chats with unread messages
-    const unreadChatsCount = chats.filter(chat => resolveUnreadCount(chat) > 0).length;
+    const unreadChatsCount = chats.filter(chat => getStorageUnreadCount(chat.id) > 0).length;
     
     if (unreadChatsCount > 0 && document.hidden) {
         document.title = `(${unreadChatsCount}) ${originalTitle}`;
@@ -228,7 +228,7 @@ function displayChats(restoreSelection = true) {
                 // Show all chats except blocked and archived
                 return !isBlocked && !isArchived;
             case 'unread':
-                return resolveUnreadCount(chat) > 0 && !isBlocked && !isArchived;
+                return getStorageUnreadCount(chat.id) > 0 && !isBlocked && !isArchived;
             case 'archived':
                 return isArchived;
             case 'blocked':
@@ -589,7 +589,7 @@ function updateCurrentUserButton() {
 }
 
 // Update chat list when new message arrives
-function updateChatListWithMessage(message) {
+async function updateChatListWithMessage(message) {
     const chat = chats.find(c => c.id === message.chatId);
     if (!chat || !chat.id) {
         console.warn('Received message for unknown chat:', message.chatId);
@@ -615,10 +615,12 @@ function updateChatListWithMessage(message) {
         return;
     }
 
-    var unreadCount = getStorageUnreadCount(chat.id) || 0;
+    var unreadCount = getStorageUnreadCount(chat.id);
 
-    // If chat is not currently open or the page is hidden, increment the unread count
-    if (message.chatId !== currentChatId || document.hidden) {
+    // If the chat is currently open and the document is visible, mark it as read immediately
+    if (message.chatId === currentChatId && !document.hidden) {
+        await markChatAsRead(chat.id);
+    } else {
         setStorageUnreadCount(chat.id, ++unreadCount);
     }
 

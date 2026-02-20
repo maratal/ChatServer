@@ -1181,7 +1181,7 @@ async function sendMessage(textOverride = null) {
     await addMessageToChat(message);
     
     // Update chat list with new message
-    updateChatListWithMessage(message);
+    await updateChatListWithMessage(message);
     
     // Send to server using the shared function
     const serverMessage = await sendMessageToServer(message);
@@ -1255,7 +1255,7 @@ async function updateMessage(message, newText, newAttachments) {
     replaceMessageElement(currentMessage.localId, serverMessage, false);
 
     // Update chat list with updated message
-    updateChatListWithMessage(serverMessage);
+    await updateChatListWithMessage(serverMessage);
 }
 
 // Add message to chat
@@ -1624,7 +1624,7 @@ async function deleteMessage(message) {
         replaceMessageElement(message.localId || message.id, serverMessage, false);
         
         // Update chat list
-        updateChatListWithMessage(serverMessage);
+        await updateChatListWithMessage(serverMessage);
     } catch (error) {
         console.error('Error deleting message:', error);
         alert('Failed to delete message');

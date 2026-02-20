@@ -173,10 +173,9 @@ struct ChatController: RouteCollection {
                                                                  by: currentUser.requireID())
     }
     
-    func readMessage(_ req: Request) async throws -> HTTPStatus {
+    func readMessage(_ req: Request) async throws -> MessageInfo {
         let currentUser = try await req.requireCurrentUser()
-        try await service.with(currentUser).readMessage(req.messageID(), by: currentUser.requireID())
-        return .ok
+        return try await service.with(currentUser).readMessage(req.messageID(), by: currentUser.requireID())
     }
     
     func deleteMessage(_ req: Request) async throws -> MessageInfo {

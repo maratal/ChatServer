@@ -65,7 +65,7 @@ protocol ChatServiceProtocol: LoggedIn {
     func deleteMessage(_ id: MessageID, by userId: UserID) async throws -> MessageInfo
     
     /// Marks message with`id` as seen by the user with `userId`.
-    func readMessage(_ id: MessageID, by userId: UserID) async throws
+    func readMessage(_ id: MessageID, by userId: UserID) async throws -> MessageInfo
     
     /// Adds chat's profile picture (not to confuse with user's profile picture in personal chat).
     func addChatImage(_ chatId: ChatID, with info: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo
@@ -562,7 +562,7 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
-    func readMessage(_ id: MessageID, by userId: UserID) async throws {
+    func readMessage(_ id: MessageID, by userId: UserID) async throws -> MessageInfo {
         guard let message = try await repo.findMessage(id: id) else {
             throw ServiceError(.notFound)
         }
@@ -576,7 +576,9 @@ actor ChatService: ChatServiceProtocol {
             let readMarkinfo = readMark.info()
             messageInfo.readMarks = (messageInfo.readMarks ?? []) + [readMarkinfo]
             try await core.notificator.notify(chat: message.chat, in: repo, about: .messageRead, from: readerRelation.user, with: messageInfo.jsonObject())
+            return messageInfo
         }
+        return message.info()
     }
     
     func addChatImage(_ chatId: ChatID, with info: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
