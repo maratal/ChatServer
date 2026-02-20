@@ -1983,21 +1983,15 @@ async function saveGroupChatAvatar(chatId) {
     }
 
     try {
-        await apiAddChatImage(
+        const updatedChat = await apiAddChatImage(
             chat.id,
             groupChatUploadedAvatarInfo.id,
             groupChatUploadedAvatarInfo.fileType,
             groupChatUploadedAvatarInfo.fileSize
         );
 
-        // Update local state
-        let images = chat.images || [];
-        images.push({
-            id: groupChatUploadedAvatarInfo.id,
-            fileType: groupChatUploadedAvatarInfo.fileType,
-            fileSize: groupChatUploadedAvatarInfo.fileSize
-        });
-        chat.images = images;
+        // Update local state with the server response
+        chat.images = updatedChat.images;
         
         displayChats();
         
@@ -2638,12 +2632,14 @@ async function createGroupChat() {
         // If there's an uploaded avatar, add it to the chat
         if (groupChatUploadedAvatarInfo) {
             try {
-                await apiAddChatImage(
+                const updatedChat = await apiAddChatImage(
                     newChat.id, 
                     groupChatUploadedAvatarInfo.id, 
                     groupChatUploadedAvatarInfo.fileType, 
                     groupChatUploadedAvatarInfo.fileSize
                 );
+                // Update newChat with the returned chat info that includes the image
+                newChat.images = updatedChat.images;
             } catch (error) {
                 console.error('Error adding avatar to chat:', error);
                 // Continue anyway - chat is created, just without avatar
