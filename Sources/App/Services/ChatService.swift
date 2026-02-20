@@ -98,8 +98,8 @@ actor ChatService: ChatServiceProtocol {
     }
     
     func chats(with userId: UserID, fullInfo: Bool) async throws -> [ChatInfo] {
-        try await repo.all(with: userId, fullInfo: fullInfo).map {
-            ChatInfo(from: $0, fullInfo: fullInfo)
+        try await repo.all(with: userId, fullInfo: fullInfo).compactMap {
+            $0.chat.lastMessage == nil ? nil : ChatInfo(from: $0, fullInfo: fullInfo)
         }
     }
     
