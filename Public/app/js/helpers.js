@@ -409,6 +409,11 @@ function resolveUnreadCount(chat) {
     return unreadCount;
 }
 
+// Async delay helper
+async function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // Check if a string is a debug command prefix
 function stringIsDebugPrefix(str) {
     return str.startsWith('/debug') || str.startsWith('/d');

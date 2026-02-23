@@ -679,14 +679,26 @@ function handleAttachmentFileSelect(event) {
             uploading: false
         };
         selectedAttachments.push(attachment);
-        
-        // Start upload immediately
-        uploadAttachment(attachment);
     });
     
     updateAttachmentPreview();
     updateSendButtonState();
     
+    // Upload attachments with 100ms delay between each to avoid connection saturation
+    (async () => {
+        for (let i = 0; i < selectedAttachments.length; i++) {
+            const attachment = selectedAttachments[i];
+            
+            // Start upload
+            uploadAttachment(attachment);
+            
+            // Add delay before next upload (except for last one)
+            if (i < selectedAttachments.length - 1) {
+                await delay(500);
+            }
+        }
+    })();
+
     // Reset input
     event.target.value = '';
 }
