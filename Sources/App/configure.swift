@@ -6,8 +6,6 @@ import Leaf
 func configure(_ app: Application, service: inout CoreService) throws {
     app.logger = Logger(label: "Default 👉")
     
-    app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
-    
     app.directory.viewsDirectory = app.directory.publicDirectory + "app/html"
     app.views.use(.leaf)
     
@@ -42,5 +40,24 @@ func configure(_ app: Application, service: inout CoreService) throws {
     try app.register(collection: WebSocketController(core: service))
     try app.register(collection: UploadController())
     
+    // Use custom FileMiddleware that only handles GET/HEAD requests
+    app.middleware.use(ReadOnlyFileMiddleware(publicDirectory: app.directory.publicDirectory))
+
     routes(app)
+}
+
+/// FileMiddleware that only handles GET and HEAD requests
+struct ReadOnlyFileMiddleware: AsyncMiddleware {
+    let publicDirectory: String
+    
+    func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
+        // Only serve files for GET and HEAD requests
+        guard request.method == .GET || request.method == .HEAD else {
+            return try await next.respond(to: request)
+        }
+        
+        // Use standard FileMiddleware for safe methods
+        let fileMiddleware = FileMiddleware(publicDirectory: publicDirectory)
+        return try await fileMiddleware.respond(to: request, chainingTo: next)
+    }
 }
