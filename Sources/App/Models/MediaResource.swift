@@ -22,6 +22,9 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     
+    @OptionalField(key: "uploaded_at")
+    var uploadedAt: Date?
+    
     @OptionalParent(key: "photo_of")
     var photoOf: User?
     
@@ -41,7 +44,8 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
         fileType: String,
         fileSize: Int64,
         previewWidth: Int,
-        previewHeight: Int
+        previewHeight: Int,
+        uploadedAt: Date? = nil
     ) {
         self.id = id
         self.$photoOf.id = userId
@@ -51,6 +55,7 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
         self.fileSize = fileSize
         self.previewWidth = previewWidth
         self.previewHeight = previewHeight
+        self.uploadedAt = uploadedAt
     }
 }
 
@@ -63,6 +68,7 @@ extension MediaResource {
         var previewWidth: Int?
         var previewHeight: Int?
         var createdAt: Date?
+        var uploadedAt: Date?
         
         init(id: ResourceID? = nil, fileType: String, fileSize: Int64) {
             self.id = id
@@ -77,6 +83,7 @@ extension MediaResource {
             self.previewWidth = media.previewWidth
             self.previewHeight = media.previewHeight
             self.createdAt = media.createdAt
+            self.uploadedAt = media.uploadedAt
         }
     }
     

@@ -185,12 +185,15 @@ actor UserService: UserServiceProtocol {
         guard resource.fileType != "", resource.fileSize > 0 else {
             throw ServiceError(.badRequest, reason: "Media fileType or fileSize are missing.")
         }
+        let fileName = "\(resourceId).\(resource.fileType)"
+        let uploadedAt = core.fileCreationDate(for: fileName)
         let photo = MediaResource(id: resourceId,
                                   photoOf: user.id!,
                                   fileType: resource.fileType,
                                   fileSize: resource.fileSize,
                                   previewWidth: info.photo?.previewWidth ?? 100,
-                                  previewHeight: info.photo?.previewHeight ?? 100)
+                                  previewHeight: info.photo?.previewHeight ?? 100,
+                                  uploadedAt: uploadedAt)
         try await repo.savePhoto(photo)
         try await repo.reloadPhotos(of: user)
         return user.fullInfo()

@@ -90,7 +90,11 @@ actor UsersDatabaseRepository: DatabaseRepository, UsersRepository {
     }
     
     func reloadPhotos(of user: User) async throws {
-        _ = try await user.$photos.get(reload: true, on: database)
+        let photos = try await MediaResource.query(on: database)
+            .filter(\.$photoOf.$id == user.id)
+            .sort(\.$uploadedAt, .ascending)
+            .all()
+        user.$photos.value = photos
     }
     
     func saveSession(_ session: DeviceSession) async throws {

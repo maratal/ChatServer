@@ -118,6 +118,16 @@ extension CoreService {
         return uploadPath(for: fileName)
     }
     
+    func fileCreationDate(for fileName: String) -> Date? {
+        let filePath = uploadPath(for: fileName)
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: filePath),
+              let creationDate = attributes[.creationDate] as? Date else {
+            return nil
+        }
+        return creationDate
+    }
+
+    
     func fileExists(for resource: MediaResource) -> Bool {
         guard let filePath = filePath(for: resource) else { return false }
         return FileManager.default.fileExists(atPath: filePath)

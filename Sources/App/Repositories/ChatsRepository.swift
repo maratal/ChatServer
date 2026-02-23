@@ -216,7 +216,11 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     }
     
     func loadAttachments(for message: Message) async throws {
-        _ = try await message.$attachments.get(reload: true, on: database)
+        let attachments = try await MediaResource.query(on: database)
+            .filter(\.$attachmentOf.$id == message.id)
+            .sort(\.$uploadedAt, .ascending)
+            .all()
+        message.$attachments.value = attachments
     }
     
     func delete(_ chat: Chat) async throws {
@@ -266,6 +270,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         try await MediaResource.query(on: database)
             .join(Message.self, on: \MediaResource.$attachmentOf.$id == \Message.$id)
             .filter(Message.self, \.$chat.$id == chatId)
+            .sort(\.$uploadedAt, .ascending)
             .all()
     }
     
@@ -278,7 +283,11 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     }
     
     func reloadChatImages(for chat: Chat) async throws {
-        _ = try await chat.$images.get(reload: true, on: database)
+        let images = try await MediaResource.query(on: database)
+            .filter(\.$imageOf.$id == chat.id)
+            .sort(\.$uploadedAt, .ascending)
+            .all()
+        chat.$images.value = images
     }
 }
 

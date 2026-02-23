@@ -412,12 +412,15 @@ actor ChatService: ChatServiceProtocol {
         
         if let attachments = info.attachments {
             for attachment in attachments {
+                let fileName = "\(attachment.id!).\(attachment.fileType)"
+                let uploadedAt = core.fileCreationDate(for: fileName)
                 let resource = MediaResource(id: attachment.id,
                                              attachmentOf: message.id!,
                                              fileType: attachment.fileType,
                                              fileSize: attachment.fileSize,
                                              previewWidth: attachment.previewWidth ?? 300,
-                                             previewHeight: attachment.previewHeight ?? 200)
+                                             previewHeight: attachment.previewHeight ?? 200,
+                                             uploadedAt: uploadedAt)
                 attachmentsToSave.append(resource)
             }
         }
@@ -502,12 +505,15 @@ actor ChatService: ChatServiceProtocol {
             // Create new attachments with data from UpdateMessageRequest
             for attachmentId in attachmentsToAdd {
                 if let attachmentInfo = attachments.first(where: { $0.id == attachmentId }) {
+                    let fileName = "\(attachmentId).\(attachmentInfo.fileType)"
+                    let uploadedAt = core.fileCreationDate(for: fileName)
                     let resource = MediaResource(id: attachmentId,
                                                  attachmentOf: message.id!,
                                                  fileType: attachmentInfo.fileType,
                                                  fileSize: attachmentInfo.fileSize,
                                                  previewWidth: attachmentInfo.previewWidth ?? 300,
-                                                 previewHeight: attachmentInfo.previewHeight ?? 200)
+                                                 previewHeight: attachmentInfo.previewHeight ?? 200,
+                                                 uploadedAt: uploadedAt)
                     itemsToSave.append(resource)
                     shouldReload = true
                 }
@@ -598,12 +604,15 @@ actor ChatService: ChatServiceProtocol {
         guard resource.fileType != "", resource.fileSize > 0 else {
             throw ServiceError(.badRequest, reason: "Media fileType or fileSize are missing.")
         }
+        let fileName = "\(resourceId).\(resource.fileType)"
+        let uploadedAt = core.fileCreationDate(for: fileName)
         let image = MediaResource(id: resourceId,
                                   imageOf: chat.id!,
                                   fileType: resource.fileType,
                                   fileSize: resource.fileSize,
                                   previewWidth: resource.previewWidth ?? 100,
-                                  previewHeight: resource.previewHeight ?? 100)
+                                  previewHeight: resource.previewHeight ?? 100,
+                                  uploadedAt: uploadedAt)
         try await repo.saveChatImage(image)
         try await repo.reloadChatImages(for: chat)
         return ChatInfo(from: relation, fullInfo: false)
