@@ -18,6 +18,8 @@
     <meta property="twitter:title" content="ChatServer - Secure Self-Hosted Communication Platform">
     <meta property="twitter:description" content="Deploy your own private communication server with enterprise-grade features. Complete privacy, one-click deployment, and full control over your messaging infrastructure.">
     
+    <!-- Prevent Chrome from requesting favicon.ico -->
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link rel="stylesheet" href="/app/css/index.css">
 </head>
 <body>
