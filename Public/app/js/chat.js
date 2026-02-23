@@ -224,8 +224,6 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
     
     // Add new group class
     messageElement.classList.add(`group-${groupPosition}`);
-    
-    console.log(`Message ${index}: author=${currentAuthorId}, groupPosition=${groupPosition}`);
 }
 
 // Display messages in the chat area
