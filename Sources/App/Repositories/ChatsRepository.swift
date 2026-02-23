@@ -56,7 +56,10 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
-                chat.with(\.$lastMessage)
+                chat.with(\.$lastMessage) { message in
+                    message.with(\.$attachments)
+                    message.with(\.$readMarks)
+                }
                 chat.with(\.$images)
                 chat.with(\.$users) // TODO: optimise
             }
@@ -72,7 +75,10 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
-                chat.with(\.$lastMessage)
+                chat.with(\.$lastMessage) { message in
+                    message.with(\.$attachments)
+                    message.with(\.$readMarks)
+                }
                 chat.with(\.$users) { user in
                     user.with(\.$photos)
                 }
@@ -98,6 +104,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage) { message in
                     message.with(\.$readMarks)
+                    message.with(\.$attachments)
                 }
                 chat.with(\.$images)
                 if (fullInfo) {
