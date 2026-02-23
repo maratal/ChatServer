@@ -1082,7 +1082,50 @@ function initializeMessageInput() {
     messageInput.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             e.preventDefault();
-            // Cancel edit or reply if active
+            
+            // Priority 1: Clear text if there's any
+            if (this.value.trim()) {
+                this.value = '';
+                this.style.height = '38px';
+                updateSendButtonState();
+                return; // Exit early to avoid clearing attachments or canceling edit/reply if text was present
+            }
+            
+            // Priority 2: Clear attachments if text is already empty
+            if (selectedAttachments.length > 0) {
+                // Clear all attachments
+                selectedAttachments.forEach(async (attachment) => {
+                    // Cancel uploads if in progress
+                    const upload = attachmentUploads.get(attachment.id);
+                    if (upload && upload.xhr) {
+                        upload.xhr.abort();
+                    }
+                    
+                    // Cancel animations
+                    const animationFrameId = attachmentAnimationFrames.get(attachment.id);
+                    if (animationFrameId) {
+                        cancelAnimationFrame(animationFrameId);
+                    }
+                    
+                    // Delete uploaded files from server (but not if editing existing message)
+                    if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
+                        try {
+                            const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
+                            await apiDeleteUpload(fileName);
+                        } catch (error) {
+                            console.error('Error deleting uploaded file:', error);
+                        }
+                    }
+                });
+                
+                selectedAttachments = [];
+                attachmentUploads.clear();
+                attachmentAnimationFrames.clear();
+                updateAttachmentPreview();
+                updateSendButtonState();
+            }
+            
+            // Priority 3: Cancel edit or reply mode
             if (editingMessage) {
                 cancelEditMessage();
             } else if (replyingToMessage) {
