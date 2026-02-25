@@ -12,20 +12,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    white-space: nowrap;
-    border-radius: calc(var(--radius) - 2px);
-    border: none;
-    background: transparent;
-    cursor: pointer;
     width: 2.25rem;
     height: 2.25rem;
-    flex-shrink: 0;
+    border-radius: 0.375rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: hsl(var(--sidebar-foreground));
+    transition: background-color 0.15s ease;
 }
 
 .inline-button:hover {
-    background-color: hsl(var(--muted));
-    color: hsl(var(--accent-foreground));
+    background-color: hsl(var(--sidebar-accent));
 }
 
 .inline-button:focus-visible {
@@ -557,24 +555,6 @@ input[type="text"]:disabled, textarea:disabled {
     align-items: center;
     justify-content: space-between;
     padding: 0 1rem;
-}
-
-.user-panel-close-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.375rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: hsl(var(--sidebar-foreground));
-    transition: background-color 0.15s ease;
-}
-
-.user-panel-close-btn:hover {
-    background-color: hsl(var(--sidebar-accent));
 }
 
 /* User search uses same styling as chat search */
@@ -2110,7 +2090,7 @@ input[type="text"]:disabled, textarea:disabled {
 /* Tighter spacing for connected bubbles within groups */
 #messagesContainer > .message-row.group-middle,
 #messagesContainer > .message-row.group-last {
-    margin-top: 3px !important; /* Small gap within group */
+    margin-top: 2px !important; /* Small gap within group */
 }
 
 .message-row.menu-active {
@@ -2184,7 +2164,7 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-row.own .message-bubble {
-    background-color: hsl(var(--chat-bubble-sent));
+    background: linear-gradient(-10deg, hsl(var(--chat-bubble-sent)), hsl(var(--chat-bubble-sent) / 0.9));
     color: hsl(var(--chat-bubble-sent-foreground));
 }
 

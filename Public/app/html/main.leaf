@@ -159,7 +159,7 @@
         <div class="user-selection-content">
             <div class="user-selection-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground">Users</h1>
-                <button class="user-panel-close-btn" onclick="closeUserSelection()">
+                <button class="inline-button" onclick="closeUserSelection()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                         <path d="M18 6 6 18"></path>
                         <path d="m6 6 12 12"></path>
@@ -186,7 +186,7 @@
         <div class="group-chat-content">
             <div class="group-chat-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground" id="groupChatModalTitle">New Group</h1>
-                <button class="user-panel-close-btn" onclick="closeGroupChatModal()">
+                <button class="inline-button" onclick="closeGroupChatModal()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                         <path d="M18 6 6 18"></path>
                         <path d="m6 6 12 12"></path>
@@ -221,7 +221,7 @@
                     
                     <!-- Group name input -->
                     <div class="group-chat-name-section">
-                        <input type="text" class="group-chat-name-input" id="newGroupChatNameInput" placeholder="Group Name">
+                        <input type="text" class="group-chat-name-input" id="newGroupChatNameInput" placeholder="Title">
                     </div>
                 </div>
                 
@@ -257,7 +257,7 @@
                 <button class="ellipsis-button" id="userProfileMenuButton" onclick="event.stopPropagation(); showUserProfileMenu()" title="Profile menu">
                     •••
                 </button>
-                <button class="user-panel-close-btn" onclick="closeCurrentUserProfile()">
+                <button class="inline-button" onclick="closeCurrentUserProfile()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
                         <path d="M18 6 6 18"></path>
                         <path d="m6 6 12 12"></path>

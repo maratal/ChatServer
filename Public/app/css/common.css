@@ -7,32 +7,32 @@
     --card-foreground: 0 0% 13%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 13%;
-    --primary: 142 70% 49%;
+    --primary: 335 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 142 16% 93%;
-    --secondary-foreground: 142 70% 20%;
+    --secondary: 335 16% 93%;
+    --secondary-foreground: 335 70% 20%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
-    --accent: 142 16% 93%;
-    --accent-foreground: 142 70% 20%;
+    --accent: 335 16% 93%;
+    --accent-foreground: 335 70% 20%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 142 70% 49%;
+    --ring: 335 70% 49%;
     --radius: 0.5rem;
-    --chat-bubble-sent: 142 70% 95%;
-    --chat-bubble-sent-foreground: 0 0% 13%;
+    --chat-bubble-sent: 335 100% 50%;
+    --chat-bubble-sent-foreground: 0 0% 100%;
     --chat-bubble-received: 0 0% 100%;
     --chat-bubble-received-foreground: 0 0% 13%;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 13%;
-    --sidebar-primary: 142 70% 49%;
+    --sidebar-primary: 335 70% 49%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 96%;
     --sidebar-accent-foreground: 0 0% 13%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 142 70% 49%;
+    --sidebar-ring: 335 70% 49%;
     --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --header-height: 60px;
@@ -215,7 +215,7 @@ h1, h2, h3, h4, h5, h6 {
     display: block;
     margin-bottom: 5px;
     font-weight: 500;
-    color: #333;
+    color: hsl(var(--foreground));
     font-size: 0.9rem;
 }
 
@@ -223,11 +223,11 @@ h1, h2, h3, h4, h5, h6 {
 .form-group textarea {
     width: 100%;
     padding: 12px 15px;
-    border: 2px solid #ddd;
+    border: 2px solid hsl(var(--border));
     border-radius: 10px;
     font-size: 1rem;
     transition: border-color 0.3s ease;
-    background: #f9f9f9;
+    background: hsl(var(--muted));
     font-family: inherit;
 }
 
@@ -239,14 +239,14 @@ h1, h2, h3, h4, h5, h6 {
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #666;
-    background: white;
+    border-color: hsl(var(--primary));
+    background: hsl(var(--background));
 }
 
 .form-group.error input,
 .form-group.error textarea {
-    border-color: #e74c3c;
-    background: #fdf2f2;
+    border-color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.05);
 }
 
 .error-popup {
@@ -254,8 +254,8 @@ h1, h2, h3, h4, h5, h6 {
     top: 100%;
     left: 0;
     right: 0;
-    background: #e74c3c;
-    color: white;
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
     padding: 8px 12px;
     border-radius: 5px;
     font-size: 0.85rem;
@@ -275,7 +275,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 0;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-bottom: 5px solid #e74c3c;
+    border-bottom: 5px solid hsl(var(--destructive));
 }
 
 .form-group.error .error-popup {

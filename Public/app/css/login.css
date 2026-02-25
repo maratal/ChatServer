@@ -10,12 +10,12 @@
 .logo h1 {
     font-size: 2rem;
     font-weight: 700;
-    color: #333;
+    color: hsl(var(--foreground));
     margin-bottom: 5px;
 }
 
 .logo p {
-    color: #666;
+    color: hsl(var(--muted-foreground));
     font-size: 0.9rem;
 }
 
@@ -27,7 +27,7 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     width: 100%;
     max-width: 400px;
-    border: 1px solid #ddd;
+    border: 1px solid hsl(var(--border));
     position: fixed;
     top: 50%;
     left: 50%;
@@ -38,8 +38,8 @@
 .register-button {
     width: 100%;
     padding: 12px;
-    background: #333;
-    color: white;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
     border: none;
     border-radius: 10px;
     font-size: 1rem;
@@ -50,18 +50,18 @@
 
 .login-button:hover,
 .register-button:hover {
-    background: #555;
+    background: hsl(var(--primary) / 0.85);
 }
 
 .login-button:disabled,
 .register-button:disabled {
-    background: #ccc;
+    background: hsl(var(--primary) / 0.4);
     cursor: not-allowed;
 }
 
 .login-button.loading,
 .register-button.loading {
-    background: #999;
+    background: hsl(var(--primary) / 0.6);
     cursor: wait;
 }
 
@@ -69,7 +69,7 @@
     text-align: center;
     margin: 30px 0;
     position: relative;
-    color: #666;
+    color: hsl(var(--muted-foreground));
     font-size: 0.9rem;
 }
 
@@ -80,12 +80,12 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: #ddd;
+    background: hsl(var(--border));
     z-index: 1;
 }
 
 .divider span {
-    background: white;
+    background: hsl(var(--card));
     padding: 0 15px;
     position: relative;
     z-index: 2;
@@ -98,16 +98,16 @@
 
 .register-link a,
 .login-link a {
-    color: #333;
+    color: hsl(var(--primary));
     text-decoration: none;
     font-weight: 500;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid hsl(var(--primary) / 0.3);
     transition: border-color 0.3s ease;
 }
 
 .register-link a:hover,
 .login-link a:hover {
-    border-bottom-color: #333;
+    border-bottom-color: hsl(var(--primary));
 }
 
 .status-message {
@@ -119,15 +119,15 @@
 }
 
 .status-message.success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background: hsl(142 70% 95%);
+    color: hsl(142 70% 20%);
+    border: 1px solid hsl(142 60% 80%);
 }
 
 .status-message.error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+    border: 1px solid hsl(var(--destructive) / 0.3);
 }
 
 /* Register page specific */
@@ -136,8 +136,8 @@
     display: inline-block;
     width: 14px;
     height: 14px;
-    background: #333;
-    color: white;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
     border-radius: 50%;
     text-align: center;
     font-size: 10px;
@@ -152,13 +152,13 @@
 }
 
 .info-button:hover {
-    background: #555;
+    background: hsl(var(--primary) / 0.85);
 }
 
 .password-requirements-tooltip {
     position: absolute;
-    background: #333;
-    color: white;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
     padding: 12px;
     border-radius: 8px;
     font-size: 0.8rem;
@@ -181,21 +181,21 @@
     height: 0;
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
-    border-bottom: 8px solid #333;
+    border-bottom: 8px solid hsl(var(--primary));
 }
 
 .password-requirements-tooltip ul {
     margin: 5px 0 0 15px;
-    color: #fff;
+    color: hsl(var(--primary-foreground));
 }
 
 .password-requirements-tooltip li {
     margin-bottom: 2px;
-    color: #fff;
+    color: hsl(var(--primary-foreground));
 }
 
 .password-requirements-tooltip strong {
-    color: #fff;
+    color: hsl(var(--primary-foreground));
 }
 
 .info-button:hover + .password-requirements-tooltip {
