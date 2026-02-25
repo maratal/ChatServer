@@ -132,6 +132,10 @@
                             <div class="emoji-picker-header">
                                 <input type="text" placeholder="Search emojis..." class="emoji-search" id="emojiSearch" autocomplete="off">
                             </div>
+
+                            <div class="emoji-content" id="emojiContent">
+                                <!-- Emojis will be populated here -->
+                            </div>
                             
                             <div class="emoji-tabs">
                                 <button class="emoji-tab active" data-category="smileys" title="Smileys & Emotion">😀</button>
@@ -142,10 +146,6 @@
                                 <button class="emoji-tab" data-category="travel" title="Travel & Places">🚗</button>
                                 <button class="emoji-tab" data-category="objects" title="Objects">💡</button>
                                 <button class="emoji-tab" data-category="symbols" title="Symbols">❤️</button>
-                            </div>
-                            
-                            <div class="emoji-content" id="emojiContent">
-                                <!-- Emojis will be populated here -->
                             </div>
                         </div>
                     </div>

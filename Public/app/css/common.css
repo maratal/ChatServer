@@ -21,8 +21,6 @@
     --input: 0 0% 90%;
     --ring: 335 70% 49%;
     --radius: 0.5rem;
-    --chat-bubble-sent: 335 100% 50%;
-    --chat-bubble-sent-foreground: 0 0% 100%;
     --chat-bubble-received: 0 0% 100%;
     --chat-bubble-received-foreground: 0 0% 13%;
     --sidebar-background: 0 0% 100%;
