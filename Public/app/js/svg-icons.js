@@ -7,12 +7,12 @@ const bookmarkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height=
 // Icons for chat menu
 const infoIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>';
 const muteIcon = `
-<svg fill="#000000" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<svg fill="currentColor" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
   <path id="Path_163" data-name="Path 163" d="M21.29,8.375A3,3,0,0,0,16.5,5.969L8.743,11.74H5.709a3,3,0,0,0-3,3v3.154a3,3,0,0,0,3,3H8.743L16.5,26.666a3,3,0,0,0,4.791-2.407V8.375Zm-2,0V24.259a1,1,0,0,1-1.6.8l-8.022-5.97a1,1,0,0,0-.6-.2H5.709a1,1,0,0,1-1-1V14.74a1,1,0,0,1,1-1H9.074a1,1,0,0,0,.6-.2l8.022-5.97a1,1,0,0,1,1.6.8Z" transform="translate(-2.709 -5.376)" fill-rule="evenodd"/>
 </svg>`;
 
 const unmuteIcon = `
-<svg fill="#000000" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<svg fill="currentColor" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
   <path id="Path_163" data-name="Path 163" d="M21.29,8.375A3,3,0,0,0,16.5,5.969L8.743,11.74H5.709a3,3,0,0,0-3,3v3.154a3,3,0,0,0,3,3H8.743L16.5,26.666a3,3,0,0,0,4.791-2.407V8.375Zm-2,0V24.259a1,1,0,0,1-1.6.8l-8.022-5.97a1,1,0,0,0-.6-.2H5.709a1,1,0,0,1-1-1V14.74a1,1,0,0,1,1-1H9.074a1,1,0,0,0,.6-.2l8.022-5.97a1,1,0,0,1,1.6.8Z" transform="translate(-2.709 -5.376)" fill-rule="evenodd"/>
   <path id="Path_164" data-name="Path 164" d="M23.256,13.885l4.234,5.646a1,1,0,0,0,1.6-1.2l-4.234-5.646a1,1,0,0,0-1.6,1.2Z" transform="translate(-2.709 -5.376)" fill-rule="evenodd"/>
   <path id="Path_165" data-name="Path 165" d="M27.49,12.685l-4.234,5.646a1,1,0,0,0,1.6,1.2l4.234-5.646a1,1,0,0,0-1.6-1.2Z" transform="translate(-2.709 -5.376)" fill-rule="evenodd"/>
