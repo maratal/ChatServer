@@ -2100,7 +2100,7 @@ function showNewChatMenu(event) {
             { id: 'group', label: 'Group Chat' }
         ],
         x: rect.left,
-        y: rect.top - 8,
+        y: rect.top - 4,
         anchor: 'bottom-left',
         onAction: (action) => {
             if (action === 'personal') {

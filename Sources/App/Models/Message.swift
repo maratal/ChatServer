@@ -40,7 +40,7 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     @Children(for: \.$message)
     var readMarks: [ReadMark]
     
-    @Children(for: \.$attachmentOf)
+    @Siblings(through: MessageToMedia.self, from: \.$message, to: \.$mediaResource)
     var attachments: [MediaResource]
     
     required init() {}

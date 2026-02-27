@@ -246,3 +246,186 @@ function showContextMenu(options) {
     
     return { menu, close: closeMenu };
 }
+
+/**
+ * Show a popup toolbar with icon-only buttons, positioned relative to a hover element.
+ * @param {Object} options
+ * @param {Array<{id: string, icon: string, tooltip: string}>} options.items Toolbar button definitions.
+ * @param {Function} options.onAction Callback invoked with the clicked item's `id`.
+ * @param {HTMLElement} options.hoverElement Element the toolbar is positioned relative to; also used for hover-based auto-hide.
+ * @param {'top'|'bottom'|'left'|'right'} [options.position='top'] Where the toolbar appears relative to `hoverElement`.
+ * @param {number} [options.gap=4] Spacing in pixels between `hoverElement` and the toolbar.
+ * @param {HTMLElement} [options.highlightElement] Element to add `highlightClass` to while the toolbar is open.
+ * @param {string} [options.highlightClass='menu-active'] CSS class applied to `highlightElement`.
+ * @returns {{toolbar: HTMLElement, close: Function}}
+ */
+function showPopupToolbar(options) {
+    const { items, onAction, highlightElement, highlightClass = 'menu-active', hoverElement, position = 'top', gap = 4 } = options;
+
+    // If a toolbar is already open for the same hoverElement, keep it
+    const existingToolbar = document.querySelector('.popup-toolbar');
+    if (existingToolbar) {
+        if (hoverElement && existingToolbar._hoverElement === hoverElement) {
+            return { toolbar: existingToolbar, close: existingToolbar._closeToolbar };
+        }
+        existingToolbar._closeToolbar?.();
+    }
+    const existingHighlight = document.querySelector('.' + highlightClass);
+    if (existingHighlight) {
+        existingHighlight.classList.remove(highlightClass);
+    }
+
+    // Create toolbar
+    const toolbar = document.createElement('div');
+    toolbar.className = 'popup-toolbar';
+
+    toolbar.innerHTML = items.map(item =>
+        `<button class="inline-button popup-toolbar-button" data-action="${item.id}" title="${item.tooltip || ''}">${item.icon || ''}</button>`
+    ).join('');
+
+    // Add to DOM first to get accurate dimensions
+    document.body.appendChild(toolbar);
+
+    // Position toolbar relative to hoverElement
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const elRect = hoverElement ? hoverElement.getBoundingClientRect() : { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+
+    let left, top;
+    switch (position) {
+        case 'bottom':
+            left = elRect.left + (elRect.width - toolbarRect.width) / 2;
+            top = elRect.bottom + gap;
+            break;
+        case 'left':
+            left = elRect.left - toolbarRect.width - gap;
+            top = elRect.top + (elRect.height - toolbarRect.height) / 2;
+            break;
+        case 'right':
+            left = elRect.right + gap;
+            top = elRect.top + (elRect.height - toolbarRect.height) / 2;
+            break;
+        case 'top':
+        default:
+            left = elRect.left + (elRect.width - toolbarRect.width) / 2;
+            top = elRect.top - toolbarRect.height - gap;
+            break;
+    }
+
+    // Adjust position to keep toolbar in viewport
+    if (left + toolbarRect.width > window.innerWidth) {
+        left = window.innerWidth - toolbarRect.width - 10;
+    }
+    if (top + toolbarRect.height > window.innerHeight) {
+        top = window.innerHeight - toolbarRect.height - 10;
+    }
+    if (left < 10) left = 10;
+    if (top < 10) top = 10;
+
+    toolbar.style.left = `${left}px`;
+    toolbar.style.top = `${top}px`;
+    toolbar.style.zIndex = '10000';
+
+    // Add highlight to element if provided
+    if (highlightElement) {
+        highlightElement.classList.add(highlightClass);
+    }
+
+    // Store hoverElement reference for deduplication
+    toolbar._hoverElement = hoverElement;
+
+    // Handle button clicks
+    toolbar.querySelectorAll('.popup-toolbar-button').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = button.dataset.action;
+            if (onAction) {
+                onAction(action);
+            }
+            closeToolbar();
+        });
+    });
+
+    // Track last known mouse position
+    let lastMouseX = left;
+    let lastMouseY = top;
+    const trackMouse = (e) => {
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    };
+    document.addEventListener('mousemove', trackMouse);
+
+    let hideTimer = null;
+
+    // Check if pointer is over the toolbar or the hover element
+    const isPointerOver = () => {
+        const tRect = toolbar.getBoundingClientRect();
+        const overToolbar = lastMouseX >= tRect.left && lastMouseX <= tRect.right &&
+                            lastMouseY >= tRect.top && lastMouseY <= tRect.bottom;
+        if (overToolbar) return true;
+        if (hoverElement) {
+            const hRect = hoverElement.getBoundingClientRect();
+            return lastMouseX >= hRect.left && lastMouseX <= hRect.right &&
+                   lastMouseY >= hRect.top && lastMouseY <= hRect.bottom;
+        }
+        return false;
+    };
+
+    const scheduleHide = () => {
+        if (hideTimer) return;
+        hideTimer = setTimeout(() => {
+            hideTimer = null;
+            if (!isPointerOver()) {
+                closeToolbar();
+            }
+        }, 500);
+    };
+
+    const cancelHide = () => {
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+    };
+
+    // Close toolbar function
+    const closeToolbar = () => {
+        if (!document.body.contains(toolbar)) return;
+        cancelHide();
+        toolbar.remove();
+        document.removeEventListener('mousedown', handleMouseDown);
+        document.removeEventListener('mousemove', trackMouse);
+        toolbar.removeEventListener('mouseenter', cancelHide);
+        toolbar.removeEventListener('mouseleave', scheduleHide);
+        if (hoverElement) {
+            hoverElement.removeEventListener('mouseenter', cancelHide);
+            hoverElement.removeEventListener('mouseleave', scheduleHide);
+        }
+        if (highlightElement) {
+            highlightElement.classList.remove(highlightClass);
+        }
+    };
+
+    // Store close function on the DOM element for cleanup
+    toolbar._closeToolbar = closeToolbar;
+
+    // Hover-based hide: schedule hide when mouse leaves toolbar or hoverElement
+    toolbar.addEventListener('mouseenter', cancelHide);
+    toolbar.addEventListener('mouseleave', scheduleHide);
+    if (hoverElement) {
+        hoverElement.addEventListener('mouseenter', cancelHide);
+        hoverElement.addEventListener('mouseleave', scheduleHide);
+    }
+
+    // Close toolbar on mousedown outside
+    const handleMouseDown = (e) => {
+        if (!toolbar.contains(e.target) && !(hoverElement && hoverElement.contains(e.target))) {
+            closeToolbar();
+        }
+    };
+
+    setTimeout(() => {
+        document.addEventListener('mousedown', handleMouseDown);
+    }, 0);
+
+    return { toolbar, close: closeToolbar };
+}

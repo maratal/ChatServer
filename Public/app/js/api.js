@@ -635,3 +635,22 @@ async function apiDeleteUpload(fileName) {
 function getUploadUrl(fileId, fileType) {
     return `/uploads/${fileId}.${fileType}`;
 }
+
+async function apiGetRecentMedia() {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/media/recents', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}
+
+async function apiDeleteMedia(mediaId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch(`/media/${encodeURIComponent(mediaId)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}

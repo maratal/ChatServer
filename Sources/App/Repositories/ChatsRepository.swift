@@ -19,11 +19,13 @@ protocol ChatsRepository: Sendable {
     func messages(from chatId: ChatID, before: MessageID?, count: Int) async throws -> [Message]
     func saveMessage(_ message: Message) async throws
     func loadAttachments(for message: Message) async throws
+    func deletePivots(messageId: MessageID, mediaResourceIds: [ResourceID]) async throws
     func deleteMessages(from chat: Chat, withMedia: Bool) async throws
     
     func findReadMarks(for messageId: MessageID) async throws -> [ReadMark]
     
     func findChatImage(_ id: ResourceID) async throws -> MediaResource?
+    func findMediaResource(_ id: ResourceID) async throws -> MediaResource?
     func findAttachments(for chatId: ChatID) async throws -> [MediaResource]
     func saveChatImage(_ image: MediaResource) async throws
     func deleteChatImage(_ image: MediaResource) async throws
@@ -224,10 +226,18 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     
     func loadAttachments(for message: Message) async throws {
         let attachments = try await MediaResource.query(on: database)
-            .filter(\.$attachmentOf.$id == message.id)
-            .sort(\.$uploadedAt, .ascending)
+            .join(MessageToMedia.self, on: \MediaResource.$id == \MessageToMedia.$mediaResource.$id)
+            .filter(MessageToMedia.self, \.$message.$id == message.id!)
+            .sort(MessageToMedia.self, \.$position, .ascending)
             .all()
         message.$attachments.value = attachments
+    }
+    
+    func deletePivots(messageId: MessageID, mediaResourceIds: [ResourceID]) async throws {
+        try await MessageToMedia.query(on: database)
+            .filter(\.$message.$id == messageId)
+            .filter(\.$mediaResource.$id ~~ mediaResourceIds)
+            .delete()
     }
     
     func delete(_ chat: Chat) async throws {
@@ -247,6 +257,15 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             // Delete all attachments in chat (scheduled for background execution)
             Task.detached {
                 await self.deleteFilesForAttachments(attachments)
+            }
+            // Delete all pivot rows for messages in this chat
+            let messageIds = try await Message.query(on: database)
+                .filter(\.$chat.$id == chatId)
+                .all(\.$id)
+            if !messageIds.isEmpty {
+                try await MessageToMedia.query(on: database)
+                    .filter(\.$message.$id ~~ messageIds)
+                    .delete()
             }
             for attachment in attachments {
                 try await attachment.delete(on: database)
@@ -273,11 +292,16 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .first()
     }
     
+    func findMediaResource(_ id: ResourceID) async throws -> MediaResource? {
+        try await MediaResource.find(id, on: database)
+    }
+    
     func findAttachments(for chatId: ChatID) async throws -> [MediaResource] {
         try await MediaResource.query(on: database)
-            .join(Message.self, on: \MediaResource.$attachmentOf.$id == \Message.$id)
+            .join(MessageToMedia.self, on: \MediaResource.$id == \MessageToMedia.$mediaResource.$id)
+            .join(Message.self, on: \MessageToMedia.$message.$id == \Message.$id)
             .filter(Message.self, \.$chat.$id == chatId)
-            .sort(\.$uploadedAt, .ascending)
+            .sort(\.$uploadedAt, .descending)
             .all()
     }
     

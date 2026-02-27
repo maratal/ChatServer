@@ -409,19 +409,24 @@ actor ChatService: ChatServiceProtocol {
         try chat.setLatestMessage(message)
         
         var attachmentsToSave: [any RepositoryItem] = []
+        var pivotsToSave: [any RepositoryItem] = []
         
         if let attachments = info.attachments {
-            for attachment in attachments {
+            for (index, attachment) in attachments.enumerated() {
                 let fileName = "\(attachment.id!).\(attachment.fileType)"
-                let uploadedAt = core.fileCreationDate(for: fileName)
-                let resource = MediaResource(id: attachment.id,
-                                             attachmentOf: message.id!,
-                                             fileType: attachment.fileType,
-                                             fileSize: attachment.fileSize,
-                                             previewWidth: attachment.previewWidth ?? 300,
-                                             previewHeight: attachment.previewHeight ?? 200,
-                                             uploadedAt: uploadedAt)
-                attachmentsToSave.append(resource)
+                let uploadedAt = core.fileCreationDate(for: fileName) ?? Date()
+                // Only create the MediaResource row if it doesn't already exist (re-using from recents)
+                let existing = try await repo.findMediaResource(attachment.id!)
+                if existing == nil {
+                    let resource = MediaResource(id: attachment.id,
+                                                 fileType: attachment.fileType,
+                                                 fileSize: attachment.fileSize,
+                                                 previewWidth: attachment.previewWidth ?? 300,
+                                                 previewHeight: attachment.previewHeight ?? 200,
+                                                 uploadedAt: uploadedAt)
+                    attachmentsToSave.append(resource)
+                }
+                pivotsToSave.append(MessageToMedia(messageId: message.id!, mediaResourceId: attachment.id!, position: index))
             }
         }
         
@@ -442,8 +447,9 @@ actor ChatService: ChatServiceProtocol {
         }
         
         try await core.saveAll(itemsToSave + attachmentsToSave)
+        try await core.saveAll(pivotsToSave)
         
-        if !attachmentsToSave.isEmpty {
+        if !pivotsToSave.isEmpty {
             try await repo.loadAttachments(for: message)
         }
         
@@ -480,43 +486,48 @@ actor ChatService: ChatServiceProtocol {
         
         // Handle attachments
         var itemsToSave: [any RepositoryItem] = []
+        var pivotsToSave: [any RepositoryItem] = []
         
         if let attachments = update.attachments {
-            // Load current attachments
+            // Delete all existing pivots and recreate in new order — this handles reordering and add/remove.
             try await repo.loadAttachments(for: message)
             let currentAttachmentIds = Set(message.attachments.compactMap { $0.id })
             let newAttachmentIds = Set(attachments.compactMap { $0.id })
-            
-            // Find attachments to remove (in current but not in new)
+
+            // Delete pivots for removed attachments
             let attachmentsToRemove = currentAttachmentIds.subtracting(newAttachmentIds)
-            
-            // Find attachments to add (in new but not in current)
-            let attachmentsToAdd = newAttachmentIds.subtracting(currentAttachmentIds)
-            
-            // Remove attachments by setting attachment_of to nil
-            for attachmentId in attachmentsToRemove {
-                if let attachment = message.attachments.first(where: { $0.id == attachmentId }) {
-                    attachment.$attachmentOf.id = nil
-                    itemsToSave.append(attachment)
-                    shouldReload = true
-                }
+            if !attachmentsToRemove.isEmpty {
+                try await repo.deletePivots(messageId: message.id!, mediaResourceIds: Array(attachmentsToRemove))
             }
-            
-            // Create new attachments with data from UpdateMessageRequest
-            for attachmentId in attachmentsToAdd {
-                if let attachmentInfo = attachments.first(where: { $0.id == attachmentId }) {
+
+            // Delete remaining pivots so we can recreate with correct positions
+            let attachmentsToKeep = currentAttachmentIds.intersection(newAttachmentIds)
+            if !attachmentsToKeep.isEmpty {
+                try await repo.deletePivots(messageId: message.id!, mediaResourceIds: Array(attachmentsToKeep))
+            }
+
+            // Recreate all pivots in order with correct positions, saving new MediaResources as needed
+            for (index, attachmentInfo) in attachments.enumerated() {
+                guard let attachmentId = attachmentInfo.id else { continue }
+                if !currentAttachmentIds.contains(attachmentId) {
                     let fileName = "\(attachmentId).\(attachmentInfo.fileType)"
-                    let uploadedAt = core.fileCreationDate(for: fileName)
-                    let resource = MediaResource(id: attachmentId,
-                                                 attachmentOf: message.id!,
-                                                 fileType: attachmentInfo.fileType,
-                                                 fileSize: attachmentInfo.fileSize,
-                                                 previewWidth: attachmentInfo.previewWidth ?? 300,
-                                                 previewHeight: attachmentInfo.previewHeight ?? 200,
-                                                 uploadedAt: uploadedAt)
-                    itemsToSave.append(resource)
-                    shouldReload = true
+                    let uploadedAt = core.fileCreationDate(for: fileName) ?? Date()
+                    let existing = try await repo.findMediaResource(attachmentId)
+                    if existing == nil {
+                        let resource = MediaResource(id: attachmentId,
+                                                     fileType: attachmentInfo.fileType,
+                                                     fileSize: attachmentInfo.fileSize,
+                                                     previewWidth: attachmentInfo.previewWidth ?? 300,
+                                                     previewHeight: attachmentInfo.previewHeight ?? 200,
+                                                     uploadedAt: uploadedAt)
+                        itemsToSave.append(resource)
+                    }
                 }
+                pivotsToSave.append(MessageToMedia(messageId: message.id!, mediaResourceId: attachmentId, position: index))
+            }
+
+            if !attachmentsToRemove.isEmpty || currentAttachmentIds != newAttachmentIds {
+                shouldReload = true
             }
         }
         
@@ -526,6 +537,9 @@ actor ChatService: ChatServiceProtocol {
         
         if !itemsToSave.isEmpty {
             try await core.saveAll(itemsToSave)
+        }
+        if !pivotsToSave.isEmpty {
+            try await core.saveAll(pivotsToSave)
         }
         
         if shouldReload || update.fileExists ?? false || update.previewExists ?? false {
@@ -553,15 +567,15 @@ actor ChatService: ChatServiceProtocol {
             try await repo.loadAttachments(for: message)
         }
         
-        // Set attachment_of to null and delete files
-        message.attachments.forEach { res in
-            try? core.removeFiles(for: res)
-            res.$attachmentOf.id = nil
-            res.fileSize = 0
-            itemsToSave.append(res)
-        }
+        // Detach attachments from this message by removing pivot rows.
+        // Media resources are intentionally kept in the DB so they remain accessible in recents.
+        let attachmentIds = message.attachments.compactMap { $0.id }
         
         try await core.saveAll(itemsToSave)
+        
+        if !attachmentIds.isEmpty {
+            try await repo.deletePivots(messageId: message.id!, mediaResourceIds: attachmentIds)
+        }
         
         let info = message.info()
         try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: message.author, with: info.jsonObject())
@@ -605,7 +619,7 @@ actor ChatService: ChatServiceProtocol {
             throw ServiceError(.badRequest, reason: "Media fileType or fileSize are missing.")
         }
         let fileName = "\(resourceId).\(resource.fileType)"
-        let uploadedAt = core.fileCreationDate(for: fileName)
+        let uploadedAt = core.fileCreationDate(for: fileName) ?? Date()
         let image = MediaResource(id: resourceId,
                                   imageOf: chat.id!,
                                   fileType: resource.fileType,

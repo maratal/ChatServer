@@ -31,8 +31,8 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
     @OptionalParent(key: "image_of")
     var imageOf: Chat?
     
-    @OptionalParent(key: "attachment_of")
-    var attachmentOf: Message?
+    @Siblings(through: MessageToMedia.self, from: \.$mediaResource, to: \.$message)
+    var messages: [Message]
     
     required init() {}
     
@@ -40,7 +40,6 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
         id: ResourceID? = nil,
         photoOf userId: UserID? = nil,
         imageOf chatId: ChatID? = nil,
-        attachmentOf messageId: MessageID? = nil,
         fileType: String,
         fileSize: Int64,
         previewWidth: Int,
@@ -50,7 +49,6 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
         self.id = id
         self.$photoOf.id = userId
         self.$imageOf.id = chatId
-        self.$attachmentOf.id = messageId
         self.fileType = fileType
         self.fileSize = fileSize
         self.previewWidth = previewWidth

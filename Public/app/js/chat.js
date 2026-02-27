@@ -10,6 +10,12 @@ let editingMessage = null; // Track the message being edited
 let replyingToMessage = null; // Track the message being replied to
 var lastReferenceReadMessageId = null; // Track the ID of either last outgoing message that has been read by others or last incoming message (as a reference point for read status)
 
+// Recents panel state
+let isRecentsPanelOpen = false;
+let selectedRecentIds = new Set(); // Set of selected media resource IDs
+let recentMediaItems = []; // Cached recent media list
+let activeMediaTab = 'uploads'; // 'uploads' | 'recents'
+
 // Load messages for a chat
 async function loadMessages(chatId, initialLoad = false) {
     if (isLoadingMessages) {
@@ -637,12 +643,357 @@ function openMessageAttachmentViewer(messageId) {
 }
 
 // Attachment management
+// Handle attach button click — open file upload dialog
+function handleAttachButtonClick(event) {
+    const existingToolbar = document.querySelector('.popup-toolbar');
+    if (existingToolbar) {
+        existingToolbar._closeToolbar?.();
+    }
+    openAttachmentDialog();
+}
+
+// Show recents toolbar on attach button hover
+function handleAttachButtonHover(event) {
+    const button = document.getElementById('attachButton');
+    showPopupToolbar({
+        items: [
+            { id: 'recents', tooltip: 'Recent Uploads', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' }
+        ],
+        hoverElement: button,
+        position: 'top',
+        onAction: (action) => {
+            if (action === 'recents') {
+                openRecentsPanel();
+            }
+        }
+    });
+}
+
 // Open attachment file dialog
 function openAttachmentDialog() {
     const input = document.getElementById('attachmentInput');
     if (input) {
         input.click();
     }
+}
+
+// ── Recents Panel ─────────────────────────────────────────────────────────────
+
+async function openRecentsPanel() {
+    if (isRecentsPanelOpen && activeMediaTab === 'recents') {
+        closeRecentsPanel();
+        return;
+    }
+    isRecentsPanelOpen = true;
+    activeMediaTab = 'recents';
+    try {
+        recentMediaItems = await apiGetRecentMedia();
+    } catch (e) {
+        console.error('Failed to load recent media:', e);
+        recentMediaItems = [];
+    }
+    renderMediaPanel();
+}
+
+function closeRecentsPanel() {
+    isRecentsPanelOpen = false;
+    selectedRecentIds.clear();
+    if (selectedAttachments.length > 0) {
+        activeMediaTab = 'uploads';
+    }
+    renderMediaPanel();
+    updateSendButtonState();
+}
+
+function closeMediaPanel() {
+    isRecentsPanelOpen = false;
+    selectedRecentIds.clear();
+    if (selectedAttachments.length > 0) {
+        clearAllAttachments();
+    } else {
+        renderMediaPanel();
+        updateSendButtonState();
+    }
+}
+
+async function switchMediaTab(tab) {
+    if (tab === activeMediaTab) return;
+    activeMediaTab = tab;
+    if (tab === 'recents' && !isRecentsPanelOpen) {
+        isRecentsPanelOpen = true;
+        try {
+            recentMediaItems = await apiGetRecentMedia();
+        } catch (e) {
+            console.error('Failed to load recent media:', e);
+            recentMediaItems = [];
+        }
+    }
+    renderMediaPanel();
+}
+
+// Render the unified media panel (tabs: Uploads / Recents)
+function renderMediaPanel() {
+    const container = document.getElementById('mediaPanelContainer');
+    if (!container) return;
+
+    const hasUploads = selectedAttachments.length > 0;
+    const panelVisible = hasUploads || isRecentsPanelOpen;
+
+    if (!panelVisible) {
+        container.style.display = 'none';
+        return;
+    }
+
+    // Auto-switch tab if current tab has no content
+    if (activeMediaTab === 'uploads' && !hasUploads) {
+        activeMediaTab = 'recents';
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = '';
+
+    // Header: tabs + close button
+    const header = document.createElement('div');
+    header.className = 'media-panel-header';
+
+    const tabs = document.createElement('div');
+    tabs.className = 'media-panel-tabs';
+
+    // Uploads tab (only show if there are uploads)
+    if (hasUploads) {
+        const uploadsTab = document.createElement('button');
+        uploadsTab.className = `media-panel-tab${activeMediaTab === 'uploads' ? ' active' : ''}`;
+        uploadsTab.textContent = `Uploads (${selectedAttachments.length})`;
+        uploadsTab.onclick = () => switchMediaTab('uploads');
+        tabs.appendChild(uploadsTab);
+    }
+
+    // Recents tab
+    const recentsTab = document.createElement('button');
+    recentsTab.className = `media-panel-tab${activeMediaTab === 'recents' ? ' active' : ''}`;
+    const recentsCount = selectedRecentIds.size;
+    recentsTab.textContent = recentsCount > 0 ? `Recents (${recentsCount})` : 'Recents';
+    recentsTab.onclick = () => switchMediaTab('recents');
+    tabs.appendChild(recentsTab);
+
+    header.appendChild(tabs);
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'inline-button small';
+    closeBtn.onclick = closeMediaPanel;
+    closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>`;
+    header.appendChild(closeBtn);
+
+    container.appendChild(header);
+
+    // Content based on active tab
+    if (activeMediaTab === 'uploads') {
+        renderUploadsTabContent(container);
+    } else {
+        renderRecentsTabContent(container);
+    }
+
+    updateSendButtonState();
+}
+
+function renderUploadsTabContent(container) {
+    if (selectedAttachments.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'media-panel-empty';
+        empty.textContent = 'No uploads';
+        container.appendChild(empty);
+        return;
+    }
+
+    const itemsRow = document.createElement('div');
+    itemsRow.className = 'media-panel-items-row';
+
+    selectedAttachments.forEach((attachment) => {
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'attachment-preview-item';
+        attachmentDiv.dataset.attachmentId = attachment.id;
+
+        const isImage = attachment.file.type.startsWith('image/');
+        const isVideo = attachment.file.type.startsWith('video/');
+
+        const closeButton = document.createElement('button');
+        closeButton.className = 'attachment-close-button';
+        closeButton.onclick = () => removeAttachment(attachment.id);
+        closeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>`;
+
+        if (attachment.preview) {
+            const img = document.createElement('img');
+            img.className = 'attachment-preview-image';
+            img.src = attachment.preview;
+            img.alt = 'Preview';
+            attachmentDiv.appendChild(img);
+        } else if (isImage) {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'attachment-preview-loading';
+            loadingDiv.textContent = 'Loading...';
+            attachmentDiv.appendChild(loadingDiv);
+
+            const img = document.createElement('img');
+            img.className = 'attachment-preview-image';
+            img.alt = 'Preview';
+            img.style.display = 'none';
+            attachmentDiv.appendChild(img);
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                attachment.preview = e.target.result;
+                img.src = e.target.result;
+                img.style.display = 'block';
+                loadingDiv.style.display = 'none';
+            };
+            reader.readAsDataURL(attachment.file);
+        } else if (isVideo) {
+            const videoIcon = document.createElement('div');
+            videoIcon.className = 'attachment-preview-video-icon';
+            videoIcon.textContent = '🎥';
+            attachmentDiv.appendChild(videoIcon);
+        }
+
+        attachmentDiv.appendChild(closeButton);
+        itemsRow.appendChild(attachmentDiv);
+
+        if (attachment.uploadProgress > 0) {
+            updateAttachmentProgressVisual(attachment.id, attachment.uploadProgress);
+        }
+    });
+
+    if (selectedAttachments.length < MAX_ATTACHMENTS) {
+        const plusButton = document.createElement('button');
+        plusButton.className = 'attachment-preview-item attachment-plus-button';
+        plusButton.onclick = openAttachmentDialog;
+        plusButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>`;
+        itemsRow.appendChild(plusButton);
+    }
+
+    container.appendChild(itemsRow);
+}
+
+function renderRecentsTabContent(container) {
+    if (recentMediaItems.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'media-panel-empty';
+        empty.textContent = 'No recent media';
+        container.appendChild(empty);
+        return;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'media-panel-items-row';
+    recentMediaItems.forEach(media => {
+        const item = createRecentMediaItem(media);
+        row.appendChild(item);
+    });
+    container.appendChild(row);
+}
+
+function createRecentMediaItem(media) {
+    const isSelected = selectedRecentIds.has(media.id);
+    const div = document.createElement('div');
+    div.className = 'attachment-preview-item';
+    div.dataset.mediaId = media.id;
+    div.style.cursor = 'pointer';
+
+    const isImage = /^(jpg|jpeg|png|gif|webp)$/i.test(media.fileType);
+    const isVideo = /^(mp4|webm|mov)$/i.test(media.fileType);
+    const url = getUploadUrl(media.id, media.fileType);
+
+    if (isImage) {
+        const img = document.createElement('img');
+        img.className = 'attachment-preview-image';
+        img.src = url;
+        img.alt = 'Media';
+        div.appendChild(img);
+    } else if (isVideo) {
+        const icon = document.createElement('div');
+        icon.className = 'attachment-preview-video-icon';
+        icon.textContent = '🎥';
+        div.appendChild(icon);
+    } else {
+        const icon = document.createElement('div');
+        icon.className = 'attachment-preview-video-icon';
+        icon.textContent = '📎';
+        div.appendChild(icon);
+    }
+
+    // Delete button — top-right, same as attachment close button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'attachment-close-button';
+    deleteBtn.title = 'Delete';
+    deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>`;
+    deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteRecentMedia(media.id);
+    };
+    div.appendChild(deleteBtn);
+
+    // Selection indicator — bottom-right, same position as upload checkmark
+    const selCircle = document.createElement('div');
+    selCircle.className = 'recent-media-select-circle';
+    selCircle.innerHTML = isSelected
+        ? `<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="11" fill="hsl(var(--primary))"/><path d="M7 12l3 3 7-7" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`
+        : `<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.35)" stroke="white" stroke-width="1.5"/></svg>`;
+    div.appendChild(selCircle);
+
+    // Click toggles selection
+    div.onclick = () => toggleRecentMediaSelection(media.id);
+
+    return div;
+}
+
+function toggleRecentMediaSelection(mediaId) {
+    if (selectedRecentIds.has(mediaId)) {
+        selectedRecentIds.delete(mediaId);
+    } else {
+        selectedRecentIds.add(mediaId);
+    }
+    // Re-render just the item
+    const item = document.querySelector(`[data-media-id="${mediaId}"]`);
+    if (item) {
+        const media = recentMediaItems.find(m => m.id === mediaId);
+        if (media) {
+            const newItem = createRecentMediaItem(media);
+            item.replaceWith(newItem);
+        }
+    }
+    renderMediaPanel(); // Update tab badge count
+    updateSendButtonState();
+}
+
+async function deleteRecentMedia(mediaId) {
+    if (!confirm('Delete this media? This will also remove it from all messages.')) return;
+    try {
+        await apiDeleteMedia(mediaId);
+        // Remove from list and re-render
+        recentMediaItems = recentMediaItems.filter(m => m.id !== mediaId);
+        selectedRecentIds.delete(mediaId);
+        renderMediaPanel();
+        updateSendButtonState();
+    } catch (e) {
+        console.error('Failed to delete media:', e);
+    }
+}
+
+// Get selected recents as attachment objects (to be sent with message)
+function getSelectedRecentAttachments() {
+    return recentMediaItems
+        .filter(m => selectedRecentIds.has(m.id))
+        .map(m => ({
+            id: m.id,
+            uploadedId: m.id,
+            fileType: m.fileType,
+            file: { size: m.fileSize, type: '' },
+            preview: getUploadUrl(m.id, m.fileType),
+            uploaded: true,
+            previewWidth: m.previewWidth,
+            previewHeight: m.previewHeight,
+            fromRecents: true
+        }));
 }
 
 // Handle attachment file selection
@@ -681,6 +1032,7 @@ function handleAttachmentFileSelect(event) {
         selectedAttachments.push(attachment);
     });
     
+    activeMediaTab = 'uploads';
     updateAttachmentPreview();
     updateSendButtonState();
     
@@ -703,98 +1055,42 @@ function handleAttachmentFileSelect(event) {
     event.target.value = '';
 }
 
-// Update attachment preview area
-function updateAttachmentPreview() {
-    const previewContainer = document.getElementById('attachmentPreviewContainer');
-    if (!previewContainer) return;
-    
-    if (selectedAttachments.length === 0) {
-        previewContainer.style.display = 'none';
-        return;
-    }
-    
-    previewContainer.style.display = 'flex';
-    previewContainer.innerHTML = '';
-    
-    selectedAttachments.forEach((attachment, index) => {
-        const attachmentDiv = document.createElement('div');
-        attachmentDiv.className = 'attachment-preview-item';
-        attachmentDiv.dataset.attachmentId = attachment.id;
-        
-        const isImage = attachment.file.type.startsWith('image/');
-        const isVideo = attachment.file.type.startsWith('video/');
-        
-        // Create close button first
-        const closeButton = document.createElement('button');
-        closeButton.className = 'attachment-close-button';
-        closeButton.onclick = () => removeAttachment(attachment.id);
-        closeButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 6 6 18"></path>
-                <path d="M6 6l12 12"></path>
-            </svg>
-        `;
-        
-        if (attachment.preview) {
-            const img = document.createElement('img');
-            img.className = 'attachment-preview-image';
-            img.src = attachment.preview;
-            img.alt = 'Preview';
-            attachmentDiv.appendChild(img);
-        } else if (isImage) {
-            // Create loading div
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'attachment-preview-loading';
-            loadingDiv.textContent = 'Loading...';
-            attachmentDiv.appendChild(loadingDiv);
-            
-            // Create img element (hidden initially)
-            const img = document.createElement('img');
-            img.className = 'attachment-preview-image';
-            img.alt = 'Preview';
-            img.style.display = 'none';
-            attachmentDiv.appendChild(img);
-            
-            // Load preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                attachment.preview = e.target.result;
-                img.src = e.target.result;
-                img.style.display = 'block';
-                loadingDiv.style.display = 'none';
-            };
-            reader.readAsDataURL(attachment.file);
-        } else if (isVideo) {
-            const videoIcon = document.createElement('div');
-            videoIcon.className = 'attachment-preview-video-icon';
-            videoIcon.textContent = '🎥';
-            attachmentDiv.appendChild(videoIcon);
+// Clear all attachments (cancel uploads, delete uploaded files, reset state)
+function clearAllAttachments() {
+    selectedAttachments.forEach(async (attachment) => {
+        // Cancel uploads if in progress
+        const upload = attachmentUploads.get(attachment.id);
+        if (upload && upload.xhr) {
+            upload.xhr.abort();
         }
         
-        // Add close button
-        attachmentDiv.appendChild(closeButton);
+        // Cancel animations
+        const animationFrameId = attachmentAnimationFrames.get(attachment.id);
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
         
-        previewContainer.appendChild(attachmentDiv);
-        
-        // Update progress if uploading (this will create the progress indicator if needed)
-        if (attachment.uploadProgress > 0) {
-            updateAttachmentProgressVisual(attachment.id, attachment.uploadProgress);
+        // Delete uploaded files from server (but not if editing existing message)
+        if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
+            try {
+                const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
+                await apiDeleteUpload(fileName);
+            } catch (error) {
+                console.error('Error deleting uploaded file:', error);
+            }
         }
     });
     
-    // Add Plus button if less than MAX_ATTACHMENTS
-    if (selectedAttachments.length < MAX_ATTACHMENTS) {
-        const plusButton = document.createElement('button');
-        plusButton.className = 'attachment-preview-item attachment-plus-button';
-        plusButton.onclick = openAttachmentDialog;
-        plusButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="M12 5v14"></path>
-            </svg>
-        `;
-        previewContainer.appendChild(plusButton);
-    }
+    selectedAttachments = [];
+    attachmentUploads.clear();
+    attachmentAnimationFrames.clear();
+    updateAttachmentPreview();
+    updateSendButtonState();
+}
+
+// Update attachment preview area
+function updateAttachmentPreview() {
+    renderMediaPanel();
 }
 
 // Upload a single attachment
@@ -969,12 +1265,13 @@ function showUploadedCheckmark(attachmentId) {
     // Don't add checkmark if it already exists
     if (attachmentDiv.querySelector('.attachment-upload-checkmark')) return;
     
-    // Create checkmark indicator
+    // Create filled circle + checkmark indicator
     const checkmarkDiv = document.createElement('div');
     checkmarkDiv.className = 'attachment-upload-checkmark';
     checkmarkDiv.innerHTML = `
         <svg viewBox="0 0 24 24" width="24" height="24">
-            <path d="M7 12l3 3 7-7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+            <circle cx="12" cy="12" r="11" fill="hsl(var(--primary))"/>
+            <path d="M7 12l3 3 7-7" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
         </svg>
     `;
     attachmentDiv.appendChild(checkmarkDiv);
@@ -1043,9 +1340,10 @@ function updateSendButtonState() {
     if (messageInput && sendButton) {
         const hasText = messageInput.value.trim().length > 0;
         const allAttachmentsUploaded = selectedAttachments.length > 0 && selectedAttachments.every(a => a.uploaded);
+        const hasSelectedRecents = selectedRecentIds.size > 0;
         
-        // Show send button if text is present OR all attachments are uploaded
-        if (hasText || allAttachmentsUploaded) {
+        // Show send button if text is present OR all attachments are uploaded OR recents selected
+        if (hasText || allAttachmentsUploaded || hasSelectedRecents) {
             sendButton.classList.remove('hidden');
             sendButton.classList.add('visible');
         } else {
@@ -1091,38 +1389,10 @@ function initializeMessageInput() {
                 return; // Exit early to avoid clearing attachments or canceling edit/reply if text was present
             }
             
-            // Priority 2: Clear attachments if text is already empty
-            if (selectedAttachments.length > 0) {
-                // Clear all attachments
-                selectedAttachments.forEach(async (attachment) => {
-                    // Cancel uploads if in progress
-                    const upload = attachmentUploads.get(attachment.id);
-                    if (upload && upload.xhr) {
-                        upload.xhr.abort();
-                    }
-                    
-                    // Cancel animations
-                    const animationFrameId = attachmentAnimationFrames.get(attachment.id);
-                    if (animationFrameId) {
-                        cancelAnimationFrame(animationFrameId);
-                    }
-                    
-                    // Delete uploaded files from server (but not if editing existing message)
-                    if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
-                        try {
-                            const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
-                            await apiDeleteUpload(fileName);
-                        } catch (error) {
-                            console.error('Error deleting uploaded file:', error);
-                        }
-                    }
-                });
-                
-                selectedAttachments = [];
-                attachmentUploads.clear();
-                attachmentAnimationFrames.clear();
-                updateAttachmentPreview();
-                updateSendButtonState();
+            // Priority 2: Close media panel if open
+            if (isRecentsPanelOpen || selectedAttachments.length > 0) {
+                closeMediaPanel();
+                return;
             }
             
             // Priority 3: Cancel edit or reply mode
@@ -1160,7 +1430,10 @@ async function sendMessage(textOverride = null) {
     const messageInput = getMessageInputElement();
     const text = textOverride !== null ? textOverride.trim() : messageInput.value.trim();
     
-    if (!text && selectedAttachments.length === 0) return;
+    // Merge selected recents into attachments consideration
+    const recentAttachments = getSelectedRecentAttachments();
+    
+    if (!text && selectedAttachments.length === 0 && recentAttachments.length === 0) return;
     if (!currentChatId || !currentUser || !currentUser.info.id) return;
     
     // Check if we're editing a message
@@ -1169,11 +1442,13 @@ async function sendMessage(textOverride = null) {
         return;
     }
     
-    // Get uploaded attachments (only send those that are ready)
+    // Get uploaded attachments (only send those that are ready) + recents (always ready)
     const uploadedAttachments = selectedAttachments.filter(a => a.uploaded);
+    const allReadyAttachments = [...uploadedAttachments, ...recentAttachments];
     
     // Determine if we should send only text (attachments exist but not all uploaded)
-    const shouldSendAttachments = uploadedAttachments.length > 0 && uploadedAttachments.length === selectedAttachments.length;
+    const shouldSendAttachments = (allReadyAttachments.length > 0) && 
+        (uploadedAttachments.length === selectedAttachments.length || selectedAttachments.length === 0);
     
     const localId = generateMessageLocalId();
     
@@ -1191,7 +1466,7 @@ async function sendMessage(textOverride = null) {
         text: text,
         createdAt: new Date().toISOString(),
         isVisible: true,
-        attachments: shouldSendAttachments ? uploadedAttachments.map(a => ({
+        attachments: shouldSendAttachments ? allReadyAttachments.map(a => ({
             id: a.uploadedId,
             fileType: a.fileType,
             fileSize: a.file.size,
@@ -1213,7 +1488,10 @@ async function sendMessage(textOverride = null) {
     if (shouldSendAttachments) {
         selectedAttachments = [];
         attachmentUploads.clear();
-        updateAttachmentPreview();
+        // Close recents and clear selection
+        isRecentsPanelOpen = false;
+        selectedRecentIds.clear();
+        renderMediaPanel();
     }
     
     // Only clear input if we're not overriding with direct text

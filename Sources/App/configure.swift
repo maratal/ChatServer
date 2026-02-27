@@ -31,12 +31,15 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(CreateChatToUser())
     app.migrations.add(CreateReaction())
     app.migrations.add(CreateMediaResource())
+    app.migrations.add(CreateMessageToMedia())
+    app.migrations.add(AddPositionToMessageToMedia())
     
     try app.createUploadsDirectory()
     
     try app.register(collection: UserController(service: service.users))
     try app.register(collection: ChatController(service: service.chats))
     try app.register(collection: ContactsController(service: service.contacts))
+    try app.register(collection: MediaStorageController(service: service.mediaStorage))
     try app.register(collection: WebSocketController(core: service))
     try app.register(collection: UploadController())
     
