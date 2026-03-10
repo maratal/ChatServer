@@ -80,6 +80,10 @@ input[type="text"], textarea {
     background-color: hsl(var(--muted)) !important;
 }
 
+#chatArea {
+    min-width: 0;
+}
+
 /* Message Input Container Border */
 #messageInputContainer {
     display: flex;
@@ -2662,6 +2666,7 @@ input[type="text"]:disabled, textarea:disabled {
 #mediaPanelContainer {
     margin-bottom: 10px;
     width: 100%;
+    overflow: hidden;
 }
 
 .media-panel-header {
@@ -2716,6 +2721,7 @@ input[type="text"]:disabled, textarea:disabled {
     border-radius: 5px;
     overflow: hidden;
     background-color: hsl(var(--muted));
+    flex-shrink: 0;
 }
 
 .attachment-preview-item img {
