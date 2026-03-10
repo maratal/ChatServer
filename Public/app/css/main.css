@@ -2256,8 +2256,11 @@ input[type="text"]:disabled, textarea:disabled {
     background-color: hsl(var(--chat-bubble-received));
     color: hsl(var(--chat-bubble-received-foreground));
     box-shadow: var(--shadow-soft);
-    padding: 1px;
     overflow: hidden;
+    border: 2px solid hsl(var(--chat-bubble-received));
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .message-author-name {
@@ -2294,8 +2297,9 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-row.own .message-bubble {
-    background: linear-gradient(-10deg, hsl(var(--primary)), hsl(var(--primary) / 0.9));
+    background: linear-gradient(-10deg, hsl(var(--primary)), hsl(var(--primary) / 1.0));
     color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
 }
 
 /* Message grouping corner radius styles with higher specificity */
@@ -2348,7 +2352,6 @@ input[type="text"]:disabled, textarea:disabled {
     word-wrap: break-word;
     align-self: flex-start; /* Align text to top of bubble */
     font-size: 1rem;
-    margin: 1px;
     flex: 1;
     display: flex;
     align-items: center;
@@ -2829,7 +2832,7 @@ input[type="text"]:disabled, textarea:disabled {
 
 .message-attachment-container {
     position: relative;
-    border-radius: 11px;
+    border-radius: 4px;
     overflow: hidden;
     box-sizing: border-box;
     display: block;
@@ -2982,16 +2985,34 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-reply-preview {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     padding: 5px;
-    margin: 3px;
-    margin-bottom: 1px;
     background-color: hsl(var(--foreground) / 0.05);
-    border-left: 2px solid hsl(var(--foreground) / 0.3);
-    color: hsl(var(--foreground));
+    color: hsl(var(--foreground) / 0.9);
+    font-style: italic;
+    font-size: 0.9rem;
     max-height: 50px;
     overflow: hidden;
     text-overflow: ellipsis;
     border-radius: 4px;
+    border-bottom: 1px solid hsl(var(--foreground) / 0.05);
+}
+
+.message-row.own .message-reply-preview {
+    background-color: hsl(var(--primary-foreground) / 0.1);
+    color: hsl(var(--primary-foreground) / 0.9);
+    border-bottom: 1px solid hsl(var(--primary-foreground) / 0.1);
+}
+
+.message-highlight {
+    animation: message-highlight-fade 1.5s ease;
+}
+
+@keyframes message-highlight-fade {
+    0%, 30% { background-color: hsl(var(--primary) / 0.15); }
+    100% { background-color: transparent; }
 }
 
 .message-deleted {

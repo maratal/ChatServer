@@ -112,6 +112,18 @@ function scrollMessagesToBottom(instant = false) {
     }
 }
 
+// Scroll to a specific message by ID and briefly highlight it
+function scrollToMessage(messageId) {
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageElement) return;
+    
+    const row = messageElement.closest('.message-row') || messageElement;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    row.classList.add('message-highlight');
+    setTimeout(() => row.classList.remove('message-highlight'), 1500);
+}
+
 // Setup infinite scroll for messages container
 function setupInfiniteScroll(chatId) {
     const messagesContainer = document.getElementById('messagesContainer');
@@ -203,16 +215,9 @@ function updateSingleMessageGrouping(messageElement, index, allMessageElements) 
         }
     }
     
-    // Check if messages have attachments (by checking for attachment container in DOM)
-    const currentHasAttachments = messageElement.querySelector('.message-attachment-container') !== null;
-    const prevHasAttachments = prevElement && prevElement.querySelector('.message-attachment-container') !== null;
-    const nextHasAttachments = nextElement && nextElement.querySelector('.message-attachment-container') !== null;
-    
-    // Messages should be grouped if same author AND within 10 minutes AND no attachments AND same date
-    const shouldGroupWithPrev = sameAuthorAsPrev && !timeGapWithPrev && 
-        !currentHasAttachments && !prevHasAttachments && !dateDiffersFromPrev;
-    const shouldGroupWithNext = sameAuthorAsNext && !timeGapWithNext && 
-        !currentHasAttachments && !nextHasAttachments && !dateDiffersFromNext;
+    // Messages should be grouped if same author AND within 10 minutes AND same date
+    const shouldGroupWithPrev = sameAuthorAsPrev && !timeGapWithPrev && !dateDiffersFromPrev;
+    const shouldGroupWithNext = sameAuthorAsNext && !timeGapWithNext && !dateDiffersFromNext;
     
     let groupPosition;
     if (!shouldGroupWithPrev && !shouldGroupWithNext) {
@@ -460,7 +465,7 @@ function createMessageElement(message) {
             
             replyPreviewHTML = `
                 <div class="message-reply-preview">
-                    ${escapeHtml(replyPreviewText)}
+                    <div data-reply-to="${message.replyTo}" onclick="scrollToMessage('${message.replyTo}')" style="cursor: pointer;">${quoteIcon}</div><div>${escapeHtml(replyPreviewText)}</div>
                 </div>
             `;
         }
