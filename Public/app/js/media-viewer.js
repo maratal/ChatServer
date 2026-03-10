@@ -24,7 +24,7 @@ function createMediaViewerHTML(photos, currentIndex, viewerId = 'mediaViewer', t
                 ${hasMultiplePhotos ? `
                 <button class="media-viewer-chevron media-viewer-chevron-left" onclick="navigateMediaViewerPhoto(-1)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m15 18-6-6 6-6"></path>
+                        <path d="m14 18-6-6 6-6"></path>
                     </svg>
                 </button>
                 ` : ''}
@@ -32,7 +32,7 @@ function createMediaViewerHTML(photos, currentIndex, viewerId = 'mediaViewer', t
                 ${hasMultiplePhotos ? `
                 <button class="media-viewer-chevron media-viewer-chevron-right" onclick="navigateMediaViewerPhoto(1)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m9 18 6-6-6-6"></path>
+                        <path d="m10 18 6-6-6-6"></path>
                     </svg>
                 </button>
                 ` : ''}

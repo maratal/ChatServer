@@ -2181,24 +2181,6 @@ input[type="text"]:disabled, textarea:disabled {
     align-items: center;
 }
 
-.message {
-    display: flex;
-    margin-bottom: 2px;
-    align-items: flex-start;
-}
-
-.message.own {
-    flex-direction: row-reverse;
-}
-
-.message.author-change {
-    margin-top: 10px;
-}
-
-.message.own .message-content-row {
-    justify-content: flex-end;
-}
-
 .message-author {
     font-weight: 600;
     font-size: 0.8rem;

@@ -85,7 +85,7 @@ function displayCurrentUserProfile() {
                 ${hasMultiplePhotos ? `
                 <button class="user-profile-avatar-chevron user-profile-avatar-chevron-left" onclick="event.stopPropagation(); navigateAvatarPhoto(-1)" title="Previous photo">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m15 18-6-6 6-6"></path>
+                        <path d="m14 18-6-6 6-6"></path>
                     </svg>
                 </button>
                 ` : ''}
@@ -102,7 +102,7 @@ function displayCurrentUserProfile() {
                 ${hasMultiplePhotos ? `
                 <button class="user-profile-avatar-chevron user-profile-avatar-chevron-right" onclick="event.stopPropagation(); navigateAvatarPhoto(1)" title="Next photo">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m9 18 6-6-6-6"></path>
+                        <path d="m10 18 6-6-6-6"></path>
                     </svg>
                 </button>
                 ` : ''}

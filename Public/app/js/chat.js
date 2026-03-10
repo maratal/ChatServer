@@ -325,7 +325,7 @@ function buildAttachmentHTML(attachments, messageId) {
             ${hasMultipleAttachments ? `
             <button class="message-attachment-chevron message-attachment-chevron-left" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', -1)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m15 18-6-6 6-6"></path>
+                    <path d="m14 18-6-6 6-6"></path>
                 </svg>
             </button>
             ` : ''}
@@ -339,7 +339,7 @@ function buildAttachmentHTML(attachments, messageId) {
             ${hasMultipleAttachments ? `
             <button class="message-attachment-chevron message-attachment-chevron-right" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', 1)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m9 18 6-6-6-6"></path>
+                    <path d="m10 18 6-6-6-6"></path>
                 </svg>
             </button>
             ` : ''}
