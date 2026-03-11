@@ -1,13 +1,15 @@
 import Vapor
 import NIOCore
-import CoreGraphics
-import ImageIO
-import UniformTypeIdentifiers
+/*
+ Ubuntu/Debian: apt install libgd-dev
+ macOS: brew install gd
+ */
+import SwiftGD
 
 struct UploadController: RouteCollection {
     
     static let maxBytes = 50_000_000
-    static let previewMaxDimension: CGFloat = 350
+    static let previewMaxDimension = 350
     
     func boot(routes: RoutesBuilder) throws {
         let uploads = routes.grouped("uploads").grouped(DeviceSession.authenticator())
@@ -126,73 +128,40 @@ struct UploadController: RouteCollection {
         
         let previewName = Self.previewFileName(for: fileName)
         let previewPath = (filePath as NSString).deletingLastPathComponent + "/" + previewName
+        let maxDim = Self.previewMaxDimension
         
-        guard let imageSource = CGImageSourceCreateWithURL(URL(fileURLWithPath: filePath) as CFURL, nil),
-              let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+        guard let image = Image(url: URL(fileURLWithPath: filePath)) else {
             logger.warning("Could not read image for preview: \(fileName)")
             return
         }
         
-        let originalWidth = CGFloat(cgImage.width)
-        let originalHeight = CGFloat(cgImage.height)
-        let maxDim = Self.previewMaxDimension
+        let originalWidth = image.size.width
+        let originalHeight = image.size.height
         
         // Skip if already fits within preview size
         guard originalWidth > maxDim || originalHeight > maxDim else {
-            // Just copy the file as the preview
             try? FileManager.default.copyItem(atPath: filePath, toPath: previewPath)
             logger.info("Image already small enough, copied as preview: \(previewName)")
             return
         }
         
         // Calculate scaled dimensions maintaining aspect ratio
-        let scale = min(maxDim / originalWidth, maxDim / originalHeight)
-        let newWidth = Int(originalWidth * scale)
-        let newHeight = Int(originalHeight * scale)
+        let scale = min(Double(maxDim) / Double(originalWidth), Double(maxDim) / Double(originalHeight))
+        let newWidth = Int(Double(originalWidth) * scale)
+        let newHeight = Int(Double(originalHeight) * scale)
         
-        guard let colorSpace = cgImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                data: nil,
-                width: newWidth,
-                height: newHeight,
-                bitsPerComponent: 8,
-                bytesPerRow: 0,
-                space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-              ) else {
-            logger.warning("Could not create graphics context for preview: \(fileName)")
+        guard let resized = image.resizedTo(width: newWidth, height: newHeight) else {
+            logger.warning("Could not resize image for preview: \(fileName)")
             return
         }
         
-        context.interpolationQuality = .high
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: newWidth, height: newHeight))
-        
-        guard let scaledImage = context.makeImage() else {
-            logger.warning("Could not create scaled image for preview: \(fileName)")
-            return
-        }
-        
-        // Determine output UTType
-        let utType: CFString = switch fileType.lowercased() {
-        case "png": UTType.png.identifier as CFString
-        case "gif": UTType.gif.identifier as CFString
-        case "webp": UTType.webP.identifier as CFString
-        default: UTType.jpeg.identifier as CFString
-        }
-        
-        let previewURL = URL(fileURLWithPath: previewPath)
-        guard let destination = CGImageDestinationCreateWithURL(previewURL as CFURL, utType, 1, nil) else {
-            logger.warning("Could not create image destination for preview: \(fileName)")
-            return
-        }
-        
-        let properties: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.8]
-        CGImageDestinationAddImage(destination, scaledImage, properties as CFDictionary)
-        
-        if CGImageDestinationFinalize(destination) {
+        do {
+            let format: ExportableFormat = fileType.lowercased() == "png" ? .png : .jpg(quality: 85)
+            let data = try resized.export(as: format)
+            try data.write(to: URL(fileURLWithPath: previewPath))
             logger.info("Preview generated: \(previewName) (\(newWidth)x\(newHeight))")
-        } else {
-            logger.warning("Failed to write preview: \(previewName)")
+        } catch {
+            logger.warning("Could not generate preview for \(fileName): \(error)")
         }
     }
 }
