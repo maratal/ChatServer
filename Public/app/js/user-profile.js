@@ -76,7 +76,7 @@ function displayCurrentUserProfile() {
     
     // Get current photo
     const currentPhoto = userPhotos.length > 0 ? userPhotos[currentPhotoIndex] : null;
-    const photoUrl = currentPhoto ? getUploadUrl(currentPhoto.id, currentPhoto.fileType) : null;
+    const photoUrl = currentPhoto ? getPreviewUrl(currentPhoto.id, currentPhoto.fileType) : null;
     const hasMultiplePhotos = userPhotos.length > 1;
     
     let html = `
@@ -676,10 +676,10 @@ function updateAvatarDisplay() {
     if (!avatar) return;
     
     if (currentPhoto && avatarImg) {
-        avatarImg.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
+        avatarImg.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
     } else if (currentPhoto) {
         const img = document.createElement('img');
-        img.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
+        img.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
         img.alt = '';
         img.id = 'userProfileAvatarImg';
         avatar.innerHTML = '';

@@ -581,7 +581,7 @@ function updateCurrentUserButton() {
         const mainPhoto = mainPhotoForUser(currentUser.info);
         
         if (mainPhoto) {
-            sidebarAvatar.innerHTML = `<img src="${getUploadUrl(mainPhoto.id, mainPhoto.fileType)}" alt="">`;
+            sidebarAvatar.innerHTML = `<img src="${getPreviewUrl(mainPhoto.id, mainPhoto.fileType)}" alt="">`;
         } else {
             sidebarAvatar.innerHTML = getAvatarInitialsHtml(userName, currentUser.info.id);
         }
@@ -994,7 +994,7 @@ function displayUserInfo(user) {
     
     // Get current photo
     const currentPhoto = userInfoPhotos.length > 0 ? userInfoPhotos[userInfoCurrentPhotoIndex] : null;
-    const photoUrl = currentPhoto ? getUploadUrl(currentPhoto.id, currentPhoto.fileType) : null;
+    const photoUrl = currentPhoto ? getPreviewUrl(currentPhoto.id, currentPhoto.fileType) : null;
     const hasMultiplePhotos = userInfoPhotos.length > 1;
     
     let html = `
@@ -1124,10 +1124,10 @@ function updateUserInfoAvatarDisplay() {
     if (!avatar) return;
     
     if (currentPhoto && avatarImg) {
-        avatarImg.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
+        avatarImg.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
     } else if (currentPhoto) {
         const img = document.createElement('img');
-        img.src = getUploadUrl(currentPhoto.id, currentPhoto.fileType);
+        img.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
         img.alt = '';
         img.id = `userInfoAvatarImg_${userInfoCurrentUserId}`;
         avatar.innerHTML = '';
@@ -1583,7 +1583,7 @@ function displayGroupChatInfo(chat) {
     const avatarColor = getAvatarColorForUser(`group_${chat.id}`);
     
     // Get current photo
-    const photoUrl = chatImage ? getUploadUrl(chatImage.id, chatImage.fileType) : null;
+    const photoUrl = chatImage ? getPreviewUrl(chatImage.id, chatImage.fileType) : null;
     
     // Filter out current user from members list
     const otherMembers = (chat.allUsers || []).filter(user => user.id !== currentUser?.info?.id);
@@ -2589,7 +2589,7 @@ function resetExistingGroupAvatarDisplay() {
     const groupName = getGroupChatDisplayName(chat, currentUser);
     const chatImage = chat.images && chat.images.length > 0 ? chat.images[0] : null;
     const avatarColor = getAvatarColorForUser(`group_${chat.id}`);
-    const photoUrl = chatImage ? getUploadUrl(chatImage.id, chatImage.fileType) : null;
+    const photoUrl = chatImage ? getPreviewUrl(chatImage.id, chatImage.fileType) : null;
 
     // Reset to original state
     if (photoUrl) {

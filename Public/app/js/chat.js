@@ -330,7 +330,7 @@ function buildAttachmentHTML(attachments, messageId) {
             </button>
             ` : ''}
             ${isImage ? `
-            <img class="message-attachment-image" src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
+            <img class="message-attachment-image" src="${getPreviewUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
             ` : isVideo ? `
             <video class="message-attachment-video" controls onclick="event.stopPropagation();">
                 <source src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" type="video/${firstAttachment.fileType}">
@@ -427,7 +427,7 @@ function createMessageElement(message) {
         : '';
     
     const avatarContent = authorMainPhoto 
-        ? `<img src="${getUploadUrl(authorMainPhoto.id, authorMainPhoto.fileType)}" alt="">`
+        ? `<img src="${getPreviewUrl(authorMainPhoto.id, authorMainPhoto.fileType)}" alt="">`
         : getAvatarInitialsHtml(authorName, message.author.id);
     
     // Handle attachments
@@ -593,7 +593,7 @@ function switchMessageAttachment(messageId, index) {
         if (isImage) {
             const img = document.createElement('img');
             img.className = 'message-attachment-image';
-            img.src = getUploadUrl(attachment.id, attachment.fileType);
+            img.src = getPreviewUrl(attachment.id, attachment.fileType);
             img.alt = 'Attachment';
             currentMedia.replaceWith(img);
         } else if (isVideo) {
@@ -906,7 +906,7 @@ function createRecentMediaItem(media) {
 
     const isImage = /^(jpg|jpeg|png|gif|webp)$/i.test(media.fileType);
     const isVideo = /^(mp4|webm|mov)$/i.test(media.fileType);
-    const url = getUploadUrl(media.id, media.fileType);
+    const url = getPreviewUrl(media.id, media.fileType);
 
     if (isImage) {
         const img = document.createElement('img');
@@ -993,7 +993,7 @@ function getSelectedRecentAttachments() {
             uploadedId: m.id,
             fileType: m.fileType,
             file: { size: m.fileSize, type: '' },
-            preview: getUploadUrl(m.id, m.fileType),
+            preview: getPreviewUrl(m.id, m.fileType),
             uploaded: true,
             previewWidth: m.previewWidth,
             previewHeight: m.previewHeight,

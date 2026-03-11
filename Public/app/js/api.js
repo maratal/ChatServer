@@ -636,6 +636,10 @@ function getUploadUrl(fileId, fileType) {
     return `/uploads/${fileId}.${fileType}`;
 }
 
+function getPreviewUrl(fileId, fileType) {
+    return `/uploads/${fileId}-preview.${fileType}`;
+}
+
 async function apiGetRecentMedia() {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');

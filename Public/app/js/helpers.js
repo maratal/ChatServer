@@ -86,7 +86,7 @@ function getAvatarInitialsHtml(name, userId, extraClasses = '') {
 
 // Get image HTML
 function getAvatarImageHtml(imageInfo) {
-    return `<img src="${getUploadUrl(imageInfo.id, imageInfo.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    return `<img src="${getPreviewUrl(imageInfo.id, imageInfo.fileType)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
 }
 
 // Get avatar HTML (image or initials)
