@@ -8,6 +8,7 @@ struct CreateMessageToMedia: AsyncMigration {
             .id()
             .field("message_id", .uint64, .required, .references("messages", "id", onDelete: .cascade))
             .field("media_resource_id", .uuid, .required, .references("media_resources", "id", onDelete: .cascade))
+            .field("position", .int, .required, .sql(.default(0)))
             .unique(on: "message_id", "media_resource_id")
             .create()
     }

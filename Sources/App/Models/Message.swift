@@ -40,8 +40,14 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     @Children(for: \.$message)
     var readMarks: [ReadMark]
     
-    @Siblings(through: MessageToMedia.self, from: \.$message, to: \.$mediaResource)
-    var attachments: [MediaResource]
+    @Children(for: \.$message)
+    var attachmentPivots: [MessageToMedia]
+    
+    var attachments: [MediaResource] {
+        (attachmentPivots)
+            .sorted { $0.position < $1.position }
+            .compactMap { $0.$mediaResource.value }
+    }
     
     required init() {}
     
@@ -100,7 +106,7 @@ extension Message {
             if message.$readMarks.value != nil {
                 self.readMarks = message.readMarks.map { $0.info() }
             }
-            if message.$attachments.value != nil {
+            if message.$attachmentPivots.value != nil {
                 self.attachments = message.attachments.map { $0.info() }
             }
         }

@@ -214,7 +214,7 @@ extension CoreService {
         static let badUsername       = ServiceError(.badRequest, reason: "Username should be at least \(Constants.minUsernameLength) characters length, start with letter and consist of letters and digits.")
         
         /// Upload errors
-        static let uploadTooLarge    = ServiceError(.payloadTooLarge, reason: "Your upload exeeded max limit of 50Mb.")
+        static let uploadTooLarge    = ServiceError(.payloadTooLarge, reason: "Your upload exeeded max limit of 150Mb.")
         
         /// Other
         static let idRequired        = ServiceError(.internalServerError, reason: "ID Required.")

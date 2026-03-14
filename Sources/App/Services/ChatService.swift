@@ -423,7 +423,8 @@ actor ChatService: ChatServiceProtocol {
                                                  fileSize: attachment.fileSize,
                                                  previewWidth: attachment.previewWidth ?? 300,
                                                  previewHeight: attachment.previewHeight ?? 200,
-                                                 uploadedAt: uploadedAt)
+                                                 uploadedAt: uploadedAt,
+                                                 duration: attachment.duration)
                     attachmentsToSave.append(resource)
                 }
                 pivotsToSave.append(MessageToMedia(messageId: message.id!, mediaResourceId: attachment.id!, position: index))
@@ -519,7 +520,8 @@ actor ChatService: ChatServiceProtocol {
                                                      fileSize: attachmentInfo.fileSize,
                                                      previewWidth: attachmentInfo.previewWidth ?? 300,
                                                      previewHeight: attachmentInfo.previewHeight ?? 200,
-                                                     uploadedAt: uploadedAt)
+                                                     uploadedAt: uploadedAt,
+                                                     duration: attachmentInfo.duration)
                         itemsToSave.append(resource)
                     }
                 }
@@ -560,10 +562,10 @@ actor ChatService: ChatServiceProtocol {
         message.deletedAt = Date()
         message.$replyTo.id = nil
         
-        var itemsToSave = [message as any RepositoryItem]
+        let itemsToSave = [message as any RepositoryItem]
         
         // Load attachments if not already loaded
-        if message.$attachments.value == nil {
+        if message.$attachmentPivots.value == nil {
             try await repo.loadAttachments(for: message)
         }
         

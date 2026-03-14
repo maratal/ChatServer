@@ -59,7 +59,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage) { message in
-                    message.with(\.$attachments)
+                    message.with(\.$attachmentPivots) { pivot in
+                        pivot.with(\.$mediaResource)
+                    }
                     message.with(\.$readMarks)
                 }
                 chat.with(\.$images)
@@ -78,7 +80,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage) { message in
-                    message.with(\.$attachments)
+                    message.with(\.$attachmentPivots) { pivot in
+                        pivot.with(\.$mediaResource)
+                    }
                     message.with(\.$readMarks)
                 }
                 chat.with(\.$users) { user in
@@ -105,8 +109,10 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
                 chat.with(\.$lastMessage) { message in
+                    message.with(\.$attachmentPivots) { pivot in
+                        pivot.with(\.$mediaResource)
+                    }
                     message.with(\.$readMarks)
-                    message.with(\.$attachments)
                 }
                 chat.with(\.$images)
                 if (fullInfo) {
@@ -189,7 +195,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
                     relation.with(\.$user)
                 }
             }
-            .with(\.$attachments)
+            .with(\.$attachmentPivots) { pivot in
+                pivot.with(\.$mediaResource)
+            }
             .first()
     }
     
@@ -197,7 +205,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         if let before {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
-                .with(\.$attachments)
+                .with(\.$attachmentPivots) { pivot in
+                    pivot.with(\.$mediaResource)
+                }
                 .with(\.$readMarks)
                 .with(\.$author) { author in
                     author.with(\.$photos)
@@ -209,7 +219,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         } else {
             return try await Message.query(on: database)
                 .filter(\.$chat.$id == chatId)
-                .with(\.$attachments)
+                .with(\.$attachmentPivots) { pivot in
+                    pivot.with(\.$mediaResource)
+                }
                 .with(\.$readMarks)
                 .with(\.$author) { author in
                     author.with(\.$photos)
@@ -225,12 +237,12 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     }
     
     func loadAttachments(for message: Message) async throws {
-        let attachments = try await MediaResource.query(on: database)
-            .join(MessageToMedia.self, on: \MediaResource.$id == \MessageToMedia.$mediaResource.$id)
-            .filter(MessageToMedia.self, \.$message.$id == message.id!)
-            .sort(MessageToMedia.self, \.$position, .ascending)
+        let pivots = try await MessageToMedia.query(on: database)
+            .filter(\.$message.$id == message.id!)
+            .sort(\.$position, .ascending)
+            .with(\.$mediaResource)
             .all()
-        message.$attachments.value = attachments
+        message.$attachmentPivots.value = pivots
     }
     
     func deletePivots(messageId: MessageID, mediaResourceIds: [ResourceID]) async throws {

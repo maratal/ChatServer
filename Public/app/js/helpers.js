@@ -1,5 +1,79 @@
 // Utility functions
 
+function dataURLToBlob(dataURL) {
+    const parts = dataURL.split(',');
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const b64 = atob(parts[1]);
+    const u8arr = new Uint8Array(b64.length);
+    for (let i = 0; i < b64.length; i++) u8arr[i] = b64.charCodeAt(i);
+    return new Blob([u8arr], { type: mime });
+}
+
+// Generate a thumbnail data URL from a video source (File or URL string)
+// Returns a promise that resolves with a data URL
+function generateVideoThumbnail(source) {
+    return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.muted = true;
+        video.playsInline = true;
+        video.crossOrigin = 'anonymous';
+        const isBlobUrl = source instanceof File;
+        let settled = false;
+
+        function finish(dataUrl) {
+            if (settled) return;
+            settled = true;
+            if (isBlobUrl) URL.revokeObjectURL(video.src);
+            video.removeAttribute('src');
+            video.load();
+            resolve(dataUrl);
+        }
+
+        function fail(err) {
+            if (settled) return;
+            settled = true;
+            if (isBlobUrl) URL.revokeObjectURL(video.src);
+            video.removeAttribute('src');
+            video.load();
+            reject(err);
+        }
+
+        function captureFrame() {
+            try {
+                const w = video.videoWidth || 320;
+                const h = video.videoHeight || 240;
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+                finish(canvas.toDataURL('image/jpeg', 0.7));
+            } catch (e) {
+                fail(e);
+            }
+        }
+
+        video.addEventListener('seeked', captureFrame);
+
+        video.addEventListener('loadeddata', () => {
+            const t = video.duration && isFinite(video.duration) ? Math.min(0.5, video.duration) : 0;
+            if (t > 0) {
+                video.currentTime = t;
+            } else {
+                // Can't seek — capture whatever frame we have
+                captureFrame();
+            }
+        });
+
+        video.addEventListener('error', () => fail(new Error('Failed to load video')));
+
+        // Timeout after 8 seconds
+        setTimeout(() => fail(new Error('Video thumbnail timeout')), 8000);
+
+        video.src = isBlobUrl ? URL.createObjectURL(source) : source;
+    });
+}
+
 // Fun "no messages" variants
 const NO_MESSAGES_VARIANTS = [
     "No messages yet... Break the ice! 🧊",

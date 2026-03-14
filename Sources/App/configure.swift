@@ -32,7 +32,6 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(CreateReaction())
     app.migrations.add(CreateMediaResource())
     app.migrations.add(CreateMessageToMedia())
-    app.migrations.add(AddPositionToMessageToMedia())
     
     try app.createUploadsDirectory()
     

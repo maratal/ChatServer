@@ -8,7 +8,7 @@ import SwiftGD
 
 struct UploadController: RouteCollection {
     
-    static let maxBytes = 50_000_000
+    static let maxBytes = 150_000_000
     static let previewMaxDimension = 350
     
     func boot(routes: RoutesBuilder) throws {
@@ -110,6 +110,17 @@ struct UploadController: RouteCollection {
             logger.info("Preview '\(previewFileName)' deleted successfully.")
         }
         
+        // Also check for video preview thumbnails (uploaded as {name}-preview.jpg)
+        let nameWithoutExt = (fileName as NSString).deletingPathExtension
+        let videoPreviewName = "\(nameWithoutExt)-preview.jpg"
+        if videoPreviewName != previewFileName {
+            let videoPreviewPath = req.application.uploadPath(for: videoPreviewName)
+            if FileManager.default.fileExists(atPath: videoPreviewPath) {
+                try? FileManager.default.removeItem(atPath: videoPreviewPath)
+                logger.info("Video preview '\(videoPreviewName)' deleted successfully.")
+            }
+        }
+        
         return .ok
     }
     
@@ -126,8 +137,18 @@ struct UploadController: RouteCollection {
     private func generatePreview(for filePath: String, fileName: String, fileType: String, logger: Logger) {
         guard Self.imageFileTypes.contains(fileType.lowercased()) else { return }
         
-        let previewName = Self.previewFileName(for: fileName)
-        let previewPath = (filePath as NSString).deletingLastPathComponent + "/" + previewName
+        let nameWithoutExtension = (fileName as NSString).deletingPathExtension
+        let isAlreadyPreview = nameWithoutExtension.hasSuffix("-preview")
+        
+        // For files that are already previews, resize in place if needed; otherwise generate a separate preview file
+        let targetPath: String
+        if isAlreadyPreview {
+            targetPath = filePath
+        } else {
+            let previewName = Self.previewFileName(for: fileName)
+            targetPath = (filePath as NSString).deletingLastPathComponent + "/" + previewName
+        }
+        
         let maxDim = Self.previewMaxDimension
         
         guard let image = Image(url: URL(fileURLWithPath: filePath)) else {
@@ -140,8 +161,10 @@ struct UploadController: RouteCollection {
         
         // Skip if already fits within preview size
         guard originalWidth > maxDim || originalHeight > maxDim else {
-            try? FileManager.default.copyItem(atPath: filePath, toPath: previewPath)
-            logger.info("Image already small enough, copied as preview: \(previewName)")
+            if !isAlreadyPreview {
+                try? FileManager.default.copyItem(atPath: filePath, toPath: targetPath)
+                logger.info("Image already small enough, copied as preview: \(fileName)")
+            }
             return
         }
         
@@ -158,8 +181,8 @@ struct UploadController: RouteCollection {
         do {
             let format: ExportableFormat = fileType.lowercased() == "png" ? .png : .jpg(quality: 85)
             let data = try resized.export(as: format)
-            try data.write(to: URL(fileURLWithPath: previewPath))
-            logger.info("Preview generated: \(previewName) (\(newWidth)x\(newHeight))")
+            try data.write(to: URL(fileURLWithPath: targetPath))
+            logger.info("Preview \(isAlreadyPreview ? "resized in place" : "generated"): \(fileName) (\(newWidth)x\(newHeight))")
         } catch {
             logger.warning("Could not generate preview for \(fileName): \(error)")
         }
@@ -174,6 +197,10 @@ extension Request {
     
     var fileType: String? {
         guard let contentType = headers.contentType else { return headers["Content-Type"].first }
-        return contentType.subType == "jpeg" ? "jpg" : contentType.subType
+        switch contentType.subType {
+        case "jpeg": return "jpg"
+        case "quicktime": return "mov"
+        default: return contentType.subType
+        }
     }
 }

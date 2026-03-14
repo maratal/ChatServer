@@ -640,6 +640,10 @@ function getPreviewUrl(fileId, fileType) {
     return `/uploads/${fileId}-preview.${fileType}`;
 }
 
+function getVideoPreviewUrl(fileId) {
+    return `/uploads/${fileId}-preview.jpg`;
+}
+
 async function apiGetRecentMedia() {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');
