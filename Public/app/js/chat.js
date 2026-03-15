@@ -1972,8 +1972,8 @@ function editMessage(message) {
             <div class="edit-preview-header">Editing</div>
             <div class="edit-preview-text">${escapeHtml(previewText)}</div>
         </div>
-        <button class="edit-cancel-button" onclick="cancelEditMessage()" title="Cancel editing">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="inline-button small" onclick="cancelEditMessage()" title="Cancel editing">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 6 6 18"></path>
                 <path d="M6 6l12 12"></path>
             </svg>
@@ -2054,8 +2054,8 @@ function replyToMessage(message) {
             <div class="edit-preview-header">Reply</div>
             <div class="edit-preview-text">${escapeHtml(previewText)}</div>
         </div>
-        <button class="edit-cancel-button" onclick="cancelReplyMessage()" title="Cancel reply">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="inline-button small" onclick="cancelReplyMessage()" title="Cancel reply">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 6 6 18"></path>
                 <path d="M6 6l12 12"></path>
             </svg>

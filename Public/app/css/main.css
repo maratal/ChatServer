@@ -2582,7 +2582,7 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-time {
-    font-size: 0.65rem;
+    font-size: 9pt;
     padding: 1px;
     padding-right: 4px;
     color: hsl(var(--foreground) / 0.5);
@@ -2917,13 +2917,14 @@ input[type="text"]:disabled, textarea:disabled {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 26px;
+    height: 30px;
     background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
     display: flex;
-    align-items: center;
+    align-items: end;
     gap: 4px;
     z-index: 5;
     pointer-events: none;
+    padding-bottom: 3px;
 }
 
 .media-overlay-bar > * {
@@ -2941,7 +2942,7 @@ input[type="text"]:disabled, textarea:disabled {
 
 .video-duration {
     color: white;
-    font-size: 0.75rem;
+    font-size: 9pt;
     line-height: 16px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
@@ -2986,36 +2987,34 @@ input[type="text"]:disabled, textarea:disabled {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    background-color: hsl(var(--background) / 0.5);
+    background: none;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: hsl(var(--foreground));
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: background-color 0.2s, opacity 0.2s;
+    color: white;
+    transition: opacity 0.2s;
     z-index: 10;
+    opacity: 0.85;
+    padding: 4px;
 }
 
 .message-attachment-chevron svg {
     width: 18px;
     height: 18px;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
 }
 
 .message-attachment-chevron-left {
-    left: 8px;
+    left: 4px;
 }
 
 .message-attachment-chevron-right {
-    right: 8px;
+    right: 4px;
 }
 
 .message-attachment-chevron:hover {
-    background-color: hsl(var(--background) / 0.95);
     opacity: 1;
 }
 
@@ -3074,26 +3073,6 @@ input[type="text"]:disabled, textarea:disabled {
     overflow-y: auto;
 }
 
-.edit-cancel-button {
-    flex-shrink: 0;
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    background-color: hsl(var(--background));
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: hsl(var(--muted-foreground));
-    transition: all 0.2s;
-}
-
-.edit-cancel-button:hover {
-    background-color: hsl(var(--destructive));
-    color: hsl(var(--destructive-foreground));
-}
-
 .message-edited-icon {
     margin-right: 4px;
     font-size: 0.75rem;
@@ -3116,6 +3095,10 @@ input[type="text"]:disabled, textarea:disabled {
     border-bottom: 1px solid hsl(var(--foreground) / 0.05);
 }
 
+.message-reply-preview [data-reply-to] {
+    padding: 3px 1px 0 3px;
+}
+
 .message-row.own .message-reply-preview {
     background-color: hsl(var(--primary-foreground) / 0.1);
     color: hsl(var(--primary-foreground) / 0.9);
@@ -3133,8 +3116,8 @@ input[type="text"]:disabled, textarea:disabled {
 
 .message-deleted {
     font-style: italic;
-    opacity: 0.75;
-    font-size: 0.9rem;
+    opacity: 0.6;
+    font-size: 0.95rem;
 }
 /* ── Media Panel (shared) ───────────────────────────────────────────────────── */
 
