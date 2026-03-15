@@ -1314,7 +1314,6 @@ async function uploadAttachment(attachment) {
                 attachment.previewHeight = previewHeight;
                 attachment.duration = duration;
                 attachmentUploads.delete(attachment.id);
-                showUploadedCheckmark(attachment.id);
                 updateSendButtonState();
                 resolve();
             }, animationDuration + 300);
@@ -1324,6 +1323,17 @@ async function uploadAttachment(attachment) {
         console.error('Error uploading attachment:', error);
         attachment.uploading = false;
         attachmentUploads.delete(attachment.id);
+        // Remove progress indicator and show error icon
+        const attachmentDiv = document.querySelector(`[data-attachment-id="${attachment.id}"]`);
+        if (attachmentDiv) {
+            const progressDiv = attachmentDiv.querySelector('.attachment-upload-progress');
+            if (progressDiv) progressDiv.remove();
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'attachment-upload-error';
+            errorDiv.title = `Error: ${error.message || error}`;
+            errorDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+            attachmentDiv.appendChild(errorDiv);
+        }
     }
 }
 
@@ -1407,34 +1417,14 @@ function updateAttachmentProgressVisual(attachmentId, progress) {
         `;
     }
     
-    // Hide progress indicator when complete and show checkmark
+    // Hide progress indicator when complete
     if (progress >= 100 && progressDiv) {
         const div = attachmentDiv.querySelector('.attachment-upload-progress');
         if (div && div.parentNode) {
             div.remove();
         }
-        showUploadedCheckmark(attachmentId);
-        updateSendButtonState(); // Update send button state when progress completes
+        updateSendButtonState();
     }
-}
-
-function showUploadedCheckmark(attachmentId) {
-    const attachmentDiv = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
-    if (!attachmentDiv) return;
-    
-    // Don't add checkmark if it already exists
-    if (attachmentDiv.querySelector('.attachment-upload-checkmark')) return;
-    
-    // Create filled circle + checkmark indicator
-    const checkmarkDiv = document.createElement('div');
-    checkmarkDiv.className = 'attachment-upload-checkmark';
-    checkmarkDiv.innerHTML = `
-        <svg viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="11" fill="hsl(var(--primary))"/>
-            <path d="M7 12l3 3 7-7" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
-        </svg>
-    `;
-    attachmentDiv.appendChild(checkmarkDiv);
 }
 
 // Update attachment upload progress (capped at 75% during real upload)
