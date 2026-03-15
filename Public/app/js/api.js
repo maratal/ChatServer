@@ -644,10 +644,10 @@ function getVideoPreviewUrl(fileId) {
     return `/uploads/${fileId}-preview.jpg`;
 }
 
-async function apiGetRecentMedia() {
+async function apiGetRecentMedia(offset = 0, limit = 20) {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');
-    const response = await fetch('/media/recents', {
+    const response = await fetch(`/media/recents?offset=${offset}&limit=${limit}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
     return await handleResponse(response);

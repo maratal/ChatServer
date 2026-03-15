@@ -14,6 +14,8 @@ var lastReferenceReadMessageId = null; // Track the ID of either last outgoing m
 let isRecentsPanelOpen = false;
 let selectedRecentIds = new Set(); // Set of selected media resource IDs
 let recentMediaItems = []; // Cached recent media list
+let hasMoreRecents = true; // Whether more recents can be loaded
+let isLoadingRecents = false; // Prevent concurrent loads
 let activeMediaTab = 'uploads'; // 'uploads' | 'recents'
 
 // Load messages for a chat
@@ -737,12 +739,9 @@ async function openRecentsPanel() {
     }
     isRecentsPanelOpen = true;
     activeMediaTab = 'recents';
-    try {
-        recentMediaItems = await apiGetRecentMedia();
-    } catch (e) {
-        console.error('Failed to load recent media:', e);
-        recentMediaItems = [];
-    }
+    recentMediaItems = [];
+    hasMoreRecents = true;
+    await loadMoreRecents();
     renderMediaPanel();
 }
 
@@ -767,17 +766,30 @@ function closeMediaPanel() {
     }
 }
 
+const RECENTS_PAGE_SIZE = 20;
+
+async function loadMoreRecents() {
+    if (isLoadingRecents || !hasMoreRecents) return;
+    isLoadingRecents = true;
+    try {
+        const items = await apiGetRecentMedia(recentMediaItems.length, RECENTS_PAGE_SIZE);
+        recentMediaItems = recentMediaItems.concat(items);
+        hasMoreRecents = items.length === RECENTS_PAGE_SIZE;
+    } catch (e) {
+        console.error('Failed to load recent media:', e);
+    } finally {
+        isLoadingRecents = false;
+    }
+}
+
 async function switchMediaTab(tab) {
     if (tab === activeMediaTab) return;
     activeMediaTab = tab;
     if (tab === 'recents' && !isRecentsPanelOpen) {
         isRecentsPanelOpen = true;
-        try {
-            recentMediaItems = await apiGetRecentMedia();
-        } catch (e) {
-            console.error('Failed to load recent media:', e);
-            recentMediaItems = [];
-        }
+        recentMediaItems = [];
+        hasMoreRecents = true;
+        await loadMoreRecents();
     }
     renderMediaPanel();
 }
@@ -939,7 +951,7 @@ function renderUploadsTabContent(container) {
 
     if (selectedAttachments.length < MAX_ATTACHMENTS) {
         const plusButton = document.createElement('button');
-        plusButton.className = 'attachment-preview-item attachment-plus-button';
+        plusButton.className = 'attachment-preview-item attachment-small-button attachment-plus-button';
         plusButton.onclick = openAttachmentDialog;
         plusButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>`;
         itemsRow.appendChild(plusButton);
@@ -963,6 +975,20 @@ function renderRecentsTabContent(container) {
         const item = createRecentMediaItem(media);
         row.appendChild(item);
     });
+
+    if (hasMoreRecents) {
+        const loadMoreButton = document.createElement('button');
+        loadMoreButton.className = 'attachment-preview-item attachment-small-button attachment-plus-button';
+        loadMoreButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>`;
+        loadMoreButton.onclick = async () => {
+            await loadMoreRecents();
+            renderMediaPanel();
+            const itemsRow = container.querySelector('.media-panel-items-row');
+            if (itemsRow) itemsRow.scrollLeft = itemsRow.scrollWidth;
+        };
+        row.appendChild(loadMoreButton);
+    }
+
     container.appendChild(row);
 }
 
@@ -1070,7 +1096,12 @@ function toggleRecentMediaSelection(mediaId) {
             item.replaceWith(newItem);
         }
     }
+    // Save scroll position before full re-render
+    const itemsRow = document.querySelector('.media-panel-items-row');
+    const savedScroll = itemsRow ? itemsRow.scrollLeft : 0;
     renderMediaPanel(); // Update tab badge count
+    const newItemsRow = document.querySelector('.media-panel-items-row');
+    if (newItemsRow) newItemsRow.scrollLeft = savedScroll;
     updateSendButtonState();
 }
 

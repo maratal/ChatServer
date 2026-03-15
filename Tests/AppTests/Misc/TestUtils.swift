@@ -205,7 +205,7 @@ extension CoreService {
     mutating func makeMessageWithAttachment(for chatId: ChatID, authorId: UserID, text: String = "") async throws -> (Message, MediaResource) {
         let message = Message(localId: UUID().uuidString, authorId: authorId, chatId: chatId, text: text)
         try await chats.repo.saveMessage(message)
-        let resource = try await makeMediaResource(attachmentOf: message.id!)
+        let resource = try await makeMediaResource(owner: authorId, attachmentOf: message.id!)
         // Create pivot row linking message to resource
         let pivot = MessageToMedia(messageId: message.id!, mediaResourceId: resource.id!)
         try await saveItem(pivot)
@@ -231,12 +231,13 @@ extension CoreService {
     }
 
     @discardableResult
-    mutating func makeMediaResource(photoOf userId: UserID? = nil,
+    mutating func makeMediaResource(owner ownerId: UserID? = nil,
+                                    photoOf userId: UserID? = nil,
                                     imageOf chatId: ChatID? = nil,
                                     attachmentOf messageId: MessageID? = nil,
                                     fileType: String = "test") async throws -> MediaResource {
         precondition(userId != nil || chatId != nil || messageId != nil)
-        let resource = MediaResource(photoOf: userId, imageOf: chatId, fileType: fileType, fileSize: 1, previewWidth: 100, previewHeight: 100)
+        let resource = MediaResource(owner: ownerId, photoOf: userId, imageOf: chatId, fileType: fileType, fileSize: 1, previewWidth: 100, previewHeight: 100)
         try await saveItem(resource)
         // If attaching to a message, create the pivot row
         if let messageId = messageId {

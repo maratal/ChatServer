@@ -28,6 +28,9 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
     @OptionalField(key: "duration")
     var duration: Double?
     
+    @OptionalParent(key: "owner_id")
+    var owner: User?
+    
     @OptionalParent(key: "photo_of")
     var photoOf: User?
     
@@ -41,6 +44,7 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
     
     init(
         id: ResourceID? = nil,
+        owner ownerId: UserID? = nil,
         photoOf userId: UserID? = nil,
         imageOf chatId: ChatID? = nil,
         fileType: String,
@@ -51,6 +55,7 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
         duration: Double? = nil
     ) {
         self.id = id
+        self.$owner.id = ownerId
         self.$photoOf.id = userId
         self.$imageOf.id = chatId
         self.fileType = fileType

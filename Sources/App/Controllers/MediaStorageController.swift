@@ -15,7 +15,9 @@ struct MediaStorageController: RouteCollection {
 
     func recentMedia(_ req: Request) async throws -> [MediaInfo] {
         let currentUser = try await req.requireCurrentUser()
-        return try await service.with(currentUser).recentMedia(for: currentUser.requireID())
+        let offset = req.query[Int.self, at: "offset"] ?? 0
+        let limit = req.query[Int.self, at: "limit"] ?? 20
+        return try await service.with(currentUser).recentMedia(for: currentUser.requireID(), offset: offset, limit: limit)
     }
 
     func deleteMedia(_ req: Request) async throws -> HTTPStatus {

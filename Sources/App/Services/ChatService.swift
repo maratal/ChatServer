@@ -419,6 +419,7 @@ actor ChatService: ChatServiceProtocol {
                 let existing = try await repo.findMediaResource(attachment.id!)
                 if existing == nil {
                     let resource = MediaResource(id: attachment.id,
+                                                 owner: userId,
                                                  fileType: attachment.fileType,
                                                  fileSize: attachment.fileSize,
                                                  previewWidth: attachment.previewWidth ?? 300,
@@ -516,6 +517,7 @@ actor ChatService: ChatServiceProtocol {
                     let existing = try await repo.findMediaResource(attachmentId)
                     if existing == nil {
                         let resource = MediaResource(id: attachmentId,
+                                                     owner: userId,
                                                      fileType: attachmentInfo.fileType,
                                                      fileSize: attachmentInfo.fileSize,
                                                      previewWidth: attachmentInfo.previewWidth ?? 300,

@@ -2804,6 +2804,10 @@ input[type="text"]:disabled, textarea:disabled {
     color: hsl(var(--destructive-foreground));
 }
 
+.attachment-small-button {
+    min-width: 34px;
+}
+
 .attachment-plus-button {
     border: 2px dashed hsl(var(--border));
     background-color: transparent;

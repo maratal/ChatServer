@@ -6,6 +6,7 @@ struct CreateMediaResource: AsyncMigration {
     func prepare(on database: Database) async throws {
         try await database.schema("media_resources")
             .id()
+            .field("owner_id", .uint32, .references("users", "id", onDelete: .setNull))
             .field("file_type", .string)
             .field("file_size", .int64)
             .field("preview_width", .int16)
