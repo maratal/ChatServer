@@ -2069,14 +2069,21 @@ document.addEventListener('keydown', function(event) {
             return;
         }
         
-        // 4. User profile modal
+        // 4. Settings modal
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal && settingsModal.classList.contains('show')) {
+            closeSettings();
+            return;
+        }
+        
+        // 5. User profile modal
         const userProfileModal = document.getElementById('userProfileModal');
         if (userProfileModal && userProfileModal.classList.contains('show')) {
             closeCurrentUserProfile();
             return;
         }
         
-        // 5. User selection modal (lowest priority)
+        // 6. User selection modal (lowest priority)
         const userSelectionModal = document.getElementById('userSelectionModal');
         if (userSelectionModal && userSelectionModal.classList.contains('show')) {
             closeUserSelection();
