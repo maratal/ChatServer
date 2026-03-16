@@ -17,6 +17,8 @@ let recentMediaItems = []; // Cached recent media list
 let hasMoreRecents = true; // Whether more recents can be loaded
 let isLoadingRecents = false; // Prevent concurrent loads
 let activeMediaTab = 'uploads'; // 'uploads' | 'recents'
+let isUploadPanelCollapsed = false; // Whether the upload panel items row is collapsed
+let hasConfirmedSendWithUploading = false; // Whether the user confirmed sending while uploads are in progress
 
 // Load messages for a chat
 async function loadMessages(chatId, initialLoad = false) {
@@ -795,6 +797,17 @@ async function switchMediaTab(tab) {
 }
 
 // Render the unified media panel (tabs: Uploads / Recents)
+function getUploadProgressSummary() {
+    const total = selectedAttachments.length;
+    const done = selectedAttachments.filter(a => a.uploaded).length;
+    const inProgress = selectedAttachments.find(a => a.uploading);
+    const overallProgress = inProgress ? Math.round(inProgress.uploadProgress || 0) : 0;
+    if (done < total) {
+        return `Uploading ${done + 1}/${total} ${overallProgress}%…`;
+    }
+    return `${total} file${total !== 1 ? 's' : ''} ready`;
+}
+
 function renderMediaPanel() {
     const container = document.getElementById('mediaPanelContainer');
     if (!container) return;
@@ -804,6 +817,7 @@ function renderMediaPanel() {
 
     if (!panelVisible) {
         container.style.display = 'none';
+        isUploadPanelCollapsed = false;
         return;
     }
 
@@ -815,46 +829,77 @@ function renderMediaPanel() {
     container.style.display = 'block';
     container.innerHTML = '';
 
-    // Header: tabs + close button
+    // Header: tabs + collapse toggle + close button
     const header = document.createElement('div');
     header.className = 'media-panel-header';
 
     const tabs = document.createElement('div');
     tabs.className = 'media-panel-tabs';
 
-    // Uploads tab (only show if there are uploads)
-    if (hasUploads) {
-        const uploadsTab = document.createElement('button');
-        uploadsTab.className = `media-panel-tab${activeMediaTab === 'uploads' ? ' active' : ''}`;
-        uploadsTab.textContent = `Uploads (${selectedAttachments.length})`;
-        uploadsTab.onclick = () => switchMediaTab('uploads');
-        tabs.appendChild(uploadsTab);
-    }
+    const hasUploading = selectedAttachments.some(a => a.uploading);
 
-    // Recents tab
-    const recentsTab = document.createElement('button');
-    recentsTab.className = `media-panel-tab${activeMediaTab === 'recents' ? ' active' : ''}`;
-    const recentsCount = selectedRecentIds.size;
-    recentsTab.textContent = recentsCount > 0 ? `Recents (${recentsCount})` : 'Recents';
-    recentsTab.onclick = () => switchMediaTab('recents');
-    tabs.appendChild(recentsTab);
+    if (isUploadPanelCollapsed && hasUploads) {
+        // Collapsed: show progress summary instead of tabs
+        const summarySpan = document.createElement('span');
+        summarySpan.className = 'media-panel-tab active';
+        summarySpan.textContent = getUploadProgressSummary();
+        tabs.appendChild(summarySpan);
+    } else {
+        // Uploads tab (only show if there are uploads)
+        if (hasUploads) {
+            const uploadsTab = document.createElement('button');
+            uploadsTab.className = `media-panel-tab${activeMediaTab === 'uploads' ? ' active' : ''}`;
+            uploadsTab.textContent = `Uploads (${selectedAttachments.length})`;
+            uploadsTab.onclick = () => switchMediaTab('uploads');
+            tabs.appendChild(uploadsTab);
+        }
+
+        // Recents tab
+        const recentsTab = document.createElement('button');
+        recentsTab.className = `media-panel-tab${activeMediaTab === 'recents' ? ' active' : ''}`;
+        const recentsCount = selectedRecentIds.size;
+        recentsTab.textContent = recentsCount > 0 ? `Recents (${recentsCount})` : 'Recents';
+        recentsTab.onclick = () => switchMediaTab('recents');
+        tabs.appendChild(recentsTab);
+    }
 
     header.appendChild(tabs);
 
-    // Close button
+    // Right-side controls: collapse (if uploads) and close, grouped together
+    const headerControls = document.createElement('div');
+    headerControls.style.cssText = 'display:flex;align-items:center;gap:2px;flex-shrink:0;';
+
+    if (hasUploads) {
+        const collapseBtn = document.createElement('button');
+        collapseBtn.className = 'inline-button small';
+        collapseBtn.title = isUploadPanelCollapsed ? 'Expand' : 'Collapse';
+        collapseBtn.onclick = () => {
+            isUploadPanelCollapsed = !isUploadPanelCollapsed;
+            renderMediaPanel();
+        };
+        collapseBtn.innerHTML = isUploadPanelCollapsed
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
+        headerControls.appendChild(collapseBtn);
+    }
+
     const closeBtn = document.createElement('button');
     closeBtn.className = 'inline-button small';
     closeBtn.onclick = closeMediaPanel;
     closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>`;
-    header.appendChild(closeBtn);
+    headerControls.appendChild(closeBtn);
+
+    header.appendChild(headerControls);
 
     container.appendChild(header);
 
-    // Content based on active tab
-    if (activeMediaTab === 'uploads') {
-        renderUploadsTabContent(container);
-    } else {
-        renderRecentsTabContent(container);
+    // Content: hidden when collapsed
+    if (!isUploadPanelCollapsed) {
+        if (activeMediaTab === 'uploads') {
+            renderUploadsTabContent(container);
+        } else {
+            renderRecentsTabContent(container);
+        }
     }
 
     updateSendButtonState();
@@ -943,10 +988,6 @@ function renderUploadsTabContent(container) {
 
         attachmentDiv.appendChild(closeButton);
         itemsRow.appendChild(attachmentDiv);
-
-        if (attachment.uploadProgress > 0) {
-            updateAttachmentProgressVisual(attachment.id, attachment.uploadProgress);
-        }
     });
 
     if (selectedAttachments.length < MAX_ATTACHMENTS) {
@@ -958,6 +999,13 @@ function renderUploadsTabContent(container) {
     }
 
     container.appendChild(itemsRow);
+
+    // Restore progress visuals now that items are in the DOM
+    selectedAttachments.forEach(attachment => {
+        if (attachment.uploading && attachment.uploadProgress > 0) {
+            updateAttachmentProgressVisual(attachment.id, attachment.uploadProgress);
+        }
+    });
 }
 
 function renderRecentsTabContent(container) {
@@ -1225,6 +1273,7 @@ function clearAllAttachments() {
     selectedAttachments = [];
     attachmentUploads.clear();
     attachmentAnimationFrames.clear();
+    hasConfirmedSendWithUploading = false;
     updateAttachmentPreview();
     updateSendButtonState();
 }
@@ -1314,10 +1363,16 @@ async function uploadAttachment(attachment) {
                 attachment.previewHeight = previewHeight;
                 attachment.duration = duration;
                 attachmentUploads.delete(attachment.id);
+                // Auto-expand when all uploads are done
+                if (selectedAttachments.every(a => a.uploaded)) {
+                    isUploadPanelCollapsed = false;
+                }
                 updateSendButtonState();
+                renderMediaPanel();
                 resolve();
             }, animationDuration + 300);
         });
+        hasConfirmedSendWithUploading = false; // reset confirm flag
         
     } catch (error) {
         console.error('Error uploading attachment:', error);
@@ -1436,7 +1491,14 @@ function updateAttachmentProgress(attachmentId, progress) {
     const cappedProgress = Math.min(progress, 75);
     attachment.uploadProgress = cappedProgress;
     
-    updateAttachmentProgressVisual(attachmentId, cappedProgress);
+    if (isUploadPanelCollapsed) {
+        // Refresh just the summary text in the collapsed header
+        const container = document.getElementById('mediaPanelContainer');
+        const summaryEl = container?.querySelector('.media-panel-tab.active');
+        if (summaryEl) summaryEl.textContent = getUploadProgressSummary();
+    } else {
+        updateAttachmentProgressVisual(attachmentId, cappedProgress);
+    }
 }
 
 // Animate attachment upload progress from current value to 100%
@@ -1489,11 +1551,11 @@ function updateSendButtonState() {
     const sendButton = document.getElementById('sendButton');
     if (messageInput && sendButton) {
         const hasText = messageInput.value.trim().length > 0;
-        const allAttachmentsUploaded = selectedAttachments.length > 0 && selectedAttachments.every(a => a.uploaded);
+        const hasAnyAttachment = selectedAttachments.length > 0;
         const hasSelectedRecents = selectedRecentIds.size > 0;
-        
-        // Show send button if text is present OR all attachments are uploaded OR recents selected
-        if (hasText || allAttachmentsUploaded || hasSelectedRecents) {
+
+        // Show send button if text is present OR any attachment exists (even uploading) OR recents selected
+        if (hasText || hasAnyAttachment || hasSelectedRecents) {
             sendButton.classList.remove('hidden');
             sendButton.classList.add('visible');
         } else {
@@ -1594,11 +1656,25 @@ async function sendMessage(textOverride = null) {
     
     // Get uploaded attachments (only send those that are ready) + recents (always ready)
     const uploadedAttachments = selectedAttachments.filter(a => a.uploaded);
+    const pendingCount = selectedAttachments.filter(a => !a.uploaded).length;
     const allReadyAttachments = [...uploadedAttachments, ...recentAttachments];
-    
-    // Determine if we should send only text (attachments exist but not all uploaded)
-    const shouldSendAttachments = (allReadyAttachments.length > 0) && 
-        (uploadedAttachments.length === selectedAttachments.length || selectedAttachments.length === 0);
+
+    // If some attachments are still uploading, ask the user before proceeding
+    if (pendingCount > 0) {
+        const readyCount = uploadedAttachments.length + recentAttachments.length;
+        const hasAnythingToSend = text.length > 0 || readyCount > 0;
+        if (!hasAnythingToSend) return; // nothing at all to send yet
+        if (!hasConfirmedSendWithUploading) {
+            const confirmMsg = readyCount > 0
+                ? `${pendingCount} file${pendingCount > 1 ? 's are' : ' is'} still uploading. Send with ${readyCount} ready file${readyCount > 1 ? 's' : ''}?`
+                : `${pendingCount} file${pendingCount > 1 ? 's are' : ' is'} still uploading. Send text only?`;
+            if (!confirm(confirmMsg)) return;
+            hasConfirmedSendWithUploading = true;
+        }
+    }
+
+    // Determine if we should send attachments
+    const shouldSendAttachments = allReadyAttachments.length > 0;
     
     const localId = generateMessageLocalId();
     
@@ -1635,13 +1711,17 @@ async function sendMessage(textOverride = null) {
         cancelReplyMessage();
     }
     
-    // Clear attachments and input (only clear attachments if we're going to send them)
+    // Clear attachments and input (only clear attachments that were sent; keep any still-uploading ones)
     if (shouldSendAttachments) {
-        selectedAttachments = [];
-        attachmentUploads.clear();
+        // Remove only the attachments that were sent
+        const sentIds = new Set(uploadedAttachments.map(a => a.id));
+        selectedAttachments = selectedAttachments.filter(a => !sentIds.has(a.id));
         // Close recents and clear selection
         isRecentsPanelOpen = false;
         selectedRecentIds.clear();
+        if (selectedAttachments.length === 0) {
+            attachmentUploads.clear();
+        }
         renderMediaPanel();
     }
     
