@@ -2,7 +2,6 @@
 let pendingMessages = new Map(); // Track messages being sent
 let selectedAttachments = [];
 let attachmentUploads = new Map(); // Map of attachmentId -> { xhr, file, progress }
-let attachmentAnimationFrames = new Map(); // Map of attachmentId -> animationFrameId
 let isLoadingMessages = false; // Track if we're currently loading messages
 let oldestMessageId = null; // Track the oldest message ID we've loaded
 let hasMoreMessages = true; // Track if there are more messages to load
@@ -1253,12 +1252,6 @@ function clearAllAttachments() {
             upload.xhr.abort();
         }
         
-        // Cancel animations
-        const animationFrameId = attachmentAnimationFrames.get(attachment.id);
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
-        
         // Delete uploaded files from server (but not if editing existing message)
         if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
             try {
@@ -1272,7 +1265,6 @@ function clearAllAttachments() {
     
     selectedAttachments = [];
     attachmentUploads.clear();
-    attachmentAnimationFrames.clear();
     hasConfirmedSendWithUploading = false;
     updateAttachmentPreview();
     updateSendButtonState();
@@ -1345,34 +1337,23 @@ async function uploadAttachment(attachment) {
         if (attachment.file.type.startsWith('video/')) {
             duration = await getVideoDuration(attachment.file);
         }
-        
-        // Animate the last 25% (from 75% to 100%) smoothly
-        const animationDuration = 500; // ms - slow animation for last 25%
-        const startProgress = 75;
-        animateAttachmentProgressToComplete(attachment.id, startProgress, animationDuration);
-        
-        // Wait for animation to complete before marking as uploaded
-        await new Promise(resolve => {
-            setTimeout(() => {
-                attachment.uploaded = true;
-                attachment.uploading = false;
-                attachment.uploadProgress = 100;
-                attachment.uploadedId = uploadedFileId;
-                attachment.fileType = uploadedFileType;
-                attachment.previewWidth = previewWidth;
-                attachment.previewHeight = previewHeight;
-                attachment.duration = duration;
-                attachmentUploads.delete(attachment.id);
-                // Auto-expand when all uploads are done
-                if (selectedAttachments.every(a => a.uploaded)) {
-                    isUploadPanelCollapsed = false;
-                }
-                updateSendButtonState();
-                renderMediaPanel();
-                resolve();
-            }, animationDuration + 300);
-        });
+
+        attachment.uploaded = true;
+        attachment.uploading = false;
+        attachment.uploadProgress = 100;
+        attachment.uploadedId = uploadedFileId;
+        attachment.fileType = uploadedFileType;
+        attachment.previewWidth = previewWidth;
+        attachment.previewHeight = previewHeight;
+        attachment.duration = duration;
+        attachmentUploads.delete(attachment.id);
         hasConfirmedSendWithUploading = false; // reset confirm flag
+        // Auto-expand when all uploads are done
+        if (selectedAttachments.every(a => a.uploaded)) {
+            isUploadPanelCollapsed = false;
+        }
+        updateSendButtonState();
+        renderMediaPanel();
         
     } catch (error) {
         console.error('Error uploading attachment:', error);
@@ -1402,13 +1383,6 @@ async function removeAttachment(attachmentId) {
     if (upload && upload.xhr) {
         upload.xhr.abort();
         attachmentUploads.delete(attachmentId);
-    }
-    
-    // Cancel any animation in progress
-    const animationFrameId = attachmentAnimationFrames.get(attachmentId);
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        attachmentAnimationFrames.delete(attachmentId);
     }
     
     // If attachment is uploaded, delete it from server
@@ -1482,14 +1456,11 @@ function updateAttachmentProgressVisual(attachmentId, progress) {
     }
 }
 
-// Update attachment upload progress (capped at 75% during real upload)
 function updateAttachmentProgress(attachmentId, progress) {
     const attachment = selectedAttachments.find(a => a.id === attachmentId);
     if (!attachment) return;
     
-    // Cap progress at 75% during real upload
-    const cappedProgress = Math.min(progress, 75);
-    attachment.uploadProgress = cappedProgress;
+    attachment.uploadProgress = progress;
     
     if (isUploadPanelCollapsed) {
         // Refresh just the summary text in the collapsed header
@@ -1497,52 +1468,8 @@ function updateAttachmentProgress(attachmentId, progress) {
         const summaryEl = container?.querySelector('.media-panel-tab.active');
         if (summaryEl) summaryEl.textContent = getUploadProgressSummary();
     } else {
-        updateAttachmentProgressVisual(attachmentId, cappedProgress);
+        updateAttachmentProgressVisual(attachmentId, progress);
     }
-}
-
-// Animate attachment upload progress from current value to 100%
-function animateAttachmentProgressToComplete(attachmentId, startProgress, duration) {
-    // Cancel any existing animation for this attachment
-    const existingFrameId = attachmentAnimationFrames.get(attachmentId);
-    if (existingFrameId) {
-        cancelAnimationFrame(existingFrameId);
-    }
-    
-    const startTime = Date.now();
-    const endProgress = 100;
-    const progressRange = endProgress - startProgress;
-    
-    const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(1, elapsed / duration);
-        
-        // Use ease-out easing for smooth animation
-        const easedProgress = 1 - Math.pow(1 - progress, 3);
-        const currentProgressValue = startProgress + (progressRange * easedProgress);
-        
-        updateAttachmentProgressVisual(attachmentId, currentProgressValue);
-        
-        // Update stored progress
-        const attachment = selectedAttachments.find(a => a.id === attachmentId);
-        if (attachment) {
-            attachment.uploadProgress = currentProgressValue;
-        }
-        
-        if (progress < 1) {
-            const frameId = requestAnimationFrame(animate);
-            attachmentAnimationFrames.set(attachmentId, frameId);
-        } else {
-            // Animation complete
-            attachmentAnimationFrames.delete(attachmentId);
-            if (attachment) {
-                attachment.uploadProgress = 100;
-            }
-        }
-    };
-    
-    const frameId = requestAnimationFrame(animate);
-    attachmentAnimationFrames.set(attachmentId, frameId);
 }
 
 // Update send button state

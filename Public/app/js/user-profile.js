@@ -477,42 +477,12 @@ async function uploadAvatarFile(file) {
     progressBar.style.display = 'block';
     avatar.style.opacity = '0.7';
     
-    let currentProgress = 0;
-    let animationFrameId = null;
-    
     // Helper function to update progress visually
     const updateProgressVisual = (progress) => {
         const circumference = 2 * Math.PI * 48;
         const offset = circumference - (progress / 100) * circumference;
         progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
         progressCircle.style.strokeDashoffset = offset;
-    };
-    
-    // Smooth animation function for the last 25%
-    const animateToComplete = (startProgress, duration) => {
-        const startTime = Date.now();
-        const endProgress = 100;
-        const progressRange = endProgress - startProgress;
-        
-        const animate = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(1, elapsed / duration);
-            
-            // Use ease-out easing for smooth animation
-            const easedProgress = 1 - Math.pow(1 - progress, 3);
-            const currentProgressValue = startProgress + (progressRange * easedProgress);
-            
-            console.log(`Animation progress: ${currentProgressValue.toFixed(2)}%`);
-            updateProgressVisual(currentProgressValue);
-            
-            if (progress < 1) {
-                animationFrameId = requestAnimationFrame(animate);
-            } else {
-                console.log(`Animation complete: 100%`);
-            }
-        };
-        
-        animate();
     };
     
     try {
@@ -522,34 +492,12 @@ async function uploadAvatarFile(file) {
         
         // Upload file using streaming upload
         const uploadedFileName = await apiUploadFile(file, fileId, file.type, (progress) => {
-            // Cap progress at 75% during real upload
-            currentProgress = Math.min(progress, 75);
-            console.log(`Upload progress: ${progress.toFixed(2)}% (capped at ${currentProgress.toFixed(2)}%)`);
-            updateProgressVisual(currentProgress);
+            updateProgressVisual(progress);
         });
         
         // Extract file ID from uploaded file name (remove extension)
         // Server returns filename like "uuid.jpg", we need just "uuid"
         const uploadedFileId = uploadedFileName.split('.').slice(0, -1).join('.');
-        
-        // Always animate the last 25% (from 75% to 100%) smoothly over 1/2 second
-        const animationDuration = 500; // ms
-        const startProgress = 75;
-        
-        console.log(`Upload complete. Starting animation from ${startProgress}% to 100% over ${animationDuration}ms`);
-        // Start smooth animation from 75% to 100%
-        animateToComplete(startProgress, animationDuration);
-        
-        // Wait for animation to complete
-        await new Promise(resolve => {
-            setTimeout(() => {
-                if (animationFrameId) {
-                    cancelAnimationFrame(animationFrameId);
-                }
-                updateProgressVisual(100);
-                resolve();
-            }, animationDuration);
-        });
         
         // Add photo to user profile
         const updatedUserInfo = await apiAddUserPhoto(uploadedFileId, fileExtension, file.size);
@@ -568,11 +516,6 @@ async function uploadAvatarFile(file) {
         
     } catch (error) {
         console.error('Error uploading avatar:', error);
-        
-        // Cancel any ongoing animation
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
         
         // Show error with retry button
         showAvatarUploadError(error.message);
