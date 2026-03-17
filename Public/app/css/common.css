@@ -36,6 +36,7 @@
     --header-height: 60px;
     --sidebar-width: 360px;
     --chat-input-height: 60px;
+    --bubble-border-radius: 10px;
 }
 
 * {
