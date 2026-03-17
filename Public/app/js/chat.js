@@ -426,12 +426,16 @@ function createMessageElement(message) {
     // Create status icon for own messages (show sending clock if pending, checkmark if sent)
     const statusIcon = isOwnMessageFlag ? (message.isPending ? messageSendingIcon : messageStatusIcon) : '';
     
-    // Create edited indicator if message was edited
+    // Create edited indicator if message was edited or deleted
     let editedIndicator = '';
-    if (message.editedAt) {
+    if (message.deletedAt) {
+        const deletedDate = normalizeTimestamp(message.deletedAt);
+        const deletedFullDateTime = formatFullDateTime(deletedDate);
+        editedIndicator = `<span class="message-edited-icon" title="Deleted: ${escapeHtml(deletedFullDateTime)}">${messageEditedIcon}</span>`;
+    } else if (message.editedAt) {
         const editedDate = normalizeTimestamp(message.editedAt);
         const editedFullDateTime = formatFullDateTime(editedDate);
-        editedIndicator = `<span class="message-edited-icon" title="${escapeHtml(editedFullDateTime)}">${messageEditedIcon}</span>`;
+        editedIndicator = `<span class="message-edited-icon" title="Edited: ${escapeHtml(editedFullDateTime)}">${messageEditedIcon}</span>`;
     }
     
     // Build avatar HTML
@@ -495,7 +499,7 @@ function createMessageElement(message) {
     // Check if message is deleted
     const isDeleted = message.deletedAt != null;
     const messageTextContent = isDeleted 
-        ? '<div class="message-text message-deleted">Message was deleted</div>' 
+        ? `<div class="message-text message-deleted">Message was deleted</div>` 
         : `<div class="message-text">${convertLinksToClickable(message.text)}</div>`;
     
     messageDiv.innerHTML = `
