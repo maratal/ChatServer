@@ -3073,8 +3073,14 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .message-edited-icon {
-    margin-right: 4px;
-    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    margin-right: 2px;
+    opacity: 0.5;
+    vertical-align: middle;
+}
+
+.message-row.own .message-edited-icon {
     opacity: 0.9;
 }
 

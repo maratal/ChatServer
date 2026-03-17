@@ -431,7 +431,7 @@ function createMessageElement(message) {
     if (message.editedAt) {
         const editedDate = normalizeTimestamp(message.editedAt);
         const editedFullDateTime = formatFullDateTime(editedDate);
-        editedIndicator = `<span class="message-edited-icon" title="✎ ${escapeHtml(editedFullDateTime)}">✎</span>`;
+        editedIndicator = `<span class="message-edited-icon" title="${escapeHtml(editedFullDateTime)}">${messageEditedIcon}</span>`;
     }
     
     // Build avatar HTML

@@ -28,6 +28,9 @@ const trashIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16
 // Common icons
 const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
 
+// Message edited icon
+const messageEditedIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="3 2 18 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.0 14.6 L13.9 4.8 A2.2 2.2 0 0 1 17.6 7.3 L10.6 17.1"/><path d="M7.0 14.6 L6.2 19.5 L10.6 17.1"/><path d="M12.8 6.4 L16.5 8.9"/></svg>`;
+
 // Message status icons
 const messageStatusIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="message-status-icon">
     <path d="M18 6 7 17l-5-5"></path>
