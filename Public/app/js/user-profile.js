@@ -488,7 +488,10 @@ async function uploadAvatarFile(file) {
     try {
         // Generate UUID for file name (without extension - server will add it)
         const fileId = crypto.randomUUID();
-        const fileExtension = file.name.split('.').pop().toLowerCase() || 'jpg';
+        let fileExtension = file.name.split('.').pop().toLowerCase() || 'jpg';
+        if (fileExtension === 'jpeg') {
+            fileExtension = 'jpg';
+        }
         
         // Upload file using streaming upload
         const uploadedFileName = await apiUploadFile(file, fileId, file.type, (progress) => {
