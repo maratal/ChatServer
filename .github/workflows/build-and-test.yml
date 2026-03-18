@@ -19,8 +19,8 @@ jobs:
     - name: Brew Update
       run: brew update
 
-    - name: Install PostgreSQL
-      run: brew install postgresql@17
+    - name: Install Dependencies
+      run: brew install postgresql@17 gd
 
     - name: Start PostgreSQL
       run: brew services start postgresql@17
