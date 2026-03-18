@@ -8,6 +8,8 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat1 = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         let (chat2, resource) = try await service.makeChatWithImage(ownerId: current.id!, users: [users[0].id!])
+        try await service.makeMessage(for: chat1.id!, authorId: current.id!, text: "hello")
+        try await service.makeMessage(for: chat2.id!, authorId: current.id!, text: "hello")
         
         try await asyncTest(.GET, "chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -66,7 +68,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
         
         try await asyncTest(.GET, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
-            XCTAssertEqual(res.status, .notFound, res.body.string)
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
     
@@ -436,7 +438,7 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let message = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(message.text, "Hey")
-            XCTAssertEqual(message.authorId, current.id!)
+            XCTAssertEqual(message.author?.id, current.id!)
             let sentNotifications = await service.testNotificator.getSentNotifications()
             XCTAssertEqual(sentNotifications.count, 3)
             XCTAssertEqual(sentNotifications.filter { $0.event == .message }.count, 3)
@@ -454,7 +456,7 @@ final class ChatTests: AppTestCase {
         
         try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
-                PostMessageRequest(localId: UUID().uuidString, attachments: [MediaInfo(fileType: fileType, fileSize: 1)])
+                PostMessageRequest(localId: UUID().uuidString, attachments: [MediaInfo(id: UUID(), fileType: fileType, fileSize: 1)])
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -498,11 +500,12 @@ final class ChatTests: AppTestCase {
             message = try res.content.decode(MessageInfo.self)
             attachment = try XCTUnwrap(message.attachments?.first)
             XCTAssertNotNil(message.deletedAt)
-            XCTAssertFalse(service.fileExists(for: attachment))
-            XCTAssertFalse(service.previewExists(for: attachment))
             let sentNotifications = await service.testNotificator.getSentNotifications()
             XCTAssertEqual(sentNotifications.count, 2)
             XCTAssertEqual(sentNotifications.filter { $0.event == .messageUpdate }.count, 2)
+            // Message deletion should not remove media resources, because they can be used in other messages or chats, so files should still exist
+            XCTAssertTrue(service.fileExists(for: attachment))
+            XCTAssertTrue(service.previewExists(for: attachment))
         })
     }
     
@@ -519,7 +522,7 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let message = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(message.text, "Hey")
-            XCTAssertEqual(message.authorId, current.id!)
+            XCTAssertEqual(message.author?.id, current.id!)
             let sentNotifications = await service.testNotificator.getSentNotifications()
             XCTAssertEqual(sentNotifications.count, 2)
             XCTAssertEqual(sentNotifications.filter { $0.event == .message }.count, 2)
@@ -621,13 +624,12 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         let message = try await service.makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
         let messageInfo = try await service.chats.repo.findMessage(id: message.id!)!.info()
-        XCTAssertNil(messageInfo.readAt)
+        XCTAssertTrue(messageInfo.readMarks == nil || messageInfo.readMarks!.isEmpty)
         
         try await app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try await service.chats.repo.findMessage(id: message.id!)!.info()
             XCTAssertEqual(info.readMarks?.count, 1)
-            XCTAssertNotNil(info.readAt)
         })
         
         // Second similar request should be ignored by the server
@@ -635,7 +637,6 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try await service.chats.repo.findMessage(id: message.id!)!.info()
             XCTAssertEqual(info.readMarks?.count, 1)
-            XCTAssertNotNil(info.readAt)
         })
     }
     

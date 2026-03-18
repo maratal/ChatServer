@@ -329,6 +329,8 @@ actor ChatService: ChatServiceProtocol {
             throw ServiceError(.forbidden, reason: "You can't clear this chat.")
         }
         try await repo.deleteMessages(from: chat, withMedia: false)
+        try chat.setLatestMessage(nil)
+        try await repo.save(chat)
         try await core.notificator.notify(chat: chat, in: repo, about: .chatCleared, from: relation.user, with: nil)
     }
     
@@ -413,12 +415,15 @@ actor ChatService: ChatServiceProtocol {
         
         if let attachments = info.attachments {
             for (index, attachment) in attachments.enumerated() {
-                let fileName = "\(attachment.id!).\(attachment.fileType)"
+                guard let attachmentId = attachment.id else {
+                    throw ServiceError(.badRequest, reason: "Attachment id is required.")
+                }
+                let fileName = "\(attachmentId).\(attachment.fileType)"
                 let uploadedAt = core.fileCreationDate(for: fileName) ?? Date()
                 // Only create the MediaResource row if it doesn't already exist (re-using from recents)
-                let existing = try await repo.findMediaResource(attachment.id!)
+                let existing = try await repo.findMediaResource(attachmentId)
                 if existing == nil {
-                    let resource = MediaResource(id: attachment.id,
+                    let resource = MediaResource(id: attachmentId,
                                                  owner: userId,
                                                  fileType: attachment.fileType,
                                                  fileSize: attachment.fileSize,
@@ -428,7 +433,7 @@ actor ChatService: ChatServiceProtocol {
                                                  duration: attachment.duration)
                     attachmentsToSave.append(resource)
                 }
-                pivotsToSave.append(MessageToMedia(messageId: message.id!, mediaResourceId: attachment.id!, position: index))
+                pivotsToSave.append(MessageToMedia(messageId: message.id!, mediaResourceId: attachmentId, position: index))
             }
         }
         

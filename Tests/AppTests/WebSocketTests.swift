@@ -58,9 +58,9 @@ final class WebSocketTests: AppLiveTestCase {
             let message = try! MessageInfo.fromData(payload.data())
             
             XCTAssertEqual(message.text, "Hey")
-            XCTAssertEqual(message.authorId, 1)
+            XCTAssertEqual(message.author?.id, 1)
             XCTAssertEqual(json["event"] as! String, "message")
-            XCTAssertEqual(UserID(json["source"] as! String), message.authorId)
+            XCTAssertEqual(UserID(json["source"] as! String), message.author?.id)
         }
         
         // Connect web sockets of both users:

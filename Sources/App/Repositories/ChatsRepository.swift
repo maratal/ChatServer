@@ -54,7 +54,6 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         return try await query
             .with(\.$user) { user in
                 user.with(\.$deviceSessions)
-                user.with(\.$photos)
             }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
@@ -65,7 +64,9 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
                     message.with(\.$readMarks)
                 }
                 chat.with(\.$images)
-                chat.with(\.$users) // TODO: optimise
+                chat.with(\.$users) { user in
+                    user.with(\.$photos)
+                }
             }
             .all()
     }

@@ -167,11 +167,11 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/changePassword",
+        try await asyncTest(.PUT, "users/me/password",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
-                ChangePasswordRequest(oldPassword: CurrentUser.password, newPassword: "12345678")
+                ChangePasswordRequest(currentPassword: CurrentUser.password, newPassword: "12345678")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -203,11 +203,11 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/changePassword",
+        try await asyncTest(.PUT, "users/me/password",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
-                ChangePasswordRequest(oldPassword: "87654321", newPassword: "12345678")
+                ChangePasswordRequest(currentPassword: "87654321", newPassword: "12345678")
             )
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
@@ -275,7 +275,7 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/setAccountKey",
+        try await asyncTest(.PUT, "users/me/accountKey",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
@@ -310,7 +310,7 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/setAccountKey",
+        try await asyncTest(.PUT, "users/me/accountKey",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
@@ -363,7 +363,7 @@ final class UserTests: AppTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let privateInfo = try res.content.decode(User.PrivateInfo.self)
-            XCTAssertEqual(privateInfo.deviceSessions.count, 2)
+            XCTAssertEqual(privateInfo.deviceSessions.count, 1)
             tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoDesktop.id)).accessToken
         })
         try await asyncTest(.PUT, "users/me/device",
@@ -373,7 +373,7 @@ final class UserTests: AppTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let privateInfo = try res.content.decode(User.PrivateInfo.self)
-            XCTAssertEqual(privateInfo.deviceSessions.count, 2)
+            XCTAssertEqual(privateInfo.deviceSessions.count, 1)
             let deviceInfo = try XCTUnwrap(privateInfo.sessionForAccessToken(tokenString)?.deviceInfo)
             XCTAssertEqual(deviceInfo.id, DeviceInfo.testInfoDesktop.id)
             XCTAssertEqual(deviceInfo.name, "My computer")

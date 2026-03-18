@@ -51,7 +51,7 @@ final class MediaResource: RepositoryItem, @unchecked Sendable /* https://blog.v
         fileSize: Int64,
         previewWidth: Int,
         previewHeight: Int,
-        uploadedAt: Date? = nil,
+        uploadedAt: Date?,
         duration: Double? = nil
     ) {
         self.id = id
