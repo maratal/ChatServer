@@ -44,4 +44,24 @@ final class UploadTests: AppTestCase {
         try FileManager.default.removeItem(atPath: filePath)
         XCTAssertFalse(FileManager.default.fileExists(atPath: filePath))
     }
+    
+    func test_02_deleteUpload() async throws {
+        try await service.seedCurrentUser()
+        
+        let fileId = UUID().uuidString
+        let fileName = "\(fileId).test"
+        let previewFileName = "\(fileId)-preview.test"
+        
+        let filePath = try service.makeFakeUpload(fileName: fileName, fileSize: 1)
+        let previewPath = try service.makeFakeUpload(fileName: previewFileName, fileSize: 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: filePath))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
+        
+        try await asyncTest(.DELETE, "uploads/\(fileName)", afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        
+        XCTAssertFalse(FileManager.default.fileExists(atPath: filePath))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: previewPath))
+    }
 }

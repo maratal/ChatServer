@@ -885,4 +885,169 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(sentNotifications[0].payload?["data"] as? [String: Bool], ["deleted": true])
         })
     }
+    
+    // MARK: - Reply to message
+    
+    func test_48_postMessageWithReplyTo() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let original = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
+        
+        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: "Reply!", replyTo: original.id!)
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let reply = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(reply.text, "Reply!")
+            XCTAssertEqual(reply.replyTo, original.id!)
+        })
+    }
+    
+    func test_49_tryPostMessageWithInvalidReplyTo() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
+        
+        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: "Reply!", replyTo: 99999)
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
+    
+    func test_50_tryPostMessageWithReplyToFromDifferentChat() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat1 = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let chat2 = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
+        let messageInChat1 = try await service.makeMessages(for: chat1.id!, authorId: current.id!, count: 1).first!
+        try await service.makeMessages(for: chat2.id!, authorId: current.id!, count: 1)
+        
+        try await asyncTest(.POST, "chats/\(chat2.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: "Cross-reply", replyTo: messageInChat1.id!)
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
+    
+    // MARK: - Edit message text
+    
+    func test_51_editMessageText() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let message = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
+        XCTAssertEqual(message.text, "text 1")
+        sleep(1)
+        
+        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                UpdateMessageRequest(text: "Edited text")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let updated = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(updated.text, "Edited text")
+            XCTAssertNotNil(updated.editedAt)
+            XCTAssertTrue(updated.editedAt! > updated.createdAt!)
+            let sentNotifications = await service.testNotificator.getSentNotifications()
+            XCTAssertTrue(sentNotifications.contains(where: { $0.event == .messageUpdate }))
+        })
+    }
+    
+    func test_52_tryEditOtherUsersMessage() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let message = try await service.makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
+        
+        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                UpdateMessageRequest(text: "Hijacked")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+    }
+    
+    // MARK: - Message validation
+    
+    func test_53_tryPostMessageExceedingMaxLength() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
+        let longText = String(repeating: "A", count: 2049)
+        
+        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: longText)
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
+    
+    func test_54_tryPostEmptyMessage() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
+        
+        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
+    
+    func test_55_tryPostMessageWithMalformedLocalId() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
+        
+        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                PostMessageRequest(localId: "short", text: "Hello")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
+    
+    // MARK: - Edit message attachments
+    
+    func test_56_editMessageAddAttachment() async throws {
+        let current = try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
+        let message = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
+        
+        let attachmentId = UUID()
+        let fileType = "test"
+        try service.makeFakeUpload(fileName: "\(attachmentId).\(fileType)", fileSize: 1)
+        try service.makeFakeUpload(fileName: "\(attachmentId)-preview.\(fileType)", fileSize: 1)
+        
+        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+            try req.content.encode(
+                UpdateMessageRequest(attachments: [MediaInfo(id: attachmentId, fileType: fileType, fileSize: 1)])
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let updated = try res.content.decode(MessageInfo.self)
+            XCTAssertEqual(updated.attachments?.count, 1)
+            XCTAssertEqual(updated.attachments?.first?.id, attachmentId)
+        })
+    }
 }

@@ -450,4 +450,39 @@ final class UserTests: AppTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: uploadPath))
         XCTAssertFalse(FileManager.default.fileExists(atPath: previewPath))
     }
+    
+    // MARK: - Pagination & Search
+    
+    func test_19_getAllUsersPaginated() async throws {
+        try await service.seedCurrentUser()
+        let users = try await service.seedUsers(count: 5, namePrefix: "Page", usernamePrefix: "page")
+        
+        try await asyncTest(.GET, "users/all?count=3", afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let page1 = try res.content.decode([UserInfo].self)
+            XCTAssertEqual(page1.count, 3)
+            // Should be sorted by id descending
+            XCTAssertTrue(page1[0].id! > page1[1].id!)
+            
+            let lastId = page1.last!.id!
+            try await asyncTest(.GET, "users/all?count=3&id=\(lastId)", afterResponse: { res in
+                XCTAssertEqual(res.status, .ok, res.body.string)
+                let page2 = try res.content.decode([UserInfo].self)
+                XCTAssertTrue(page2.count > 0)
+                // All IDs on page 2 should be less than last ID on page 1
+                for userInfo in page2 {
+                    XCTAssertTrue(userInfo.id! < lastId)
+                }
+            })
+        })
+    }
+    
+    func test_20_trySearchWithTooShortQuery() async throws {
+        try await service.seedCurrentUser()
+        try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
+        
+        try await asyncTest(.GET, "users?s=a", afterResponse: { res in
+            XCTAssertEqual(res.status, .notFound, res.body.string)
+        })
+    }
 }
