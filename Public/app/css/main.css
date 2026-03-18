@@ -885,6 +885,10 @@ input[type="text"]:disabled, textarea:disabled {
     -webkit-box-orient: vertical;
 }
 
+.group-chat-member-cell .avatar-small.owner {
+    outline: 2px solid hsl(var(--primary));
+}
+
 .user-info-status {
     display: inline-flex;
     align-items: center;

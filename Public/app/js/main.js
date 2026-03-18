@@ -1586,7 +1586,12 @@ function displayGroupChatInfo(chat) {
     const photoUrl = chatImage ? getPreviewUrl(chatImage.id, chatImage.fileType) : null;
     
     // Filter out current user from members list
-    const otherMembers = (chat.allUsers || []).filter(user => user.id !== currentUser?.info?.id);
+    const otherMembers = (chat.allUsers || []).filter(user => user.id !== currentUser?.info?.id)
+        .sort((a, b) => {
+            const aIsOwner = chat.owner && chat.owner.id === a.id ? -1 : 0;
+            const bIsOwner = chat.owner && chat.owner.id === b.id ? 1 : 0;
+            return aIsOwner + bIsOwner;
+        });
     
     let html = '';
     
@@ -1646,9 +1651,11 @@ function displayGroupChatInfo(chat) {
                     const avatarHtml = getAvatarHtml(user);
                     const isBlocked = chat.blockedUsers && chat.blockedUsers.some(bu => bu.id === user.id);
                     const blockedClass = isBlocked ? ' blocked' : '';
+                    const isMemberOwner = chat.owner && chat.owner.id === user.id;
+                    const ownerClass = isMemberOwner ? ' owner' : '';
                     return `
                         <div class="group-chat-member-cell${blockedClass}" onclick="showGroupMemberMenu(event, '${chat.id}', ${user.id})">
-                            <div class="avatar-small">${avatarHtml}</div>
+                            <div class="avatar-small${ownerClass}">${avatarHtml}</div>
                             <div class="group-chat-member-name">${escapeHtml(user.name || user.username || 'Unknown User')}</div>
                         </div>
                     `;
