@@ -20,13 +20,10 @@ jobs:
       run: brew update
 
     - name: Install PostgreSQL
-      run: brew install postgresql@14
+      run: brew install postgresql@17
 
     - name: Start PostgreSQL
-      run: brew services start postgresql
-
-    - name: Init DB
-      run: initdb /opt/homebrew/var/postgresql
+      run: brew services start postgresql@17
 
     - uses: actions/checkout@v4
     - name: Build
