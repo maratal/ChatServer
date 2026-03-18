@@ -91,7 +91,7 @@ extension MediaResource {
     
     var previewFileName: String? {
         guard let fileName = self.id else { return nil }
-        return "\(fileName)-preview.\(fileType)"
+        return "\(fileName)-preview.jpg"
     }
 }
 

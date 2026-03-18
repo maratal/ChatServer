@@ -435,6 +435,9 @@ function getChatLastMessageText(chat) {
     if (chat.lastMessage.attachments && chat.lastMessage.attachments.length > 0) {
         return '[Media]';
     }
+    if (chat.lastMessage.id) {
+        return '[Media was removed]';
+    }
     return 'No messages';
 }
 

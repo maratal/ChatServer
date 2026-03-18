@@ -498,8 +498,11 @@ function createMessageElement(message) {
     
     // Check if message is deleted
     const isDeleted = message.deletedAt != null;
+    const isMediaRemoved = !isDeleted && !message.text && !attachmentHTML && message.id;
     const messageTextContent = isDeleted 
         ? `<div class="message-text message-deleted">Message was deleted</div>` 
+        : isMediaRemoved
+        ? `<div class="message-text message-deleted">Media was removed</div>`
         : `<div class="message-text">${convertLinksToClickable(message.text)}</div>`;
     
     messageDiv.innerHTML = `
@@ -514,8 +517,8 @@ function createMessageElement(message) {
                 ${(isGroupChat && !isOwnMessageFlag) ? `<span class="message-author-name">${escapeHtml(authorName)}</span>` : ''}
                 <div class="message-bubble">
                     ${replyPreviewHTML}
-                    <div class="message-content ${hasAttachments ? 'has-attachment' : ''}">
-                        ${hasAttachments && !isDeleted ? `
+                    <div class="message-content ${hasAttachments && !isMediaRemoved ? 'has-attachment' : ''}">
+                        ${hasAttachments && !isDeleted && !isMediaRemoved ? `
                             ${message.text ? messageTextContent : ''}
                             ${attachmentHTML}
                         ` : `
