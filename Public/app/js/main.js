@@ -7,7 +7,8 @@ let deviceSessionId = null;
 let currentChatFilter = 'all'; // 'all', 'unread', 'archived', 'muted', 'blocked'
 
 // User selection variables
-let fetchedUsers = [];
+let displayedUsers = [];
+let allLoadedUsers = []; // Full paginated list, unaffected by search
 let userSearchTimeout = null;
 let lastUserId = null;
 let isLoadingUsers = false;
@@ -674,7 +675,8 @@ function openUserSelection() {
     });
     
     // Reset state
-    fetchedUsers = [];
+    displayedUsers = [];
+    allLoadedUsers = [];
     lastUserId = null;
     hasMoreUsers = true;
     isLoadingUsers = false;
@@ -728,14 +730,21 @@ function setupUserSearch() {
         userSearchTimeout = setTimeout(() => {
             const query = this.value.trim();
             const usersList = document.getElementById('usersList');
-            if (query) {
+            if (query.length > 1) {
                 searchUsers(query, usersList, displayUsers);
+            } else if (query.length === 1) {
+                // Local filter on the full paginated list (no network request)
+                const lowerQuery = query.toLowerCase();
+                const filtered = allLoadedUsers.filter(user =>
+                    (user.name || '').toLowerCase().includes(lowerQuery) ||
+                    (user.username || '').toLowerCase().includes(lowerQuery)
+                );
+                displayedUsers = filtered;
+                displayUsers();
             } else {
-                // Reset to all users if search is cleared
-                fetchedUsers = [];
-                lastUserId = null;
-                hasMoreUsers = true;
-                loadUsers(usersList, displayUsers);
+                // Reset to full loaded list
+                displayedUsers = allLoadedUsers;
+                displayUsers();
             }
         }, 300);
     });
@@ -768,7 +777,8 @@ async function loadUsers(domElement, displayCallback) {
         
         // Add users to current users
         if (users.length > 0) {
-            fetchedUsers = [...fetchedUsers, ...users];
+            allLoadedUsers = [...allLoadedUsers, ...users];
+            displayedUsers = [...allLoadedUsers];
             // Update lastUserId to the ID of the last user for cursor-based pagination
             lastUserId = users[users.length - 1].id;
         }
@@ -793,7 +803,7 @@ async function searchUsers(query, domElement, displayCallback) {
     
     try {
         const users = await apiSearchUsers(query);
-        fetchedUsers = users;
+        displayedUsers = users;
         displayCallback();
     } catch (error) {
         console.error('Error searching users:', error);
@@ -804,13 +814,13 @@ async function searchUsers(query, domElement, displayCallback) {
 function displayUsers() {
     const usersList = document.getElementById('usersList');
     
-    if (fetchedUsers.length === 0) {
+    if (displayedUsers.length === 0) {
         usersList.innerHTML = '<div class="users-empty">No users found</div>';
         return;
     }
     
     let html = '';
-    fetchedUsers.forEach(user => {
+    displayedUsers.forEach(user => {
         const avatarHtml = getAvatarHtml(user);
         html += `
             <div class="user-item" onclick="selectUser(${user.id})">
@@ -2153,7 +2163,7 @@ function openGroupChatModal(chatId = null) {
         const chat = chats.find(c => c.id === chatId);
         const groupName = chat ? getGroupChatDisplayName(chat, currentUser) : '';
         
-        title.textContent = 'Add users';
+        title.textContent = 'Add Users';
         avatarNameSection.style.display = 'none';
         btn.textContent = 'Add Users';
         
@@ -2181,7 +2191,8 @@ function openGroupChatModal(chatId = null) {
     });
     
     // Reset state
-    fetchedUsers = [];
+    displayedUsers = [];
+    allLoadedUsers = [];
     lastUserId = null;
     hasMoreUsers = true;
     isLoadingUsers = false;
@@ -2266,13 +2277,20 @@ function handleGroupUserSearchInput(event) {
     groupChatSearchTimeout = setTimeout(() => {
         const query = event.target.value.trim();
         const usersList = document.getElementById('groupChatUsersList');
-        if (query) {
+        if (query.length > 1) {
             searchUsers(query, usersList, displayGroupChatUsers);
+        } else if (query.length === 1) {
+            // Local filter on the full paginated list (no network request)
+            const lowerQuery = query.toLowerCase();
+            displayedUsers = allLoadedUsers.filter(user =>
+                (user.name || '').toLowerCase().includes(lowerQuery) ||
+                (user.username || '').toLowerCase().includes(lowerQuery)
+            );
+            displayGroupChatUsers();
         } else {
-            fetchedUsers = [];
-            lastUserId = null;
-            hasMoreUsers = true;
-            loadUsers(usersList, displayGroupChatUsers);
+            // Restore full loaded list
+            displayedUsers = [...allLoadedUsers];
+            displayGroupChatUsers();
         }
     }, 300);
 }
@@ -2302,7 +2320,7 @@ function displayGroupChatUsers(error = null) {
     }
     
     // Filter out current user
-    let availableUsers = fetchedUsers.filter(u => u.id !== currentUser?.info?.id);
+    let availableUsers = displayedUsers.filter(u => u.id !== currentUser?.info?.id);
     
     const modal = document.getElementById('groupChatModal');
     const chatId = modal?.dataset.chatId;
@@ -2345,7 +2363,7 @@ function displayGroupChatUsers(error = null) {
 }
 
 function toggleGroupChatUser(userId) {
-    const user = fetchedUsers.find(u => u.id === userId);
+    const user = displayedUsers.find(u => u.id === userId);
     if (!user) return;
     
     const index = groupChatSelectedUsers.findIndex(u => u.id === userId);
