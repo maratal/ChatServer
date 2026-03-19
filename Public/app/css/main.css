@@ -812,6 +812,16 @@ input[type="text"]:disabled, textarea:disabled {
     flex-shrink: 0;
 }
 
+.info-link {
+    color: color-mix(in hsl, hsl(var(--primary)), white 10%);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.info-link:hover {
+    text-decoration: underline;
+}
+
 /* Group chat members grid */
 .group-chat-members-grid {
     display: grid;
@@ -843,7 +853,7 @@ input[type="text"]:disabled, textarea:disabled {
 .inline-link-button {
     background: none;
     border: none;
-    color: hsl(var(--primary));
+    color: color-mix(in hsl, hsl(var(--primary)), white 10%);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 700;
@@ -1877,7 +1887,8 @@ input[type="text"]:disabled, textarea:disabled {
     gap: 8px;
 }
 
-.group-name-input-container .user-profile-name-input {
+.group-name-input-container .user-profile-name-input,
+.group-name-input-container .user-profile-about-input {
     flex: 1;
 }
 

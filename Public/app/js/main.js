@@ -1039,7 +1039,7 @@ function displayUserInfo(user) {
             ` : ''}
         </div>
         <div class="user-info-name">${escapeHtml(name)}</div>
-        <div class="user-info-username">@${escapeHtml(username)}</div>
+        <div class="user-info-username"><a href="/users/${encodeURIComponent(username)}" class="info-link" target="_blank" rel="noopener noreferrer">${escapeHtml(username)}</a></div>
     `;
     
     // Status section
@@ -1075,7 +1075,7 @@ function displayUserInfo(user) {
                         <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    <span>User ID: ${user.id || 'N/A'}</span>
+                    <span>User ID: <a href="/users/${user.id}" class="info-link" target="_blank" rel="noopener noreferrer">${user.id || 'N/A'}</a></span>
                 </div>
                 ${lastSeen ? `
                 <div class="user-info-meta-item">
@@ -1693,7 +1693,7 @@ function displayGroupChatInfo(chat) {
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.735H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294l2.952-5.605z"></path>
                     </svg>
-                    <span>Owner:</span><span style="color: hsl(var(--primary));">${escapeHtml(chat.owner.name || chat.owner.username || 'Unknown')}</span>
+                    <span>Owner: <span class="info-link">${escapeHtml(chat.owner.name || chat.owner.username || 'Unknown')}</span></span>
                 </div>
                 ` : ''}
                 ${chat.createdAt ? `

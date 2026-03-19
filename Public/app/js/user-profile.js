@@ -120,23 +120,90 @@ function displayCurrentUserProfile() {
         </div>
         <div class="user-profile-section">
             <div class="user-profile-section-title">Name</div>
-            <input type="text" class="user-profile-name-input" id="userProfileNameInput" value="${escapeHtml(name)}" placeholder="Enter your name">
-        </div>
-        <div class="user-profile-section">
-            <div class="user-profile-section-title">Username</div>
-            <div class="user-profile-username">@${escapeHtml(username)}</div>
+            <div class="group-name-input-container">
+                <input type="text" class="user-profile-name-input" id="userProfileNameInput" value="${escapeHtml(name)}" placeholder="Enter your name" data-original-value="${escapeHtml(name)}">
+                <button class="group-name-save-btn" id="userProfileNameSaveBtn" style="display: none;" onclick="saveCurrentUserName()" title="Save">
+                    ${checkmarkSaveIcon}
+                    ${checkmarkSaveIconSaving}
+                </button>
+            </div>
         </div>
         <div class="user-profile-section">
             <div class="user-profile-section-title">About</div>
-            <textarea class="user-profile-about-input" id="userProfileAboutInput" placeholder="Tell us about yourself">${escapeHtml(about)}</textarea>
+            <div class="group-name-input-container" style="align-items: flex-start;">
+                <textarea class="user-profile-about-input" id="userProfileAboutInput" placeholder="Tell us about yourself" data-original-value="${escapeHtml(about)}">${escapeHtml(about)}</textarea>
+                <button class="group-name-save-btn" id="userProfileAboutSaveBtn" style="display: none;" onclick="saveCurrentUserAbout()" title="Save">
+                    ${checkmarkSaveIcon}
+                    ${checkmarkSaveIconSaving}
+                </button>
+            </div>
         </div>
-        <div class="user-profile-actions">
-            <button class="user-profile-save-btn" onclick="saveCurrentUserProfile()">Save Changes</button>
+        <div class="user-profile-section">
+            <div class="user-profile-section-title">Information</div>
+            <div class="user-info-meta">
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>User ID: <a href="/users/${user.id}" class="info-link" target="_blank" rel="noopener noreferrer">${user.id}</a></span>
+                </div>
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                        <path d="M2 12h20"></path>
+                    </svg>
+                    <span>Username: <a href="/users/${encodeURIComponent(username)}" class="info-link" target="_blank" rel="noopener noreferrer">${escapeHtml(username)}</a></span>
+                </div>
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Registered: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</span>
+                </div>
+            </div>
         </div>
     `;
     
     body.innerHTML = html;
     
+    // Add input change listeners for name and about
+    const nameInput = document.getElementById('userProfileNameInput');
+    const nameSaveBtn = document.getElementById('userProfileNameSaveBtn');
+    if (nameInput && nameSaveBtn) {
+        nameInput.addEventListener('input', function() {
+            const originalValue = this.getAttribute('data-original-value') || '';
+            nameSaveBtn.style.display = this.value.trim() !== originalValue ? 'flex' : 'none';
+        });
+        nameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && nameSaveBtn.style.display !== 'none') {
+                e.preventDefault();
+                saveCurrentUserName();
+            }
+        });
+    }
+
+    const aboutInput = document.getElementById('userProfileAboutInput');
+    const aboutSaveBtn = document.getElementById('userProfileAboutSaveBtn');
+    if (aboutInput && aboutSaveBtn) {
+        aboutInput.addEventListener('input', function() {
+            const originalValue = this.getAttribute('data-original-value') || '';
+            aboutSaveBtn.style.display = this.value.trim() !== originalValue ? 'flex' : 'none';
+        });
+        aboutInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && aboutSaveBtn.style.display !== 'none') {
+                e.preventDefault();
+                saveCurrentUserAbout();
+            }
+        });
+    }
+
     // Add click handler to avatar after HTML is inserted
     const avatar = document.getElementById('userProfileAvatar');
     
@@ -159,48 +226,99 @@ function displayCurrentUserProfile() {
     setupAvatarKeyboardNavigation();
 }
 
-async function saveCurrentUserProfile() {
+async function saveCurrentUserName() {
     const nameInput = document.getElementById('userProfileNameInput');
-    const aboutInput = document.getElementById('userProfileAboutInput');
-    
-    if (!nameInput || !aboutInput) {
-        console.error('Profile inputs not found');
+    const saveBtn = document.getElementById('userProfileNameSaveBtn');
+    if (!nameInput || !saveBtn) return;
+
+    const newName = nameInput.value.trim() || null;
+    const originalValue = nameInput.getAttribute('data-original-value') || '';
+
+    if ((newName || '') === originalValue) {
+        saveBtn.style.display = 'none';
         return;
     }
-    
-    const name = nameInput.value.trim();
-    const about = aboutInput.value.trim();
-    
+
+    saveBtn.classList.remove('idle', 'success');
+    saveBtn.classList.add('saving');
+    saveBtn.disabled = true;
+
     try {
-        await apiUpdateCurrentUser(name, about);
-        
-        // Update currentUser in localStorage
+        await apiUpdateCurrentUser({ name: newName });
+
         if (currentUser && currentUser.info) {
-            currentUser.info.name = name || null;
-            currentUser.info.about = about || null;
+            currentUser.info.name = newName || null;
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
         }
-        
-        // Update display
+
+        nameInput.setAttribute('data-original-value', newName || '');
+
+        saveBtn.classList.remove('saving');
+        saveBtn.classList.add('success');
+
         updateCurrentUserButton();
-        
-        // Reload profile to show updated data
-        await openCurrentUserProfile();
-        
-        // Show success message
-        const body = document.getElementById('userProfileBody');
-        const successMsg = document.createElement('div');
-        successMsg.className = 'user-profile-success';
-        successMsg.textContent = 'Profile updated successfully!';
-        body.insertBefore(successMsg, body.firstChild);
-        
+
         setTimeout(() => {
-            successMsg.remove();
-        }, 2000);
-        
+            saveBtn.classList.add('hiding');
+            setTimeout(() => {
+                saveBtn.style.display = 'none';
+                saveBtn.classList.remove('success', 'hiding');
+                saveBtn.classList.add('idle');
+                saveBtn.disabled = false;
+            }, 300);
+        }, 500);
     } catch (error) {
-        console.error('Error updating profile:', error);
-        alert('Error updating profile: ' + error.message);
+        console.error('Error saving name:', error);
+        alert('Error saving name: ' + error.message);
+        saveBtn.classList.remove('saving');
+        saveBtn.disabled = false;
+    }
+}
+
+async function saveCurrentUserAbout() {
+    const aboutInput = document.getElementById('userProfileAboutInput');
+    const saveBtn = document.getElementById('userProfileAboutSaveBtn');
+    if (!aboutInput || !saveBtn) return;
+
+    const newAbout = aboutInput.value.trim() || null;
+    const originalValue = aboutInput.getAttribute('data-original-value') || '';
+
+    if ((newAbout || '') === originalValue) {
+        saveBtn.style.display = 'none';
+        return;
+    }
+
+    saveBtn.classList.remove('idle', 'success');
+    saveBtn.classList.add('saving');
+    saveBtn.disabled = true;
+
+    try {
+        await apiUpdateCurrentUser({ about: newAbout });
+
+        if (currentUser && currentUser.info) {
+            currentUser.info.about = newAbout || null;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
+
+        aboutInput.setAttribute('data-original-value', newAbout || '');
+
+        saveBtn.classList.remove('saving');
+        saveBtn.classList.add('success');
+
+        setTimeout(() => {
+            saveBtn.classList.add('hiding');
+            setTimeout(() => {
+                saveBtn.style.display = 'none';
+                saveBtn.classList.remove('success', 'hiding');
+                saveBtn.classList.add('idle');
+                saveBtn.disabled = false;
+            }, 300);
+        }, 500);
+    } catch (error) {
+        console.error('Error saving about:', error);
+        alert('Error saving about: ' + error.message);
+        saveBtn.classList.remove('saving');
+        saveBtn.disabled = false;
     }
 }
 

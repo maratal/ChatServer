@@ -87,7 +87,7 @@ async function apiGetCurrentUser() {
     return await handleResponse(response);
 }
 
-async function apiUpdateCurrentUser(name, about) {
+async function apiUpdateCurrentUser(fields) {
     const accessToken = getAccessToken();
     if (!accessToken) {
         throw new Error('No access token available');
@@ -99,10 +99,7 @@ async function apiUpdateCurrentUser(name, about) {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            name: name || null,
-            about: about || null
-        })
+        body: JSON.stringify(fields)
     });
     return await handleResponse(response);
 }
