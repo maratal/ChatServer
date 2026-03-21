@@ -2282,12 +2282,15 @@ input[type="text"]:disabled, textarea:disabled {
     margin-top: 2px !important; /* Small gap within group */
 }
 
-.message-row.menu-active {
+.message-row-content.menu-active {
     background-color: hsl(var(--muted));
 }
 
 .message-row-content {
     display: flex;
+}
+
+.message-content-wrapper {
     max-width: 45%;
 }
 

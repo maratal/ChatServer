@@ -120,7 +120,7 @@ function scrollToMessage(messageId) {
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
     if (!messageElement) return;
     
-    const row = messageElement.closest('.message-row') || messageElement;
+    const row = messageElement.querySelector('.message-row-content') || messageElement;
     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
     
     row.classList.add('message-highlight');
@@ -1917,7 +1917,7 @@ function showMessageContextMenu(event, messageElement, message) {
         items: menuItems,
         x: event.clientX,
         y: event.clientY,
-        highlightElement: messageElement,
+        highlightElement: messageElement.querySelector('.message-row-content'),
         highlightClass: 'menu-active',
         onAction: (action) => {
             handleMessageContextAction(action, message, messageElement);
