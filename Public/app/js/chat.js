@@ -378,6 +378,12 @@ function createDateHeader(dateString, date) {
     return headerDiv;
 }
 
+function isCurrentChatPersonalNotes() {
+    const chat = chats.find(c => c.id === currentChatId);
+    const otherUser = chat?.isPersonal ? chat.allUsers.find(user => user.id !== currentUser?.info.id) : null;
+    return !!(chat?.isPersonal && (!otherUser || otherUser.id === currentUser?.info.id));
+}
+
 // Create a message element
 function createMessageElement(message) {
     const messageDiv = document.createElement('div');
@@ -490,7 +496,7 @@ function createMessageElement(message) {
             
             replyPreviewHTML = `
                 <div class="message-reply-preview">
-                    <div data-reply-to="${message.replyTo}" onclick="scrollToMessage('${message.replyTo}')" style="cursor: pointer;">${quoteIcon}</div><div>${escapeHtml(replyPreviewText)}</div>
+                    <div data-reply-to="${message.replyTo}" onclick="scrollToMessage('${message.replyTo}')" style="cursor: pointer;">${quoteIcon}</div><div class="reply-preview-text">${escapeHtml(replyPreviewText)}</div>
                 </div>
             `;
         }
@@ -559,6 +565,119 @@ function createMessageElement(message) {
     return messageDiv;
 }
 
+// Create a personal note element (for Personal Notes chat — chat with oneself)
+function createPersonalNote(message) {
+    // Deleted notes are not shown at all
+    if (message.deletedAt != null) return null;
+
+    const noteDiv = document.createElement('div');
+    noteDiv.className = 'personal-note-row';
+
+    noteDiv.dataset.authorId = message.author.id || '';
+    const normalizedDate = normalizeTimestamp(message.createdAt);
+    noteDiv.dataset.createdAt = normalizedDate.toISOString();
+    if (message.localId) noteDiv.dataset.localId = message.localId;
+    if (message.id) noteDiv.dataset.messageId = message.id;
+
+    const fullDateTime = formatFullDateTime(normalizedDate);
+    const messageTime = normalizedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Date header: e.g. "Today, 14:30"
+    const dateGroupText = formatChatGroupingDate(normalizedDate);
+    const dateHeaderText = `${dateGroupText}, ${messageTime}`;
+
+    const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
+    const messageId = message.id || message.localId;
+    // No overlay HTML — timestamp is in the date header, not inside the balloon
+    const attachmentHTML = hasAttachments ? buildAttachmentHTML(message.attachments, messageId, '') : '';
+
+    if (hasAttachments && attachmentHTML) {
+        const validAttachments = message.attachments.filter(att => att && att.id && att.fileType);
+        if (validAttachments.length > 0) {
+            noteDiv.dataset.attachments = JSON.stringify(validAttachments);
+            noteDiv.dataset.currentAttachmentIndex = '0';
+        }
+    }
+
+    const isMediaRemoved = !message.text && !attachmentHTML && message.id;
+
+    // Build reply preview
+    let replyPreviewHTML = '';
+    if (message.replyTo) {
+        const repliedToMessage = findMessageById(message.replyTo);
+        if (repliedToMessage) {
+            let replyPreviewText = '';
+            if (repliedToMessage.text) {
+                replyPreviewText = repliedToMessage.text;
+            } else if (repliedToMessage.attachments && repliedToMessage.attachments.length > 0) {
+                const date = normalizeTimestamp(repliedToMessage.createdAt);
+                replyPreviewText = `Attachments (${repliedToMessage.attachments.length}) at ${date.toLocaleTimeString()}`;
+            }
+            replyPreviewHTML = `
+                <div class="message-reply-preview">
+                    <div data-reply-to="${message.replyTo}" onclick="scrollToMessage('${message.replyTo}')" style="cursor: pointer;">${quoteIcon}</div><div class="reply-preview-text">${escapeHtml(replyPreviewText)}</div>
+                </div>
+            `;
+        }
+    }
+
+    // Title detection from text
+    const rawText = message.text || '';
+    const firstNewlineIndex = rawText.indexOf('\n');
+    const firstLine = firstNewlineIndex >= 0 ? rawText.substring(0, firstNewlineIndex) : rawText;
+    const bodyText = firstNewlineIndex >= 0 ? rawText.substring(firstNewlineIndex + 1) : '';
+    const sentenceCount = (firstLine.match(/[.!?](\s|$)/g) || []).length;
+    const hasTitle = firstNewlineIndex >= 0 && firstLine.trim().length > 0 && sentenceCount <= 1;
+
+    let innerHTML = '';
+    if (isMediaRemoved) {
+        innerHTML = `<div class="message-text-container personal-note-text-container">
+            <div class="message-text message-deleted">Media was removed</div>
+        </div>`;
+    } else if (hasAttachments && attachmentHTML) {
+        innerHTML = `<div class="message-content has-attachment">
+            ${replyPreviewHTML}
+            ${rawText ? `
+                <div class="personal-note-body-wrapper">
+                    ${hasTitle ? `<div class="personal-note-title">${convertLinksToClickable(firstLine)}</div>` : ''}
+                    <div class="personal-note-body">${convertLinksToClickable(hasTitle ? bodyText : rawText)}</div>
+                </div>
+            ` : ''}
+            ${attachmentHTML}
+        </div>`;
+    } else {
+        innerHTML = `<div class="message-text-container personal-note-text-container">
+            ${replyPreviewHTML}
+            <div class="personal-note-body-wrapper">
+                ${hasTitle ? `<div class="personal-note-title">${convertLinksToClickable(firstLine)}</div>` : ''}
+                <div class="personal-note-body">${convertLinksToClickable(hasTitle ? bodyText : rawText)}</div>
+            </div>
+        </div>`;
+    }
+
+    noteDiv.innerHTML = `
+        <div class="personal-note-date-header">
+            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>
+        </div>
+        <div class="message-row-content personal-note-content">
+            <div class="personal-note-bubble">
+                ${innerHTML}
+            </div>
+        </div>
+    `;
+
+    addLongPressHandler(noteDiv, {
+        onLongPress: (event, startPosition) => {
+            showMessageContextMenu(event, noteDiv, message);
+        },
+        excludeSelectors: ['.personal-note-bubble'],
+        duration: 300,
+        maxMovement: 10
+    });
+
+    return noteDiv;
+}
+
 function showCurrentChatMessagesAsRead() {
     const messagesContainer = document.getElementById('messagesContainer');
     if (!messagesContainer || !lastReferenceReadMessageId) return;
@@ -582,7 +701,7 @@ function showCurrentChatMessagesAsRead() {
 }
 
 function navigateMessageAttachment(messageId, direction) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row');
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
     if (!messageDiv) return;
     
     const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
@@ -602,7 +721,7 @@ function navigateMessageAttachment(messageId, direction) {
 
 // Switch message attachment
 function switchMessageAttachment(messageId, index) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row');
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
     if (!messageDiv) return;
     
     const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
@@ -675,7 +794,7 @@ function switchMessageAttachment(messageId, index) {
 
 // Open media viewer for message attachments
 function openMessageAttachmentViewer(messageId) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row');
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
     if (!messageDiv) return;
     
     const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
@@ -1791,7 +1910,9 @@ async function addMessageToChat(message, bulkAddition = false, prepend = false) 
     // Date header is now handled inside the message element by updateSingleMessageGrouping
     // No need to check for date headers here
     
-    const messageElement = createMessageElement(message);
+    const isPersonalNote = isCurrentChatPersonalNotes();
+    const messageElement = isPersonalNote ? createPersonalNote(message) : createMessageElement(message);
+    if (!messageElement) return null; // e.g. deleted personal note
     
     if (animated) {
         messageElement.style.opacity = '0';
@@ -1806,7 +1927,7 @@ async function addMessageToChat(message, bulkAddition = false, prepend = false) 
     }
 
     // Re-calculate grouping for the new message and potentially the previous one
-    if (updateGrouping) {
+    if (updateGrouping && !isPersonalNote) {
         updateMessageGroupingIncremental(messageElement);
     }
 
@@ -2162,9 +2283,11 @@ async function replaceMessageElement(messageLocalId, updatedMessage, animated = 
     
     // If not animated, just replace immediately
     if (!animated) {
-        const newMessageElement = createMessageElement(updatedMessage);
+        const isPersonalNote = isCurrentChatPersonalNotes();
+        const newMessageElement = isPersonalNote ? createPersonalNote(updatedMessage) : createMessageElement(updatedMessage);
+        if (!newMessageElement) { oldMessageElement.remove(); return null; }
         oldMessageElement.replaceWith(newMessageElement);
-        updateMessageGroupingIncremental(newMessageElement);
+        if (!isPersonalNote) updateMessageGroupingIncremental(newMessageElement);
         return newMessageElement;
     }
     
@@ -2175,7 +2298,15 @@ async function replaceMessageElement(messageLocalId, updatedMessage, animated = 
         const slideDirection = isOutgoing ? 'translateX(100%)' : 'translateX(-100%)';
         
         // Create the new message element
-        const newMessageElement = createMessageElement(updatedMessage);
+        const isPersonalNote = isCurrentChatPersonalNotes();
+        const newMessageElement = isPersonalNote ? createPersonalNote(updatedMessage) : createMessageElement(updatedMessage);
+
+        if (!newMessageElement) {
+            oldMessageElement.style.transition = 'transform 0.2s ease-in';
+            oldMessageElement.style.transform = slideDirection;
+            setTimeout(() => { oldMessageElement.remove(); resolve(null); }, 250);
+            return;
+        }
         
         // Step 1: Slide out the old message
         oldMessageElement.style.transition = 'transform 0.2s ease-in';
@@ -2191,7 +2322,7 @@ async function replaceMessageElement(messageLocalId, updatedMessage, animated = 
             oldMessageElement.replaceWith(newMessageElement);
             
             // Update grouping
-            updateMessageGroupingIncremental(newMessageElement);
+            if (!isPersonalNote) updateMessageGroupingIncremental(newMessageElement);
             
             // Step 3: Slide in the new message after a brief delay
             requestAnimationFrame(() => {

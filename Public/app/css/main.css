@@ -3110,15 +3110,21 @@ input[type="text"]:disabled, textarea:disabled {
     color: hsl(var(--foreground) / 0.9);
     font-style: italic;
     font-size: 0.8rem;
-    max-height: 50px;
-    overflow: hidden;
-    text-overflow: ellipsis;
     border-radius: 4px;
     border-bottom: 1px solid hsl(var(--foreground) / 0.05);
+    overflow: hidden;
+    width: 100%;
 }
 
 .message-reply-preview [data-reply-to] {
     padding: 3px 1px 0 3px;
+}
+
+.reply-preview-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .message-row.own .message-reply-preview {
@@ -3141,7 +3147,68 @@ input[type="text"]:disabled, textarea:disabled {
     opacity: 0.6;
     font-size: 0.95rem;
 }
-/* ── Media Panel (shared) ───────────────────────────────────────────────────── */
+
+/* ── Personal Notes ─────────────────────────────────────────────────────────── */
+
+.personal-note-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#messagesContainer > .personal-note-row:first-child {
+    margin-top: 0;
+}
+
+.personal-note-date-header {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    margin-top: 25px;
+    margin-bottom: 10px;
+    text-align: center;
+    user-select: none;
+}
+
+.personal-note-content {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.personal-note-bubble {
+    width: 94%;
+    max-width: 500px;
+    background-color: hsl(var(--chat-bubble-received));
+    color: hsl(var(--chat-bubble-received-foreground));
+    box-shadow: var(--shadow-soft);
+    border: 1px solid hsl(var(--chat-bubble-received));
+    border-radius: var(--bubble-border-radius);
+    overflow: hidden;
+}
+
+.personal-note-text-container {
+    flex-direction: column;
+    align-items: center;
+}
+
+.personal-note-body-wrapper {
+    width: 100%;
+    padding: 10px;
+}
+
+.personal-note-title {
+    font-weight: bold;
+    font-size: 1rem;
+    text-align: center;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin-bottom: 10px;
+}
+
+.personal-note-body {
+    font-size: 1rem;
+}
 
 .recent-media-select-circle {
     position: absolute;

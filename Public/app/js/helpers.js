@@ -401,8 +401,8 @@ function findMessageById(messageId) {
     if (!messageElement) return null;
     
     // Extract message data from DOM
-    const messageTextEl = messageElement.querySelector('.message-text');
-    const messageText = messageTextEl ? messageTextEl.textContent.trim() : '';
+    const messageTextElement = messageElement.querySelector('.message-text, .personal-note-body, .personal-note-title');
+    const messageText = messageTextElement ? messageTextElement.textContent.trim() : '';
     const attachmentsStr = messageElement.dataset.attachments;
     const attachments = attachmentsStr ? JSON.parse(attachmentsStr) : [];
     const createdAt = messageElement.dataset.createdAt;
