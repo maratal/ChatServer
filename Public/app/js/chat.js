@@ -509,7 +509,7 @@ function createMessageElement(message) {
         ? `<div class="message-text message-deleted">Message was deleted</div>` 
         : isMediaRemoved
         ? `<div class="message-text message-deleted">Media was removed</div>`
-        : `<div class="message-text">${convertLinksToClickable(message.text)}</div>`;
+        : `<div class="message-text">${formatMessageText(message.text)}</div>`;
     
     messageDiv.innerHTML = `
         <div class="message-date-header" style="display: none;">
@@ -639,8 +639,8 @@ function createPersonalNote(message) {
             ${replyPreviewHTML}
             ${rawText ? `
                 <div class="personal-note-body-wrapper">
-                    ${hasTitle ? `<div class="personal-note-title">${convertLinksToClickable(firstLine)}</div>` : ''}
-                    <div class="personal-note-body">${convertLinksToClickable(hasTitle ? bodyText : rawText)}</div>
+                    ${hasTitle ? `<div class="personal-note-title">${formatMessageText(firstLine)}</div>` : ''}
+                    <div class="personal-note-body">${formatMessageText(hasTitle ? bodyText : rawText)}</div>
                 </div>
             ` : ''}
             ${attachmentHTML}
@@ -649,8 +649,8 @@ function createPersonalNote(message) {
         innerHTML = `<div class="message-text-container personal-note-text-container">
             ${replyPreviewHTML}
             <div class="personal-note-body-wrapper">
-                ${hasTitle ? `<div class="personal-note-title">${convertLinksToClickable(firstLine)}</div>` : ''}
-                <div class="personal-note-body">${convertLinksToClickable(hasTitle ? bodyText : rawText)}</div>
+                ${hasTitle ? `<div class="personal-note-title">${formatMessageText(firstLine)}</div>` : ''}
+                <div class="personal-note-body">${formatMessageText(hasTitle ? bodyText : rawText)}</div>
             </div>
         </div>`;
     }

@@ -298,16 +298,21 @@ function formatFullDateTime(date) {
 }
 
 // Convert links in text to clickable links
-function convertLinksToClickable(text) {
+function formatMessageText(text) {
     if (!text) return '';
     
     // First escape HTML to prevent XSS
     const escapedText = escapeHtml(text);
     
+    // Apply inline formatting (order matters: bold before italic to avoid partial matches)
+    let formatted = escapedText
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/(?<![\w*])_(.+?)_(?![\w*])/g, '<em>$1</em>');
+    
     // URL regex pattern that matches http, https, and www links
     const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
     
-    return escapedText.replace(urlRegex, function(url) {
+    return formatted.replace(urlRegex, function(url) {
         let href = url;
         let displayUrl = url;
         
@@ -317,8 +322,8 @@ function convertLinksToClickable(text) {
         }
         
         // Truncate display URL if it's too long
-        if (displayUrl.length > 50) {
-            displayUrl = displayUrl.substring(0, 47) + '...';
+        if (displayUrl.length > 100) {
+            displayUrl = displayUrl.substring(0, 100) + '...';
         }
         
         return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
