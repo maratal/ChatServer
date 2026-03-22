@@ -297,37 +297,171 @@ function formatFullDateTime(date) {
     });
 }
 
+function isMediaUrl(url) {
+    const path = url.split('?')[0].split('#')[0];
+    const ext = path.split('.').pop().toLowerCase();
+    return /^(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/.test(ext);
+}
+
 // Convert links in text to clickable links
 function formatMessageText(text) {
     if (!text) return '';
     
-    // First escape HTML to prevent XSS
-    const escapedText = escapeHtml(text);
-    
-    // Apply inline formatting (order matters: bold before italic to avoid partial matches)
-    let formatted = escapedText
+    // Escape HTML to prevent XSS
+    const escaped = escapeHtml(text);
+
+    // Step 1: Process markdown named links — 📺[label](url) opens inline media popup on hover,
+    // any md link to media opens in the media viewer on click, others open in a new tab.
+    const mdLinkPlaceholders = [];
+    let processed = escaped.replace(/(📺)?\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, function(_, tvIcon, label, url) {
+        const href = url.toLowerCase().startsWith('www.') ? 'https://' + url : url;
+        let html;
+        if (tvIcon) {
+            html = `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${href}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick="openMediaViewerForUrl('${href}'); return false;" style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;"><i>${label}</i></a></span>`;
+        } else if (isMediaUrl(href)) {
+            html = `<a href="#" onclick="openMediaViewerForUrl('${href}'); return false;" style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;">${label}</a>`;
+        } else {
+            html = `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: hsl(var(--primary)); text-decoration: underline;">${label}</a>`;
+        }
+        const idx = mdLinkPlaceholders.length;
+        mdLinkPlaceholders.push(html);
+        return `\x00MDLINK${idx}\x00`;
+    });
+
+    // Step 2: Apply bold and italic formatting
+    processed = processed
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/(?<![\w*])_(.+?)_(?![\w*])/g, '<em>$1</em>');
-    
-    // URL regex pattern that matches http, https, and www links
+
+    // Step 3: Auto-link plain URLs, skipping text already inside HTML tags or placeholders
     const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
-    
-    return formatted.replace(urlRegex, function(url) {
-        let href = url;
-        let displayUrl = url;
-        
-        // Add https:// prefix for www links
-        if (url.toLowerCase().startsWith('www.')) {
-            href = 'https://' + url;
+    processed = processed.split(/(<[^>]*>|\x00MDLINK\d+\x00)/).map((segment, i) => {
+        if (i % 2 === 1) return segment; // HTML tag or placeholder — leave alone
+        return segment.replace(urlRegex, (url) => {
+            let href = url;
+            let displayUrl = url;
+            if (url.toLowerCase().startsWith('www.')) href = 'https://' + url;
+            if (displayUrl.length > 100) displayUrl = displayUrl.substring(0, 100) + '...';
+            if (isMediaUrl(href)) {
+                return `<a href="#" onclick="openMediaViewerForUrl('${href}'); return false;" style="color: inherit; text-decoration: underline; cursor: pointer;">${displayUrl}</a>`;
+            }
+            return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
+        });
+    }).join('');
+
+    // Step 4: Restore markdown link placeholders
+    if (mdLinkPlaceholders.length > 0) {
+        processed = processed.replace(/\x00MDLINK(\d+)\x00/g, (_, idx) => mdLinkPlaceholders[parseInt(idx, 10)]);
+    }
+
+    return processed;
+}
+
+
+function openMediaViewerForUrl(url) {
+    closeInlineMediaPopup();
+    const ext = url.split('?')[0].split('#')[0].split('.').pop().toLowerCase();
+    const isVideo = /^(mp4|webm|mov)$/.test(ext);
+    openMediaViewer([{ _blobUrl: url, fileType: ext }], 0, null, null, isVideo);
+}
+
+let inlineMediaPopupCloseTimer = null;
+
+function openInlineMediaPopup(linkElement) {
+    // Cancel any pending close so hovering back keeps the popup open
+    if (inlineMediaPopupCloseTimer) {
+        clearTimeout(inlineMediaPopupCloseTimer);
+        inlineMediaPopupCloseTimer = null;
+    }
+
+    // If there's already a popup for this exact link, nothing to do
+    const existing = document.getElementById('inlineMediaPopup');
+    if (existing && existing.dataset.forLink === linkElement.getAttribute('data-media-url')) return;
+
+    closeInlineMediaPopup();
+
+    const url = linkElement.getAttribute('data-media-url');
+    const ext = url.split('?')[0].split('#')[0].split('.').pop().toLowerCase();
+    const isVideo = /^(mp4|webm|mov)$/.test(ext);
+
+    const popupElement = document.createElement('div');
+    popupElement.id = 'inlineMediaPopup';
+    popupElement.className = 'inline-media-popup';
+    popupElement.dataset.forLink = url;
+    // Keep popup open while the mouse is over it
+    popupElement.addEventListener('mouseenter', () => {
+        if (inlineMediaPopupCloseTimer) {
+            clearTimeout(inlineMediaPopupCloseTimer);
+            inlineMediaPopupCloseTimer = null;
         }
-        
-        // Truncate display URL if it's too long
-        if (displayUrl.length > 100) {
-            displayUrl = displayUrl.substring(0, 100) + '...';
-        }
-        
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
     });
+    popupElement.addEventListener('mouseleave', scheduleCloseInlineMediaPopup);
+
+    let mediaElement;
+    if (isVideo) {
+        mediaElement = document.createElement('video');
+        mediaElement.src = url;
+        mediaElement.controls = true;
+        mediaElement.muted = true;
+        mediaElement.autoplay = true;
+        mediaElement.className = 'inline-media-popup-content video';
+    } else {
+        mediaElement = document.createElement('img');
+        mediaElement.src = url;
+        mediaElement.alt = '';
+        mediaElement.className = 'inline-media-popup-content';
+    }
+    popupElement.appendChild(mediaElement);
+
+    // Position using fixed viewport coords (same strategy as context menu)
+    document.body.appendChild(popupElement);
+
+    const rect = linkElement.getBoundingClientRect();
+    const popupRect = popupElement.getBoundingClientRect();
+    const gap = 20;
+
+    // Decide vertical side: prefer below, flip above if not enough room below
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    let top;
+    if (spaceBelow >= popupRect.height + gap || spaceBelow >= spaceAbove) {
+        top = rect.bottom + gap;
+    } else {
+        top = rect.top - popupRect.height - gap;
+    }
+
+    // Horizontal: align to link left, clamp to viewport
+    let left = rect.left;
+    if (left + popupRect.width > window.innerWidth - 10) left = window.innerWidth - popupRect.width - 10;
+    if (left < 10) left = 10;
+
+    // Final vertical clamp
+    if (top + popupRect.height > window.innerHeight - 10) top = window.innerHeight - popupRect.height - 10;
+    if (top < 10) top = 10;
+
+    popupElement.style.left = left + 'px';
+    popupElement.style.top = top + 'px';
+
+    if (isVideo) {
+        mediaElement.play().catch(() => {});
+    }
+}
+
+function scheduleCloseInlineMediaPopup() {
+    inlineMediaPopupCloseTimer = setTimeout(closeInlineMediaPopup, 120);
+}
+
+function closeInlineMediaPopup() {
+    if (inlineMediaPopupCloseTimer) {
+        clearTimeout(inlineMediaPopupCloseTimer);
+        inlineMediaPopupCloseTimer = null;
+    }
+    const popupElement = document.getElementById('inlineMediaPopup');
+    if (popupElement) {
+        const videoElement = popupElement.querySelector('video');
+        if (videoElement) videoElement.pause();
+        popupElement.remove();
+    }
 }
 
 function formatLastSeen(dateString) {
