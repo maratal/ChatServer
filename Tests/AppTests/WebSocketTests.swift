@@ -70,7 +70,7 @@ final class WebSocketTests: AppLiveTestCase {
         let expectation3 = XCTestExpectation(description: "Message")
         expectation3.expectedFulfillmentCount = 3
         
-        try await WebSocket.connect(to: "ws://localhost:8080/\(deviceSession1.id)",
+        try await WebSocket.connect(to: "ws://localhost:8080/ws/\(deviceSession1.id)",
                                     headers: .authWith(token: deviceSession1.accessToken),
                                     on: app.eventLoopGroup) { ws in
             ws.onPing { ws, buf in
@@ -82,7 +82,7 @@ final class WebSocketTests: AppLiveTestCase {
                 ws.close()
             }
         }
-        try await WebSocket.connect(to: "ws://localhost:8080/\(deviceSession2.id)",
+        try await WebSocket.connect(to: "ws://localhost:8080/ws/\(deviceSession2.id)",
                                     headers: .authWith(token: deviceSession2.accessToken),
                                     on: app.eventLoopGroup) { ws in
             ws.onPing { ws, buf in

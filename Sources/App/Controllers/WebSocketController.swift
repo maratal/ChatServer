@@ -10,7 +10,7 @@ struct WebSocketController: RouteCollection {
             .grouped(DeviceSession.urlAuthenticator()) // used by browser
             .grouped(DeviceSession.authenticator()) // used by tests
         
-        protected.webSocket(.id) { req, socket in
+        protected.webSocket("ws", .id) { req, socket in
             let address = req.peerAddress?.ipAddress ?? "::0"
             do {
                 let deviceSession = try req.deviceSession()
