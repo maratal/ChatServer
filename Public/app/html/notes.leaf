@@ -16,7 +16,7 @@
             <div class="w-full h-full bg-sidebar flex flex-col">
                 <!-- Title bar -->
                 <div class="h-header bg-sidebar border-b border-sidebar-border flex items-center justify-between px-4">
-                    <h1 class="text-2xl font-bold text-sidebar-foreground" id="notesSidebarTitle">Notes</h1>
+                    <h1 class="text-2xl font-bold text-sidebar-foreground" id="notesSidebarTitle">Journal</h1>
                     <button class="inline-button close-icon-button" onclick="closeNotesSidebar()" title="Close"></button>
                 </div>
 

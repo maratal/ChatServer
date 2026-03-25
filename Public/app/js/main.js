@@ -465,6 +465,7 @@ async function selectChat(chatId, addToHistory = true) {
     const chatTitle = document.getElementById('chatTitle');
     const chatSubtitle = document.getElementById('chatSubtitle');
     const chatHeaderStatusIndicator = document.getElementById('chatHeaderStatusIndicator');
+    const chatHeaderAvatarContainer = document.getElementById('chatHeaderAvatarContainer');
     const messagesContainer = document.getElementById('messagesContainer');
     
     // Add/remove personal chat class for styling
@@ -478,6 +479,7 @@ async function selectChat(chatId, addToHistory = true) {
             chatHeaderAvatar.textContent = '️🗒️';
             chatHeaderAvatar.style.color = '';
             chatHeaderAvatar.style.backgroundColor = '';
+            chatHeaderAvatarContainer.title = 'Journal';
             chatHeaderStatusIndicator.style.display = 'none'; // No status for self-chat
         } else {
             chatTitle.textContent = otherUser.name;
@@ -495,6 +497,7 @@ async function selectChat(chatId, addToHistory = true) {
             } else {
                 applyAvatarColor(chatHeaderAvatar, otherUser.name, otherUser.id);
             }
+            chatHeaderAvatarContainer.title = '';
             chatHeaderStatusIndicator.style.display = isOnline ? 'block' : 'none';
         }
     } else {
@@ -512,6 +515,7 @@ async function selectChat(chatId, addToHistory = true) {
         } else {
             applyAvatarColor(chatHeaderAvatar, groupName, `group_${chat.id}`);
         }
+        chatHeaderAvatarContainer.title = '';
         chatHeaderStatusIndicator.style.display = 'none'; // No status for group chats
     }
     
@@ -531,7 +535,6 @@ async function selectChat(chatId, addToHistory = true) {
     chatHeader.style.display = 'flex';
     
     // Add click handler to chat header avatar
-    const chatHeaderAvatarContainer = document.getElementById('chatHeaderAvatarContainer');
     if (chatHeaderAvatarContainer) {
         if (isPersonalNotes(chat)) {
             chatHeaderAvatarContainer.onclick = async () => {
@@ -1659,7 +1662,7 @@ function showNotesInfo(chat, options = {}) {
     modalElement.style.zIndex = 1000 + userInfoModalStack.length * 10;
 
     const headerButtons = isOwner
-        ? `<button class="ellipsis-button" id="notesInfoMenuButton_${chat.id}" onclick="event.stopPropagation(); showChatInfoMenu('${chat.id}')" title="Notes menu">•••</button>`
+        ? `<button class="ellipsis-button" id="notesInfoMenuButton_${chat.id}" onclick="event.stopPropagation(); showNotesInfoMenu('${chat.id}')" title="Notes menu">•••</button>`
         : '<div></div>';
 
     modalElement.innerHTML = `
@@ -1698,6 +1701,37 @@ function showNotesInfo(chat, options = {}) {
     displayNotesInfo(chat, `${modalId}_body`, isOwner);
 }
 
+function showNotesInfoMenu(chatId) {
+    const menuButton = document.getElementById(`notesInfoMenuButton_${chatId}`);
+    if (!menuButton) return;
+
+    const rect = menuButton.getBoundingClientRect();
+    const userId = currentUser?.info?.id;
+    const notesUrl = `${window.location.origin}/users/${userId}/notes`;
+
+    showContextMenu({
+        items: [
+            { id: 'open', label: 'Open Journal', icon: openLinkIcon },
+            { id: 'share', label: 'Share Link', icon: shareIcon }
+        ],
+        x: rect.left,
+        y: rect.bottom + 2,
+        onAction: async (action) => {
+            if (!userId) return;
+            if (action === 'share') {
+                try {
+                    await navigator.clipboard.writeText(notesUrl);
+                    alert('Link copied to clipboard');
+                } catch (error) {
+                    console.error('Failed to copy notes URL:', error);
+                }
+            } else if (action === 'open') {
+                window.open(notesUrl, '_blank', 'noopener,noreferrer');
+            }
+        }
+    });
+}
+
 function displayNotesInfo(chat, bodyId, isOwner) {
     const body = document.getElementById(bodyId);
     if (!body) return;
@@ -1732,7 +1766,7 @@ function displayNotesInfo(chat, bodyId, isOwner) {
                 <input type="file" id="groupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleExistingGroupChatAvatarFileSelect(event)">
             </div>
             <div class="user-profile-section">
-                <div class="user-profile-section-title">Notes Title</div>
+                <div class="user-profile-section-title">Journal Title</div>
                 <div class="group-name-input-container">
                     <input type="text" class="user-profile-name-input" id="groupChatNameInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Personal Notes" data-original-value="${escapeHtml(chat.title || '')}">
                     <button class="group-name-save-btn" id="groupChatNameSaveBtn_${chat.id}" style="display: none;" onclick="saveGroupChatTitle('${chat.id}')" title="Save">

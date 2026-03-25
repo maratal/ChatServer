@@ -48,7 +48,7 @@ function initializeSidebarNotesInfo() {
     if (!body) return;
 
     const notesTitle = pageNotesTitle || getNotesUserInfoTitle(pageUserName);
-    if (titleElement) titleElement.textContent = 'Notes';
+    if (titleElement) titleElement.textContent = 'Journal';
 
     const notesImage = pageNotesImages && pageNotesImages.length > 0 ? pageNotesImages[0] : null;
     const avatarColor = getAvatarColorForUser(`group_notes_${pageUserId}`);
