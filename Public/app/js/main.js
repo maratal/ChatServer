@@ -14,11 +14,6 @@ let lastUserId = null;
 let isLoadingUsers = false;
 let hasMoreUsers = true;
 
-// User info avatar state
-let userInfoPhotos = [];
-let userInfoCurrentPhotoIndex = 0;
-let userInfoCurrentUserId = null;
-
 // Enhanced authentication check to get current user
 async function checkAuth() {
     console.log('checkAuth called');
@@ -538,7 +533,18 @@ async function selectChat(chatId, addToHistory = true) {
     // Add click handler to chat header avatar
     const chatHeaderAvatarContainer = document.getElementById('chatHeaderAvatarContainer');
     if (chatHeaderAvatarContainer) {
-        if (chat.isPersonal) {
+        if (isPersonalNotes(chat)) {
+            chatHeaderAvatarContainer.onclick = async () => {
+                try {
+                    const fullChat = await apiGetChat(chat.id);
+                    const chatIndex = chats.findIndex(c => c.id === chat.id);
+                    if (chatIndex !== -1) chats[chatIndex] = fullChat;
+                    showNotesInfo(fullChat, { isOwner: true });
+                } catch (error) {
+                    console.error('Error fetching chat for notes info:', error);
+                }
+            };
+        } else if (chat.isPersonal) {
             const user = chat.allUsers.find(user => user.id !== currentUser?.info.id) || currentUser.info;
             chatHeaderAvatarContainer.onclick = () => showUserInfo(user.id);
         } else {
@@ -981,193 +987,6 @@ async function showUserInfo(userId) {
     }
 }
 
-function displayUserInfo(user) {
-    const bodyId = `userInfoModal_${user.id}_body`;
-    const body = document.getElementById(bodyId);
-    
-    if (!body) {
-        console.error('Element body not found:', bodyId);
-        return;
-    }
-
-    const name = user.name || user.username || 'Unknown User';
-    const username = user.username || 'unknown';
-    const about = user.about || '';
-    const lastSeen = user.lastSeen ? formatLastSeen(user.lastSeen) : null;
-    const isOnline = user.lastSeen ? isUserOnline(user.lastSeen) : false;
-    const avatarColor = getAvatarColorForUser(user.id);
-    
-    // Store photos globally
-    userInfoPhotos = user.photos || [];
-    userInfoCurrentPhotoIndex = 0;
-    userInfoCurrentUserId = user.id;
-    
-    // Get current photo
-    const currentPhoto = userInfoPhotos.length > 0 ? userInfoPhotos[userInfoCurrentPhotoIndex] : null;
-    const photoUrl = currentPhoto ? getPreviewUrl(currentPhoto.id, currentPhoto.fileType) : null;
-    const hasMultiplePhotos = userInfoPhotos.length > 1;
-    
-    let html = `
-        <div class="user-info-avatar-container">
-            <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper_${user.id}">
-                ${hasMultiplePhotos ? `
-                <button class="user-profile-avatar-chevron user-profile-avatar-chevron-left" onclick="event.stopPropagation(); navigateUserInfoPhoto(-1)" title="Previous photo">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m14 18-6-6 6-6"></path>
-                    </svg>
-                </button>
-                ` : ''}
-                <div class="user-info-avatar" id="userInfoAvatar_${user.id}">
-                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg_${user.id}">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(name)}</span>`}
-                </div>
-                ${hasMultiplePhotos ? `
-                <button class="user-profile-avatar-chevron user-profile-avatar-chevron-right" onclick="event.stopPropagation(); navigateUserInfoPhoto(1)" title="Next photo">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m10 18 6-6-6-6"></path>
-                    </svg>
-                </button>
-                ` : ''}
-            </div>
-            ${hasMultiplePhotos ? `
-            <div class="user-profile-avatar-pagination">
-                ${userInfoPhotos.map((photo, index) => `
-                    <button class="user-profile-avatar-pagination-dot ${index === userInfoCurrentPhotoIndex ? 'active' : ''}" 
-                            onclick="event.stopPropagation(); switchUserInfoPhoto(${index})" 
-                            title="Photo ${index + 1}"></button>
-                `).join('')}
-            </div>
-            ` : ''}
-        </div>
-        <div class="user-info-name">${escapeHtml(name)}</div>
-        <div class="user-info-username"><a href="/users/${encodeURIComponent(username)}" class="info-link" target="_blank" rel="noopener noreferrer">${escapeHtml(username)}</a></div>
-    `;
-    
-    // Status section
-    html += `
-        <div class="user-info-section">
-            <div class="user-info-section-title">Status</div>
-            <div class="user-info-status">
-                <span class="user-info-status-indicator ${isOnline ? '' : 'offline'}"></span>
-                <span>${isOnline ? 'Online' : lastSeen ? `Last seen ${lastSeen}` : 'Offline'}</span>
-            </div>
-        </div>
-    `;
-    
-    // About section
-    html += `
-        <div class="user-info-section">
-            <div class="user-info-section-title">About</div>
-            <div class="user-info-about ${about ? '' : 'empty'}">
-                ${about ? escapeHtml(about) : 'No bio available'}
-            </div>
-        </div>
-    `;
-    
-    // Meta information
-    html += `
-        <div class="user-info-section">
-            <div class="user-info-section-title">Information</div>
-            <div class="user-info-meta">
-                <div class="user-info-meta-item">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    <span>User ID: <a href="/users/${user.id}" class="info-link" target="_blank" rel="noopener noreferrer">${user.id || 'N/A'}</a></span>
-                </div>
-                ${lastSeen ? `
-                <div class="user-info-meta-item">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    <span>Last seen: ${lastSeen}</span>
-                </div>
-                ` : ''}
-            </div>
-        </div>
-    `;
-    
-    body.innerHTML = html;
-    
-    // Add click handler to avatar after HTML is inserted
-    const avatar = document.getElementById(`userInfoAvatar_${user.id}`);
-    if (avatar && photoUrl) {
-        avatar.addEventListener('click', function(event) {
-            // Don't open viewer if clicking on chevrons
-            if (event.target.closest('.user-profile-avatar-chevron')) {
-                return;
-            }
-            openUserInfoViewer();
-        });
-    }
-}
-
-function navigateUserInfoPhoto(direction) {
-    if (userInfoPhotos.length <= 1) return;
-    
-    userInfoCurrentPhotoIndex += direction;
-    if (userInfoCurrentPhotoIndex < 0) {
-        userInfoCurrentPhotoIndex = userInfoPhotos.length - 1;
-    } else if (userInfoCurrentPhotoIndex >= userInfoPhotos.length) {
-        userInfoCurrentPhotoIndex = 0;
-    }
-    
-    updateUserInfoAvatarDisplay();
-}
-
-function switchUserInfoPhoto(index) {
-    if (index < 0 || index >= userInfoPhotos.length) return;
-    userInfoCurrentPhotoIndex = index;
-    updateUserInfoAvatarDisplay();
-}
-
-function updateUserInfoAvatarDisplay() {
-    if (!userInfoCurrentUserId) return;
-    
-    const avatar = document.getElementById(`userInfoAvatar_${userInfoCurrentUserId}`);
-    const avatarImg = document.getElementById(`userInfoAvatarImg_${userInfoCurrentUserId}`);
-    const currentPhoto = userInfoPhotos[userInfoCurrentPhotoIndex];
-    
-    if (!avatar) return;
-    
-    if (currentPhoto && avatarImg) {
-        avatarImg.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
-    } else if (currentPhoto) {
-        const img = document.createElement('img');
-        img.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
-        img.alt = '';
-        img.id = `userInfoAvatarImg_${userInfoCurrentUserId}`;
-        avatar.innerHTML = '';
-        avatar.appendChild(img);
-    }
-    
-    // Update pagination dots for the current user's modal
-    const bodyId = `userInfoModal_${userInfoCurrentUserId}_body`;
-    const body = document.getElementById(bodyId);
-    if (body) {
-        const dots = body.querySelectorAll('.user-profile-avatar-pagination-dot');
-        dots.forEach((dot, index) => {
-            if (index === userInfoCurrentPhotoIndex) {
-                dot.classList.add('active');
-            } else {
-                dot.classList.remove('active');
-            }
-        });
-    }
-}
-
-function openUserInfoViewer() {
-    if (userInfoPhotos.length === 0) return;
-    
-    openMediaViewer(userInfoPhotos, userInfoCurrentPhotoIndex, (newIndex) => {
-        userInfoCurrentPhotoIndex = newIndex;
-        updateUserInfoAvatarDisplay();
-    });
-}
-
 function closeAllModalInfoPanels() {
     // Close all user info modals
     while (userInfoModalStack.length > 0) {
@@ -1272,7 +1091,17 @@ async function handleChatMenuAction(action, chatId, fromModal) {
     
     switch (action) {
         case 'info':
-            if (chat.isPersonal) {
+            if (isPersonalNotes(chat)) {
+                // Fetch full chat info then show notes info panel
+                try {
+                    const fullChat = await apiGetChat(chatId);
+                    const chatIndex = chats.findIndex(c => c.id === chatId);
+                    if (chatIndex !== -1) chats[chatIndex] = fullChat;
+                    showNotesInfo(fullChat, { isOwner: true });
+                } catch (error) {
+                    console.error('Error fetching chat for notes info:', error);
+                }
+            } else if (chat.isPersonal) {
                 const user = chat.allUsers.find(user => user.id !== currentUser?.info.id) || currentUser.info;
                 showUserInfo(user.id);
             } else {
@@ -1825,6 +1654,246 @@ function openGroupChatImageViewer(chat) {
     openMediaViewer(chat.images, 0, () => {});
 }
 
+// ── Notes Info Panel ────────────────────────────────────────────────────────
+
+function showNotesInfo(chat, options = {}) {
+    const isOwner = options.isOwner !== false;
+    const modalId = `notesInfoModal_${chat.id}`;
+    const modalElement = document.createElement('div');
+    modalElement.id = modalId;
+    modalElement.className = 'user-info-modal';
+    modalElement.style.zIndex = 1000 + userInfoModalStack.length * 10;
+
+    const headerButtons = isOwner
+        ? `<button class="ellipsis-button" id="notesInfoMenuButton_${chat.id}" onclick="event.stopPropagation(); showChatInfoMenu('${chat.id}')" title="Notes menu">•••</button>`
+        : '<div></div>';
+
+    modalElement.innerHTML = `
+        <div class="user-info-content">
+            <div class="user-info-header">
+                ${headerButtons}
+                <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
+                <button class="inline-button" onclick="closeTopModalInfoPanel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="user-info-body" id="${modalId}_body">
+                <div class="user-info-loading">Loading notes information...</div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalElement);
+
+    modalElement.addEventListener('click', function(event) {
+        if (event.target === modalElement) {
+            closeTopModalInfoPanel();
+        }
+    });
+
+    modalElement.style.display = 'block';
+    modalElement.offsetHeight;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            modalElement.classList.add('show');
+        });
+    });
+
+    userInfoModalStack.push({ chatId: chat.id, element: modalElement, bodyId: `${modalId}_body`, isGroupChat: true });
+
+    displayNotesInfo(chat, `${modalId}_body`, isOwner);
+}
+
+function displayNotesInfo(chat, bodyId, isOwner) {
+    const body = document.getElementById(bodyId);
+    if (!body) return;
+
+    const notesTitle = getNotesDisplayTitle(chat);
+    const chatImage = chat.images && chat.images.length > 0 ? chat.images[0] : null;
+    const avatarColor = getAvatarColorForUser(`group_${chat.id}`);
+    const photoUrl = chatImage ? getPreviewUrl(chatImage.id, chatImage.fileType) : null;
+
+    const owner = chat.owner || (currentUser ? currentUser.info : null);
+    const ownerName = owner ? (owner.name || owner.username || 'Unknown') : 'Unknown';
+    const createdDate = chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : 'N/A';
+
+    let html = '';
+
+    // Avatar
+    if (isOwner) {
+        html += `
+            <div class="user-info-avatar-container">
+                <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
+                    <div class="user-info-avatar" id="groupChatAvatarDisplay">
+                        ${photoUrl ? `<img src="${photoUrl}" alt="" id="groupChatAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(notesTitle)}</span>`}
+                    </div>
+                    <svg class="user-profile-avatar-progress" id="groupChatAvatarProgress" viewBox="0 0 100 100" style="display: none;">
+                        <circle class="user-profile-avatar-progress-bg" cx="50" cy="50" r="48"></circle>
+                        <circle class="user-profile-avatar-progress-bar" cx="50" cy="50" r="48" id="groupChatAvatarProgressBar"></circle>
+                    </svg>
+                    <button class="ellipsis-button" id="groupChatAvatarMenuButton" onclick="event.stopPropagation(); showGroupChatAvatarMenu(event)" title="Avatar menu">
+                        •••
+                    </button>
+                </div>
+                <input type="file" id="groupChatAvatarInput" accept="image/*" style="display: none;" onchange="handleExistingGroupChatAvatarFileSelect(event)">
+            </div>
+            <div class="user-profile-section">
+                <div class="user-profile-section-title">Notes Title</div>
+                <div class="group-name-input-container">
+                    <input type="text" class="user-profile-name-input" id="groupChatNameInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Personal Notes" data-original-value="${escapeHtml(chat.title || '')}">
+                    <button class="group-name-save-btn" id="groupChatNameSaveBtn_${chat.id}" style="display: none;" onclick="saveGroupChatTitle('${chat.id}')" title="Save">
+                        ${checkmarkSaveIcon}
+                        ${checkmarkSaveIconSaving}
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="user-info-avatar-container">
+                <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper">
+                    <div class="user-info-avatar" id="userInfoAvatar">
+                        ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(notesTitle)}</span>`}
+                    </div>
+                </div>
+            </div>
+        `;
+        if (notesTitle) {
+            html += `<div class="user-info-name">${escapeHtml(notesTitle)}</div>`;
+        }
+    }
+
+    // Information section
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">Information</div>
+            <div class="user-info-meta">
+                <div class="user-info-meta-item"${isOwner ? ` style="cursor: pointer;" onclick="showUserInfo(${owner?.id || 0})"` : ''}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.735H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294l2.952-5.605z"></path>
+                    </svg>
+                    <span>Author: ${isOwner ? `<span class="info-link">${escapeHtml(ownerName)}</span>` : escapeHtml(ownerName)}</span>
+                </div>
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                        <line x1="16" x2="16" y1="2" y2="6"></line>
+                        <line x1="8" x2="8" y1="2" y2="6"></line>
+                        <line x1="3" x2="21" y1="10" y2="10"></line>
+                    </svg>
+                    <span>Since: ${escapeHtml(createdDate)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Preview section - last published note
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">Preview</div>
+            <div id="notesInfoPreview" class="notes-info-preview">
+                <div class="user-info-loading" style="font-size: 0.8125rem;">Loading...</div>
+            </div>
+        </div>
+    `;
+
+    body.innerHTML = html;
+
+    // Avatar click handlers
+    if (isOwner) {
+        const avatar = document.getElementById('groupChatAvatarDisplay');
+        if (avatar) {
+            avatar.addEventListener('click', function(event) {
+                if (event.target.closest('.user-profile-avatar-menu-button')) return;
+                if (chat.images && chat.images.length > 0) {
+                    openGroupChatImageViewer(chat);
+                } else {
+                    openExistingGroupChatAvatarFileDialog();
+                }
+            });
+        }
+        const nameInput = document.getElementById(`groupChatNameInput_${chat.id}`);
+        const saveBtn = document.getElementById(`groupChatNameSaveBtn_${chat.id}`);
+        if (nameInput && saveBtn) {
+            nameInput.addEventListener('input', function() {
+                const originalValue = this.getAttribute('data-original-value') || '';
+                saveBtn.style.display = this.value.trim() !== originalValue ? 'flex' : 'none';
+            });
+            nameInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && saveBtn.style.display !== 'none') {
+                    e.preventDefault();
+                    saveGroupChatTitle(chat.id);
+                }
+            });
+        }
+    } else {
+        const avatar = document.getElementById('userInfoAvatar');
+        if (avatar && photoUrl) {
+            avatar.addEventListener('click', function() {
+                openGroupChatImageViewer(chat);
+            });
+        }
+    }
+
+    // Load preview of last published note
+    loadNotesInfoPreview(chat);
+}
+
+async function loadNotesInfoPreview(chat) {
+    const previewContainer = document.getElementById('notesInfoPreview');
+    if (!previewContainer) return;
+
+    const ownerId = chat.owner?.id || currentUser?.info?.id;
+    if (!ownerId) {
+        previewContainer.innerHTML = '<div class="user-info-about empty">No preview available</div>';
+        return;
+    }
+
+    try {
+        const notes = await apiGetUserNotes(ownerId, 1);
+        if (!notes || notes.length === 0) {
+            previewContainer.innerHTML = '<div class="user-info-about empty">No published notes yet</div>';
+            return;
+        }
+
+        const note = notes[0];
+        const message = note.message;
+        if (!message) {
+            previewContainer.innerHTML = '<div class="user-info-about empty">No published notes yet</div>';
+            return;
+        }
+
+        const text = message.text || '';
+        const hasAttachments = message.attachments && message.attachments.length > 0;
+        const normalizedDate = normalizeTimestamp(note.createdAt || message.createdAt);
+        const dateText = normalizedDate.toLocaleDateString();
+
+        let previewHtml = `<div class="notes-info-preview-item">`;
+        if (text) {
+            const truncated = text.length > 120 ? text.substring(0, 120) + '...' : text;
+            previewHtml += `<div class="notes-info-preview-text">${escapeHtml(truncated)}</div>`;
+        }
+        if (hasAttachments) {
+            const count = message.attachments.length;
+            previewHtml += `<div class="notes-info-preview-meta">${count} attachment${count !== 1 ? 's' : ''}</div>`;
+        }
+        previewHtml += `<div class="notes-info-preview-date">${escapeHtml(dateText)}</div>`;
+        previewHtml += `</div>`;
+
+        previewContainer.innerHTML = previewHtml;
+    } catch (error) {
+        console.error('Failed to load notes preview:', error);
+        previewContainer.innerHTML = '<div class="user-info-about empty">Failed to load preview</div>';
+    }
+}
+
+function getNotesDisplayTitle(chat) {
+    return chat.title || 'Personal Notes';
+}
+
 // Member management
 function showGroupMemberMenu(event, chatId, userId) {
     event.stopPropagation();
@@ -2026,15 +2095,6 @@ async function saveGroupChatAvatar(chatId) {
         alert('Error saving avatar: ' + error.message);
         throw error;
     }
-}
-
-function isUserOnline(lastSeen) {
-    const date = new Date(lastSeen);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    // Consider online if lastSeen was within 5 minutes
-    return diffMins < 5;
 }
 
 // Handle avatar clicks using event delegation

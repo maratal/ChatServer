@@ -32,6 +32,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(CreateReaction())
     app.migrations.add(CreateMediaResource())
     app.migrations.add(CreateMessageToMedia())
+    app.migrations.add(CreateNote())
     
     try app.createUploadsDirectory()
     
@@ -41,6 +42,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     try app.register(collection: MediaStorageController(service: service.mediaStorage))
     try app.register(collection: WebSocketController(core: service))
     try app.register(collection: UploadController())
+    try app.register(collection: NotesController(service: service.notes, usersService: service.users))
     
     // Use custom FileMiddleware that only handles GET/HEAD requests
     app.middleware.use(ReadOnlyFileMiddleware(publicDirectory: app.directory.publicDirectory))

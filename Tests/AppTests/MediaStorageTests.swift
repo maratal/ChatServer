@@ -9,7 +9,7 @@ final class MediaStorageTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         let (_, resource) = try await service.makeMessageWithAttachment(for: chat.id!, authorId: current.id!, text: "With attachment")
         
-        try await asyncTest(.GET, "media/recents", afterResponse: { res in
+        try await asyncTest(.GET, "api/media/recents", afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let media = try res.content.decode([MediaInfo].self)
             XCTAssertEqual(media.count, 1)
@@ -26,13 +26,13 @@ final class MediaStorageTests: AppTestCase {
             try await service.makeMessageWithAttachment(for: chat.id!, authorId: current.id!)
         }
         
-        try await asyncTest(.GET, "media/recents?offset=0&limit=3", afterResponse: { res in
+        try await asyncTest(.GET, "api/media/recents?offset=0&limit=3", afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let page1 = try res.content.decode([MediaInfo].self)
             XCTAssertEqual(page1.count, 3)
         })
         
-        try await asyncTest(.GET, "media/recents?offset=3&limit=3", afterResponse: { res in
+        try await asyncTest(.GET, "api/media/recents?offset=3&limit=3", afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let page2 = try res.content.decode([MediaInfo].self)
             XCTAssertEqual(page2.count, 2)
@@ -49,7 +49,7 @@ final class MediaStorageTests: AppTestCase {
         XCTAssertTrue(service.fileExists(for: resourceInfo))
         XCTAssertTrue(service.previewExists(for: resourceInfo))
         
-        try await asyncTest(.DELETE, "media/\(resource.id!)", afterResponse: { res in
+        try await asyncTest(.DELETE, "api/media/\(resource.id!)", afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
         
@@ -57,7 +57,7 @@ final class MediaStorageTests: AppTestCase {
         XCTAssertFalse(service.previewExists(for: resourceInfo))
         
         // Verify it's gone from recent media
-        try await asyncTest(.GET, "media/recents", afterResponse: { res in
+        try await asyncTest(.GET, "api/media/recents", afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let media = try res.content.decode([MediaInfo].self)
             XCTAssertTrue(media.isEmpty)
@@ -70,7 +70,7 @@ final class MediaStorageTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         let (_, resource) = try await service.makeMessageWithAttachment(for: chat.id!, authorId: users[0].id!, text: "Not yours")
         
-        try await asyncTest(.DELETE, "media/\(resource.id!)", afterResponse: { res in
+        try await asyncTest(.DELETE, "api/media/\(resource.id!)", afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
         

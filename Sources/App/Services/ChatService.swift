@@ -85,11 +85,13 @@ actor ChatService: ChatServiceProtocol {
 
     private let core: CoreService
     let repo: ChatsRepository
+    let notesRepo: NotesRepository
     var currentUser: User?
     
-    init(core: CoreService, repo: ChatsRepository) {
+    init(core: CoreService, repo: ChatsRepository, notesRepo: NotesRepository) {
         self.core = core
         self.repo = repo
+        self.notesRepo = notesRepo
     }
     
     func with(_ currentUser: User?) -> ChatService {
@@ -150,7 +152,8 @@ actor ChatService: ChatServiceProtocol {
             throw ServiceError(.forbidden)
         }
         let chat = relation.chat
-        if relation.chat.isPersonal {
+        let isPersonalNotes = chat.isPersonal && chat.participantsKey == Set([userId]).participantsKey()
+        if chat.isPersonal && !isPersonalNotes {
             throw ServiceError(.badRequest, reason: "You can't update personal chat.")
         }
         if let title = update.title {
@@ -339,7 +342,21 @@ actor ChatService: ChatServiceProtocol {
             throw ServiceError(.forbidden)
         }
         let messages = try await repo.messages(from: id, before: before, count: count ?? 50)
-        return messages.map { $0.info() }
+        var infos = messages.map { $0.info() }
+        
+        // For personal notes chats, attach note info to each message
+        let chat = relation.chat
+        if chat.isPersonal && chat.users.count == 1 && chat.users.first?.id == userId {
+            let messageIds = infos.compactMap(\.id)
+            let notesByMessageId = try await notesRepo.findBySourceIds(messageIds: messageIds)
+            for index in infos.indices {
+                if let messageId = infos[index].id, let note = notesByMessageId[messageId] {
+                    infos[index].note = note.ref()
+                }
+            }
+        }
+        
+        return infos
     }
     
     func postMessage(to chatId: ChatID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo {
@@ -618,7 +635,8 @@ actor ChatService: ChatServiceProtocol {
         guard chat.owner.id == userId else {
             throw ServiceError(.forbidden)
         }
-        if relation.chat.isPersonal {
+        let isPersonalNotes = chat.isPersonal && chat.participantsKey == Set([userId]).participantsKey()
+        if chat.isPersonal && !isPersonalNotes {
             throw ServiceError(.badRequest, reason: "You can't update personal chat.")
         }
         guard let resource = info.image, let resourceId = resource.id else {

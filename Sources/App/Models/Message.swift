@@ -86,6 +86,7 @@ extension Message {
         var replyTo: MessageID?
         var readMarks: [ReadMark.Info]?
         var attachments: [MediaInfo]?
+        var note: Note.Ref?
         
         init(from message: Message) {
             self.id = message.id

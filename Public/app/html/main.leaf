@@ -307,18 +307,18 @@
         </div>
     </div>
     
-    <script src="/app/js/constants.js"></script>
-    <script src="/app/js/utils.js"></script>
-    <script src="/app/js/helpers.js"></script>
-    <script src="/app/js/api.js"></script>
-    <script src="/app/js/webpush.js"></script>
-    <script src="/app/js/svg-icons.js"></script>
-    <script src="/app/js/settings.js"></script>
-    <script src="/app/js/main.js"></script>
-    <script src="/app/js/chat.js"></script>
-    <script src="/app/js/ws.js"></script>
-    <script src="/app/js/emoji-picker.js"></script>
-    <script src="/app/js/media-viewer.js"></script>
-    <script src="/app/js/user-profile.js"></script>
+    <script src="/app/js/constants.js?v=23"></script>
+    <script src="/app/js/utils.js?v=23"></script>
+    <script src="/app/js/helpers.js?v=23"></script>
+    <script src="/app/js/api.js?v=23"></script>
+    <script src="/app/js/webpush.js?v=23"></script>
+    <script src="/app/js/svg-icons.js?v=23"></script>
+    <script src="/app/js/settings.js?v=23"></script>
+    <script src="/app/js/main.js?v=23"></script>
+    <script src="/app/js/chat.js?v=23"></script>
+    <script src="/app/js/ws.js?v=23"></script>
+    <script src="/app/js/emoji-picker.js?v=23"></script>
+    <script src="/app/js/media-viewer.js?v=23"></script>
+    <script src="/app/js/user-profile.js?v=23"></script>
 </body>
 </html>

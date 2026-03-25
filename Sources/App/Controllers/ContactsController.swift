@@ -8,7 +8,7 @@ struct ContactsController: RouteCollection {
     let service: ContactsServiceProtocol
     
     func boot(routes: RoutesBuilder) throws {
-        let users = routes.grouped("users")
+        let users = routes.grouped("api", "users")
         let protected = users.grouped(DeviceSession.authenticator())
         
         protected.group("me") { route in

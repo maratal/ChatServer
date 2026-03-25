@@ -41,9 +41,10 @@ struct CoreService: Sendable {
     var logger: Logger { app.logger }
     
     lazy var users: UserService = UserService(core: self, repo: UsersDatabaseRepository(database: app.db))
-    lazy var chats: ChatService = ChatService(core: self, repo: ChatsDatabaseRepository(core: self))
+    lazy var chats: ChatService = ChatService(core: self, repo: ChatsDatabaseRepository(core: self), notesRepo: NotesDatabaseRepository(database: app.db))
     lazy var contacts: ContactsService = ContactsService(repo: ContactsDatabaseRepository(database: app.db))
     lazy var mediaStorage: MediaStorageService = MediaStorageService(core: self, repo: MediaStorageDatabaseRepository(database: app.db))
+    lazy var notes: NotesService = NotesService(core: self, repo: NotesDatabaseRepository(database: app.db))
     
     init(app: Application) {
         self.app = app

@@ -641,3 +641,422 @@ function handleDebugCommandWrapper(text) {
     // return handleDebugCommand(text);
     return false;
 }
+
+// ── Shared Attachment & Video Functions ──────────────────────────────────────
+
+function buildAttachmentHTML(attachments, messageId, overlayHTML) {
+    if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
+        return '';
+    }
+
+    const validAttachments = attachments.filter(att => att && att.id && att.fileType);
+    if (validAttachments.length === 0) return '';
+
+    const firstAttachment = validAttachments[0];
+    const hasMultipleAttachments = validAttachments.length > 1;
+
+    const isImage = firstAttachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
+    const isVideo = firstAttachment.fileType.match(/^(mp4|webm|mov)$/i);
+
+    return `
+        <div class="message-attachment-container" data-message-id="${messageId}" onclick="openMessageAttachmentViewer('${messageId}')" style="cursor: pointer;">
+            ${hasMultipleAttachments ? `
+            <button class="message-attachment-chevron message-attachment-chevron-left" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', -1)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m14 18-6-6 6-6"></path>
+                </svg>
+            </button>
+            ` : ''}
+            ${isImage ? `
+            <img class="message-attachment-image" src="${getPreviewUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
+            ` : isVideo ? `
+            <div class="message-attachment-video-wrapper" data-video-src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}" onmouseleave="stopBalloonVideoPreview(this)">
+                <img class="message-attachment-image" src="${getVideoPreviewUrl(firstAttachment.id)}" alt="Video">
+            </div>
+            ` : ''}
+            ${hasMultipleAttachments ? `
+            <button class="message-attachment-chevron message-attachment-chevron-right" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', 1)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m10 18 6-6-6-6"></path>
+                </svg>
+            </button>
+            ` : ''}
+            <div class="media-overlay-bar">
+                ${isVideo ? `
+                <div class="video-info-left" onmouseenter="startBalloonVideoPreview(this.closest('.message-attachment-container').querySelector('.message-attachment-video-wrapper'))">
+                    <div class="video-camera-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg>
+                    </div>
+                    <span class="video-duration" data-video-src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}">${firstAttachment.duration ? formatVideoDuration(firstAttachment.duration) : ''}</span>
+                </div>
+                ` : ''}
+                ${hasMultipleAttachments ? `
+                <div class="media-overlay-pagination" onclick="event.stopPropagation();">
+                    ${validAttachments.map((att, index) => `
+                        <button class="message-attachment-pagination-dot ${index === 0 ? 'active' : ''}" 
+                                onclick="event.stopPropagation(); switchMessageAttachment('${messageId}', ${index})"></button>
+                    `).join('')}
+                </div>
+                ` : ''}
+                ${overlayHTML || ''}
+            </div>
+        </div>
+    `;
+}
+
+function navigateMessageAttachment(messageId, direction) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
+    if (!messageDiv) return;
+
+    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
+    if (attachments.length <= 1) return;
+
+    let currentIndex = parseInt(messageDiv.dataset.currentAttachmentIndex || '0');
+    currentIndex += direction;
+
+    if (currentIndex < 0) {
+        currentIndex = attachments.length - 1;
+    } else if (currentIndex >= attachments.length) {
+        currentIndex = 0;
+    }
+
+    switchMessageAttachment(messageId, currentIndex);
+}
+
+function switchMessageAttachment(messageId, index) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
+    if (!messageDiv) return;
+
+    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
+    if (index < 0 || index >= attachments.length) return;
+
+    const attachment = attachments[index];
+    const container = messageDiv.querySelector('.message-attachment-container');
+    if (!container) return;
+
+    const isImage = attachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
+    const isVideo = attachment.fileType.match(/^(mp4|webm|mov)$/i);
+
+    const currentMedia = container.querySelector('.message-attachment-image, .message-attachment-video-wrapper, .message-attachment-video');
+    if (currentMedia) {
+        if (isImage) {
+            const img = document.createElement('img');
+            img.className = 'message-attachment-image';
+            img.src = getPreviewUrl(attachment.id, attachment.fileType);
+            img.alt = 'Attachment';
+            currentMedia.replaceWith(img);
+            const overlayBarInfo = img.closest('.message-attachment-container')?.querySelector('.media-overlay-bar .video-info-left');
+            if (overlayBarInfo) overlayBarInfo.remove();
+        } else if (isVideo) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-attachment-video-wrapper';
+            wrapper.dataset.videoSrc = `/uploads/${attachment.id}.${attachment.fileType}`;
+            const img = document.createElement('img');
+            img.className = 'message-attachment-image';
+            img.alt = 'Video';
+            img.src = getVideoPreviewUrl(attachment.id);
+            wrapper.onmouseleave = function() { stopBalloonVideoPreview(this); };
+            wrapper.appendChild(img);
+            currentMedia.replaceWith(wrapper);
+            const overlayBar = wrapper.closest('.message-attachment-container')?.querySelector('.media-overlay-bar');
+            if (overlayBar) {
+                const existingVideoInfo = overlayBar.querySelector('.video-info-left');
+                if (existingVideoInfo) {
+                    const durationSpan = existingVideoInfo.querySelector('.video-duration');
+                    if (durationSpan) {
+                        durationSpan.dataset.videoSrc = `/uploads/${attachment.id}.${attachment.fileType}`;
+                        durationSpan.textContent = attachment.duration ? formatVideoDuration(attachment.duration) : '';
+                    }
+                } else {
+                    const videoInfo = document.createElement('div');
+                    videoInfo.className = 'video-info-left';
+                    videoInfo.onmouseenter = function() { startBalloonVideoPreview(this.closest('.message-attachment-container').querySelector('.message-attachment-video-wrapper')); };
+                    videoInfo.innerHTML = `<div class="video-camera-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg></div><span class="video-duration" data-video-src="/uploads/${attachment.id}.${attachment.fileType}">${attachment.duration ? formatVideoDuration(attachment.duration) : ''}</span>`;
+                    overlayBar.insertBefore(videoInfo, overlayBar.firstChild);
+                }
+            }
+        }
+    }
+
+    const dots = container.querySelectorAll('.message-attachment-pagination-dot');
+    dots.forEach((dot, i) => {
+        if (i === index) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    });
+
+    messageDiv.dataset.currentAttachmentIndex = index;
+}
+
+function openMessageAttachmentViewer(messageId) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
+    if (!messageDiv) return;
+
+    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
+    if (attachments.length === 0) return;
+
+    const currentIndex = parseInt(messageDiv.dataset.currentAttachmentIndex || '0');
+
+    const messageTextElement = messageDiv.querySelector('.message-text');
+    const messageText = messageTextElement ? messageTextElement.textContent.trim() : null;
+
+    const messageCreatedAt = messageDiv.dataset.createdAt;
+    const mediaPhotos = attachments.map(att => ({
+        id: att.id,
+        fileType: att.fileType,
+        createdAt: messageCreatedAt
+    }));
+
+    const currentAtt = attachments[currentIndex];
+    const autoplay = currentAtt && /^(mp4|webm|mov)$/i.test(currentAtt.fileType);
+
+    openMediaViewer(mediaPhotos, currentIndex, null, messageText, autoplay);
+}
+
+function startBalloonVideoPreview(wrapper) {
+    if (!wrapper) return;
+    const videoSrc = wrapper.dataset.videoSrc;
+    if (!videoSrc) return;
+    const rect = wrapper.getBoundingClientRect();
+    wrapper.style.width = rect.width + 'px';
+    wrapper.style.height = rect.height + 'px';
+    const img = wrapper.querySelector('.message-attachment-image');
+    if (img) img.style.display = 'none';
+
+    let video = wrapper.querySelector('video');
+    if (!video) {
+        video = document.createElement('video');
+        video.className = 'message-attachment-video';
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.src = videoSrc;
+        wrapper.appendChild(video);
+    }
+    video.style.display = 'block';
+    video.play().catch(() => {});
+}
+
+function stopBalloonVideoPreview(wrapper) {
+    if (!wrapper) return;
+    const video = wrapper.querySelector('video');
+    if (video) {
+        video.pause();
+        video.style.display = 'none';
+    }
+    const img = wrapper.querySelector('.message-attachment-image');
+    if (img) img.style.display = '';
+    wrapper.style.width = '';
+    wrapper.style.height = '';
+}
+
+function formatVideoDuration(seconds) {
+    const s = Math.floor(seconds);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+// ── Shared User Info Display ────────────────────────────────────────────────
+
+let userInfoPhotos = [];
+let userInfoCurrentPhotoIndex = 0;
+let userInfoCurrentUserId = null;
+let userInfoCurrentBodyId = null;
+
+function isUserOnline(lastSeen) {
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    return diffMins < 5;
+}
+
+function displayUserInfo(user, bodyId) {
+    const body = document.getElementById(bodyId);
+
+    if (!body) {
+        console.error('Element body not found:', bodyId);
+        return;
+    }
+
+    const name = user.name || user.username || 'Unknown User';
+    const username = user.username || 'unknown';
+    const about = user.about || '';
+    const lastSeen = user.lastSeen ? formatLastSeen(user.lastSeen) : null;
+    const isOnline = user.lastSeen ? isUserOnline(user.lastSeen) : false;
+    const avatarColor = getAvatarColorForUser(user.id);
+
+    // Store photos globally
+    userInfoPhotos = user.photos || [];
+    userInfoCurrentPhotoIndex = 0;
+    userInfoCurrentUserId = user.id;
+    userInfoCurrentBodyId = bodyId;
+
+    // Get current photo
+    const currentPhoto = userInfoPhotos.length > 0 ? userInfoPhotos[userInfoCurrentPhotoIndex] : null;
+    const photoUrl = currentPhoto ? getPreviewUrl(currentPhoto.id, currentPhoto.fileType) : null;
+    const hasMultiplePhotos = userInfoPhotos.length > 1;
+
+    let html = `
+        <div class="user-info-avatar-container">
+            <div class="user-info-avatar-wrapper" id="userInfoAvatarWrapper_${user.id}">
+                ${hasMultiplePhotos ? `
+                <button class="user-profile-avatar-chevron user-profile-avatar-chevron-left" onclick="event.stopPropagation(); navigateUserInfoPhoto(-1)" title="Previous photo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m14 18-6-6 6-6"></path>
+                    </svg>
+                </button>
+                ` : ''}
+                <div class="user-info-avatar" id="userInfoAvatar_${user.id}">
+                    ${photoUrl ? `<img src="${photoUrl}" alt="" id="userInfoAvatarImg_${user.id}">` : `<span class="avatar-initials" style="color: ${avatarColor.text}; background-color: ${avatarColor.background};">${getInitials(name)}</span>`}
+                </div>
+                ${hasMultiplePhotos ? `
+                <button class="user-profile-avatar-chevron user-profile-avatar-chevron-right" onclick="event.stopPropagation(); navigateUserInfoPhoto(1)" title="Next photo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m10 18 6-6-6-6"></path>
+                    </svg>
+                </button>
+                ` : ''}
+            </div>
+            ${hasMultiplePhotos ? `
+            <div class="user-profile-avatar-pagination">
+                ${userInfoPhotos.map((photo, index) => `
+                    <button class="user-profile-avatar-pagination-dot ${index === userInfoCurrentPhotoIndex ? 'active' : ''}" 
+                            onclick="event.stopPropagation(); switchUserInfoPhoto(${index})" 
+                            title="Photo ${index + 1}"></button>
+                `).join('')}
+            </div>
+            ` : ''}
+        </div>
+        <div class="user-info-name">${escapeHtml(name)}</div>
+        <div class="user-info-username"><a href="/${encodeURIComponent(username)}" class="info-link" target="_blank" rel="noopener noreferrer">${escapeHtml(username)}</a></div>
+    `;
+
+    // Status section
+    if (user.lastSeen) {
+        html += `
+            <div class="user-info-section">
+                <div class="user-info-section-title">Status</div>
+                <div class="user-info-status">
+                    <span class="user-info-status-indicator ${isOnline ? '' : 'offline'}"></span>
+                    <span>${isOnline ? 'Online' : lastSeen ? `Last seen ${lastSeen}` : 'Offline'}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // About section
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">About</div>
+            <div class="user-info-about ${about ? '' : 'empty'}">
+                ${about ? escapeHtml(about) : 'No bio available'}
+            </div>
+        </div>
+    `;
+
+    // Meta information
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">Information</div>
+            <div class="user-info-meta">
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>User ID: <a href="/${user.id}" class="info-link" target="_blank" rel="noopener noreferrer">${user.id || 'N/A'}</a></span>
+                </div>
+                ${lastSeen ? `
+                <div class="user-info-meta-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>Last seen: ${lastSeen}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+
+    body.innerHTML = html;
+
+    // Add click handler to avatar after HTML is inserted
+    const avatar = document.getElementById(`userInfoAvatar_${user.id}`);
+    if (avatar && photoUrl) {
+        avatar.addEventListener('click', function(event) {
+            if (event.target.closest('.user-profile-avatar-chevron')) {
+                return;
+            }
+            openUserInfoViewer();
+        });
+    }
+}
+
+function navigateUserInfoPhoto(direction) {
+    if (userInfoPhotos.length <= 1) return;
+
+    userInfoCurrentPhotoIndex += direction;
+    if (userInfoCurrentPhotoIndex < 0) {
+        userInfoCurrentPhotoIndex = userInfoPhotos.length - 1;
+    } else if (userInfoCurrentPhotoIndex >= userInfoPhotos.length) {
+        userInfoCurrentPhotoIndex = 0;
+    }
+
+    updateUserInfoAvatarDisplay();
+}
+
+function switchUserInfoPhoto(index) {
+    if (index < 0 || index >= userInfoPhotos.length) return;
+    userInfoCurrentPhotoIndex = index;
+    updateUserInfoAvatarDisplay();
+}
+
+function updateUserInfoAvatarDisplay() {
+    if (!userInfoCurrentUserId) return;
+
+    const avatar = document.getElementById(`userInfoAvatar_${userInfoCurrentUserId}`);
+    const avatarImg = document.getElementById(`userInfoAvatarImg_${userInfoCurrentUserId}`);
+    const currentPhoto = userInfoPhotos[userInfoCurrentPhotoIndex];
+
+    if (!avatar) return;
+
+    if (currentPhoto && avatarImg) {
+        avatarImg.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
+    } else if (currentPhoto) {
+        const img = document.createElement('img');
+        img.src = getPreviewUrl(currentPhoto.id, currentPhoto.fileType);
+        img.alt = '';
+        img.id = `userInfoAvatarImg_${userInfoCurrentUserId}`;
+        avatar.innerHTML = '';
+        avatar.appendChild(img);
+    }
+
+    // Update pagination dots
+    const body = document.getElementById(userInfoCurrentBodyId);
+    if (body) {
+        const dots = body.querySelectorAll('.user-profile-avatar-pagination-dot');
+        dots.forEach((dot, index) => {
+            if (index === userInfoCurrentPhotoIndex) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
+}
+
+function openUserInfoViewer() {
+    if (userInfoPhotos.length === 0) return;
+
+    openMediaViewer(userInfoPhotos, userInfoCurrentPhotoIndex, (newIndex) => {
+        userInfoCurrentPhotoIndex = newIndex;
+        updateUserInfoAvatarDisplay();
+    });
+}

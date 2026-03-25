@@ -26,7 +26,7 @@ final class UploadTests: AppTestCase {
         let expectation = expectation(description: "Uploaded")
         
         let newFileName = UUID().uuidString
-        let client = UploadClient("http://\(ip):\(port)/uploads", filePath: filePath, fileName: newFileName) { error in
+        let client = UploadClient("http://\(ip):\(port)/api/uploads", filePath: filePath, fileName: newFileName) { error in
             XCTAssertNil(error)
             expectation.fulfill()
         }
@@ -57,7 +57,7 @@ final class UploadTests: AppTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: filePath))
         XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
         
-        try await asyncTest(.DELETE, "uploads/\(fileName)", afterResponse: { res in
+        try await asyncTest(.DELETE, "api/uploads/\(fileName)", afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
         

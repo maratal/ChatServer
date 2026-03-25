@@ -8,7 +8,7 @@ struct ChatController: RouteCollection {
     let service: ChatServiceProtocol
     
     func boot(routes: RoutesBuilder) throws {
-        let protected = routes.grouped("chats").grouped(DeviceSession.authenticator())
+        let protected = routes.grouped("api", "chats").grouped(DeviceSession.authenticator())
         protected.get(use: chats)
         protected.post(use: createChat)
         protected.group(.id) { route in

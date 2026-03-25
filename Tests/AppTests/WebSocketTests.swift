@@ -23,7 +23,7 @@ final class WebSocketTests: AppLiveTestCase {
         var deviceSession1: DeviceSession.Info!
         var deviceSession2: DeviceSession.Info!
         
-        try app.sendRequest(.POST, "users/login",
+        try app.sendRequest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -35,7 +35,7 @@ final class WebSocketTests: AppLiveTestCase {
             deviceSession1 = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoDesktop.id))
         })
         
-        try app.sendRequest(.POST, "users/login",
+        try app.sendRequest(.POST, "api/users/login",
                             headers: .authWith(username: users[0].username, password: ""),
                             beforeRequest: { req in
             try req.content.encode(
@@ -98,7 +98,7 @@ final class WebSocketTests: AppLiveTestCase {
         
         // Sending message from user1 to user2:
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .authWith(token: deviceSession1.accessToken), beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .authWith(token: deviceSession1.accessToken), beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )

@@ -8,7 +8,7 @@ struct UserController: RouteCollection {
     let service: UserServiceProtocol
     
     func boot(routes: RoutesBuilder) throws {
-        let usersPath = routes.grouped("users")
+        let usersPath = routes.grouped("api", "users")
         usersPath.post(use: register)
         usersPath.post("resetPassword", use: resetPassword)
         

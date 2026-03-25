@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>#(userName)'s Notes - #(productName)</title>
+    <meta name="description" content="Public notes by #(userName)">
+    <!-- Prevent Chrome from requesting favicon.ico -->
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="/app/css/main.css">
+</head>
+<body>
+    <div class="flex h-screen bg-background">
+        <!-- Sidebar: Notes Info Panel -->
+        <div class="w-sidebar h-screen border-r border-sidebar-border flex flex-col" id="notesSidebar">
+            <div class="w-full h-full bg-sidebar flex flex-col">
+                <!-- Title bar -->
+                <div class="h-header bg-sidebar border-b border-sidebar-border flex items-center justify-between px-4">
+                    <h1 class="text-2xl font-bold text-sidebar-foreground" id="notesSidebarTitle">Notes</h1>
+                    <button class="inline-button" onclick="closeNotesSidebar()" title="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
+                            <path d="M18 6 6 18"></path>
+                            <path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Notes Info Body -->
+                <div class="user-info-body" id="notesSidebarBody">
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Notes Area -->
+        <div class="flex-1 flex flex-col h-screen">
+            <!-- Header -->
+            <header class="h-header bg-sidebar border-b border-sidebar-border flex items-center justify-between px-4 relative">
+                <div class="notes-header-left-avatar" id="notesHeaderLeftAvatar" style="display: none;" onclick="openNotesSidebar()" title="Show notes info"></div>
+                <div class="notes-header-center">
+                    <div class="notes-header-title" id="notesHeaderTitle"></div>
+                    <div class="notes-header-subtitle" id="notesHeaderSubtitle"></div>
+                </div>
+            </header>
+
+            <!-- Notes Container -->
+            <div class="relative overflow-x-hidden overflow-y-auto flex-1" id="notesScrollWrapper">
+                <div class="messages-container" id="notesContainer">
+                    <div class="no-messages" id="emptyPlaceholder">No published notes yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script id="pageUserData" type="application/json">#unsafeHTML(userJSON)</script>
+    <script id="pageNotesData" type="application/json">#unsafeHTML(notesJSON)</script>
+    <script>
+        // Page context from server (JSON-encoded for safety)
+        const pageUser = JSON.parse(document.getElementById('pageUserData').textContent);
+        const pageUserId = pageUser.id;
+        const pageUserName = pageUser.name;
+        const pageUserUsername = pageUser.username;
+        const pageUserAbout = pageUser.about;
+        const pageUserPhotos = pageUser.photos;
+        const pageUserLastSeen = pageUser.lastSeen;
+
+        const pageNotes = JSON.parse(document.getElementById('pageNotesData').textContent);
+        const pageNotesTitle = pageNotes.title;
+        const pageNotesImages = pageNotes.images;
+        const pageNotesCreatedAt = pageNotes.createdAt;
+    </script>
+    <script src="/app/js/constants.js"></script>
+    <script src="/app/js/settings.js"></script>
+    <script src="/app/js/helpers.js"></script>
+    <script src="/app/js/svg-icons.js"></script>
+    <script src="/app/js/utils.js"></script>
+    <script src="/app/js/api.js"></script>
+    <script src="/app/js/media-viewer.js"></script>
+    <script src="/app/js/notes.js"></script>
+</body>
+</html>

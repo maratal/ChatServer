@@ -148,7 +148,7 @@ function displayCurrentUserProfile() {
                         <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    <span>User ID: <a href="/users/${user.id}" class="info-link" target="_blank" rel="noopener noreferrer">${user.id}</a></span>
+                    <span>User ID: <a href="/${user.id}" class="info-link" target="_blank" rel="noopener noreferrer">${user.id}</a></span>
                 </div>
                 <div class="user-info-meta-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -156,7 +156,7 @@ function displayCurrentUserProfile() {
                         <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
                         <path d="M2 12h20"></path>
                     </svg>
-                    <span>Username: <a href="/users/${encodeURIComponent(username)}" class="info-link" target="_blank" rel="noopener noreferrer">${escapeHtml(username)}</a></span>
+                    <span>Username: <a href="/${encodeURIComponent(username)}" class="info-link" target="_blank" rel="noopener noreferrer">${escapeHtml(username)}</a></span>
                 </div>
                 <div class="user-info-meta-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

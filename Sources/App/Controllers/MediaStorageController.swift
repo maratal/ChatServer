@@ -8,7 +8,7 @@ struct MediaStorageController: RouteCollection {
     let service: MediaStorageServiceProtocol
 
     func boot(routes: RoutesBuilder) throws {
-        let protected = routes.grouped("media").grouped(DeviceSession.authenticator())
+        let protected = routes.grouped("api", "media").grouped(DeviceSession.authenticator())
         protected.get("recents", use: recentMedia)
         protected.delete(.id, use: deleteMedia)
     }

@@ -4,7 +4,7 @@ import XCTVapor
 final class UserTests: AppTestCase {
     
     func test_01_registerUser() throws {
-        try app.test(.POST, "users", beforeRequest: { req in
+        try app.test(.POST, "api/users", beforeRequest: { req in
             try req.content.encode(
                 RegistrationRequest(name: "Test", username: "testuser", password: "********", deviceInfo: .testInfoMobile)
             )
@@ -20,7 +20,7 @@ final class UserTests: AppTestCase {
     func test_02_deregisterUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -33,17 +33,17 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.GET, "users/me",
+        try await asyncTest(.GET, "api/users/me",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.DELETE, "users/me",
+        try await asyncTest(.DELETE, "api/users/me",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.GET, "users/me",
+        try await asyncTest(.GET, "api/users/me",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
@@ -53,7 +53,7 @@ final class UserTests: AppTestCase {
     func test_03_loginUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -67,7 +67,7 @@ final class UserTests: AppTestCase {
             tokenString = session!.accessToken
         })
         
-        try await asyncTest(.GET, "users/me",
+        try await asyncTest(.GET, "api/users/me",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -75,7 +75,7 @@ final class UserTests: AppTestCase {
             XCTAssertEqual(response.info.username, CurrentUser.username)
         })
         
-        try await asyncTest(.GET, "users/me",
+        try await asyncTest(.GET, "api/users/me",
                             headers: .authWith(token: "fake"),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
@@ -84,7 +84,7 @@ final class UserTests: AppTestCase {
     
     func test_04_loginUserFailure() async throws {
         try await service.seedCurrentUser()
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: "123"),
                             beforeRequest: { req in
             try req.content.encode(
@@ -98,7 +98,7 @@ final class UserTests: AppTestCase {
     func test_05_currentUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -111,7 +111,7 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.GET, "users/me",
+        try await asyncTest(.GET, "api/users/me",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -121,7 +121,7 @@ final class UserTests: AppTestCase {
     func test_06_logoutUser() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -134,17 +134,17 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.GET, "users/me",
+        try await asyncTest(.GET, "api/users/me",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.POST, "users/me/logout",
+        try await asyncTest(.POST, "api/users/me/logout",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.GET, "users/me",
+        try await asyncTest(.GET, "api/users/me",
                             headers: .authWith(token: tokenString),
                             afterResponse: { res in
             XCTAssertEqual(res.status, .unauthorized, res.body.string)
@@ -154,7 +154,7 @@ final class UserTests: AppTestCase {
     func test_07_changePassword() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -167,7 +167,7 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/password",
+        try await asyncTest(.PUT, "api/users/me/password",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
@@ -176,7 +176,7 @@ final class UserTests: AppTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: "12345678"),
                             beforeRequest: { req in
             try req.content.encode(
@@ -190,7 +190,7 @@ final class UserTests: AppTestCase {
     func test_08_tryChangePasswordWithIncorrectCurrentPassword() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -203,7 +203,7 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/password",
+        try await asyncTest(.PUT, "api/users/me/password",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
@@ -216,7 +216,7 @@ final class UserTests: AppTestCase {
     
     func test_09_resetPassword() async throws {
         try await service.seedCurrentUser()
-        try await asyncTest(.POST, "users/resetPassword",
+        try await asyncTest(.POST, "api/users/resetPassword",
                             beforeRequest: { req in
             try req.content.encode(
                 ResetPasswordRequest(userId: 1, newPassword: "12345678", accountKey: CurrentUser.accountKey)
@@ -224,7 +224,7 @@ final class UserTests: AppTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: "12345678"),
                             beforeRequest: { req in
             try req.content.encode(
@@ -237,7 +237,7 @@ final class UserTests: AppTestCase {
     
     func test_10_tryResetPasswordWithInvalidAccountKey() async throws {
         try await service.seedCurrentUser()
-        try await asyncTest(.POST, "users/resetPassword",
+        try await asyncTest(.POST, "api/users/resetPassword",
                             beforeRequest: { req in
             try req.content.encode(
                 ResetPasswordRequest(userId: 1, newPassword: "12345678", accountKey: "")
@@ -249,7 +249,7 @@ final class UserTests: AppTestCase {
     
     func test_11_tryResetPasswordWithAccountKeyNotSet() async throws {
         try await service.seedCurrentUser(accountKey: nil)
-        try await asyncTest(.POST, "users/resetPassword",
+        try await asyncTest(.POST, "api/users/resetPassword",
                             beforeRequest: { req in
             try req.content.encode(
                 ResetPasswordRequest(userId: 1, newPassword: "12345678", accountKey: CurrentUser.accountKey)
@@ -262,7 +262,7 @@ final class UserTests: AppTestCase {
     func test_12_setAccountKey() async throws {
         try await service.seedCurrentUser(accountKey: nil)
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -275,7 +275,7 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/accountKey",
+        try await asyncTest(.PUT, "api/users/me/accountKey",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
@@ -284,7 +284,7 @@ final class UserTests: AppTestCase {
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.POST, "users/resetPassword",
+        try await asyncTest(.POST, "api/users/resetPassword",
                             beforeRequest: { req in
             try req.content.encode(
                 ResetPasswordRequest(userId: 1, newPassword: "12345678", accountKey: "\(CurrentUser.accountKey.reversed())")
@@ -297,7 +297,7 @@ final class UserTests: AppTestCase {
     func test_13_trySetAccountKeyWithIncorrectCurrentPassword() async throws {
         try await service.seedCurrentUser(accountKey: nil)
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -310,7 +310,7 @@ final class UserTests: AppTestCase {
             XCTAssertNotNil(session)
             tokenString = session!.accessToken
         })
-        try await asyncTest(.PUT, "users/me/accountKey",
+        try await asyncTest(.PUT, "api/users/me/accountKey",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(
@@ -324,7 +324,7 @@ final class UserTests: AppTestCase {
     func test_14_updateUser() async throws {
         try await service.seedCurrentUser()
         let about = UUID().uuidString
-        try await asyncTest(.PUT, "users/me", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/users/me", headers: .none, beforeRequest: { req in
             try req.content.encode([
                 "name": "Test Test",
                 "about": about
@@ -342,7 +342,7 @@ final class UserTests: AppTestCase {
     func test_15_updateDeviceSession() async throws {
         try await service.seedCurrentUser()
         var tokenString = ""
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -354,7 +354,7 @@ final class UserTests: AppTestCase {
             XCTAssertEqual(privateInfo.deviceSessions.count, 1)
             XCTAssertEqual(privateInfo.deviceSessions[0].deviceInfo.id, DeviceInfo.testInfoMobile.id)
         })
-        try await asyncTest(.POST, "users/login",
+        try await asyncTest(.POST, "api/users/login",
                             headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
                             beforeRequest: { req in
             try req.content.encode(
@@ -366,7 +366,7 @@ final class UserTests: AppTestCase {
             XCTAssertEqual(privateInfo.deviceSessions.count, 1)
             tokenString = try XCTUnwrap(privateInfo.sessionForDeviceId(DeviceInfo.testInfoDesktop.id)).accessToken
         })
-        try await asyncTest(.PUT, "users/me/device",
+        try await asyncTest(.PUT, "api/users/me/device",
                             headers: .authWith(token: tokenString),
                             beforeRequest: { req in
             try req.content.encode(UpdateDeviceSessionRequest(deviceName: "My computer"))
@@ -382,7 +382,7 @@ final class UserTests: AppTestCase {
     
     func test_16_getUser() async throws {
         let (_, photo) = try await service.seedUserWithPhoto(name: "Test", username: "test")
-        try await asyncTest(.GET, "users/1", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/users/1", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let user = try res.content.decode(UserInfo.self)
             XCTAssertEqual(user.id, 1)
@@ -397,20 +397,20 @@ final class UserTests: AppTestCase {
         try await service.seedUser(name: "Demo 1", username: "test1")
         let (_, photo) = try await service.seedUserWithPhoto(name: "Demo 2", username: "test2")
         // Search by id=2
-        try await asyncTest(.GET, "users?s=2", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/users?s=2", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let users = try res.content.decode([UserInfo].self)
             XCTAssertEqual(users.count, 1)
             XCTAssertEqual(users[0].id, 2)
         })
         // Search by username "u(se)r*"
-        try await asyncTest(.GET, "users?s=se", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/users?s=se", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let names = try res.content.decode([UserInfo].self).compactMap { $0.name }
             XCTAssertEqual(names.sorted(), ["Name 1", "Name 2"])
         })
         // Search by name "D(em)o *"
-        try await asyncTest(.GET, "users?s=em", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/users?s=em", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let users = try res.content.decode([UserInfo].self).sorted(by: { $0.id! < $1.id! })
             XCTAssertEqual(users.compactMap { $0.name }, ["Demo 1", "Demo 2"])
@@ -432,7 +432,7 @@ final class UserTests: AppTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: uploadPath))
         XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
         
-        try await asyncTest(.POST, "users/me/photos", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/users/me/photos", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateUserRequest(photo: MediaInfo(id: fileId, fileType: fileType, fileSize: 1)))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -442,7 +442,7 @@ final class UserTests: AppTestCase {
             XCTAssertTrue(service.previewExists(for: userInfo.photos![0]))
         })
         
-        try await asyncTest(.DELETE, "users/me/photos/\(fileId)", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/users/me/photos/\(fileId)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
         
@@ -457,7 +457,7 @@ final class UserTests: AppTestCase {
         try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 5, namePrefix: "Page", usernamePrefix: "page")
         
-        try await asyncTest(.GET, "users/all?count=3", afterResponse: { res in
+        try await asyncTest(.GET, "api/users/all?count=3", afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let page1 = try res.content.decode([UserInfo].self)
             XCTAssertEqual(page1.count, 3)
@@ -465,7 +465,7 @@ final class UserTests: AppTestCase {
             XCTAssertTrue(page1[0].id! > page1[1].id!)
             
             let lastId = page1.last!.id!
-            try await asyncTest(.GET, "users/all?count=3&id=\(lastId)", afterResponse: { res in
+            try await asyncTest(.GET, "api/users/all?count=3&id=\(lastId)", afterResponse: { res in
                 XCTAssertEqual(res.status, .ok, res.body.string)
                 let page2 = try res.content.decode([UserInfo].self)
                 XCTAssertTrue(page2.count > 0)
@@ -481,7 +481,7 @@ final class UserTests: AppTestCase {
         try await service.seedCurrentUser()
         try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         
-        try await asyncTest(.GET, "users?s=a", afterResponse: { res in
+        try await asyncTest(.GET, "api/users?s=a", afterResponse: { res in
             XCTAssertEqual(res.status, .notFound, res.body.string)
         })
     }

@@ -28,7 +28,7 @@ async function handleResponse(response) {
 }
 
 async function apiRegisterUser(name, username, password, deviceInfo) {
-    const response = await fetch('/users', {
+    const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -46,7 +46,7 @@ async function apiRegisterUser(name, username, password, deviceInfo) {
 async function apiLoginUser(username, password, deviceInfo) {
     const credentials = btoa(`${username}:${password}`);
     
-    const response = await fetch('/users/login', {
+    const response = await fetch('/api/users/login', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ async function apiLogoutUser() {
         throw new Error('No access token available');
     }
     
-    const response = await fetch('/users/me/logout', {
+    const response = await fetch('/api/users/me/logout', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -78,7 +78,7 @@ async function apiGetCurrentUser() {
         throw new Error('No access token available');
     }
     
-    const response = await fetch('/users/me', {
+    const response = await fetch('/api/users/me', {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -93,7 +93,7 @@ async function apiUpdateCurrentUser(fields) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch('/users/me', {
+    const response = await fetch('/api/users/me', {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -110,7 +110,7 @@ async function apiChangePassword(currentPassword, newPassword) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch('/users/me/password', {
+    const response = await fetch('/api/users/me/password', {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -130,7 +130,7 @@ async function apiGetUser(userId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/users/${userId}`, {
+    const response = await fetch(`/api/users/${userId}`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -151,7 +151,7 @@ async function apiGetAllUsers(lastUserId = null, count = 20) {
         params.append('id', lastUserId);
     }
     
-    const response = await fetch(`/users/all?${params}`, {
+    const response = await fetch(`/api/users/all?${params}`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -166,7 +166,7 @@ async function apiSearchUsers(query) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/users?s=${encodeURIComponent(query)}`, {
+    const response = await fetch(`/api/users?s=${encodeURIComponent(query)}`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -181,7 +181,7 @@ async function apiAddUserPhoto(photoId, fileType, fileSize) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch('/users/me/photos', {
+    const response = await fetch('/api/users/me/photos', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -204,7 +204,7 @@ async function apiDeleteUserPhoto(photoId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/users/me/photos/${photoId}`, {
+    const response = await fetch(`/api/users/me/photos/${photoId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -219,7 +219,7 @@ async function apiGetChats(full = true) {
         throw new Error('No access token available');
     }
     
-    const url = full ? '/chats/?full=1' : '/chats/';
+    const url = full ? '/api/chats/?full=1' : '/api/chats/';
     const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -235,7 +235,7 @@ async function apiGetChat(chatId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}`, {
+    const response = await fetch(`/api/chats/${chatId}`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -250,7 +250,7 @@ async function apiUpdateChat(chatId, data) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}`, {
+    const response = await fetch(`/api/chats/${chatId}`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -267,7 +267,7 @@ async function apiUpdateChatSettings(chatId, settings) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/settings`, {
+    const response = await fetch(`/api/chats/${chatId}/settings`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -284,7 +284,7 @@ async function apiBlockChat(chatId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/block`, {
+    const response = await fetch(`/api/chats/${chatId}/block`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -299,7 +299,7 @@ async function apiUnblockChat(chatId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/unblock`, {
+    const response = await fetch(`/api/chats/${chatId}/unblock`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -314,7 +314,7 @@ async function apiBlockUserInChat(chatId, userId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/users/${userId}/block`, {
+    const response = await fetch(`/api/chats/${chatId}/users/${userId}/block`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -329,7 +329,7 @@ async function apiUnblockUserInChat(chatId, userId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/users/${userId}/unblock`, {
+    const response = await fetch(`/api/chats/${chatId}/users/${userId}/unblock`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -344,7 +344,7 @@ async function apiDeleteChatImage(chatId, imageId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/images/${imageId}`, {
+    const response = await fetch(`/api/chats/${chatId}/images/${imageId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -359,7 +359,7 @@ async function apiAddChatUsers(chatId, userIds) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/users`, {
+    const response = await fetch(`/api/chats/${chatId}/users`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -376,7 +376,7 @@ async function apiRemoveChatUsers(chatId, userIds) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/users`, {
+    const response = await fetch(`/api/chats/${chatId}/users`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -402,7 +402,7 @@ async function apiCreateChat(isPersonal, participants, title = null) {
         body.title = title;
     }
     
-    const response = await fetch('/chats', {
+    const response = await fetch('/api/chats', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -419,7 +419,7 @@ async function apiDeleteChat(chatId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}`, {
+    const response = await fetch(`/api/chats/${chatId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -434,7 +434,7 @@ async function apiExitChat(chatId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/me`, {
+    const response = await fetch(`/api/chats/${chatId}/me`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -449,7 +449,7 @@ async function apiAddChatImage(chatId, imageId, fileType, fileSize) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/images`, {
+    const response = await fetch(`/api/chats/${chatId}/images`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -472,7 +472,7 @@ async function apiGetMessages(chatId, count = 50, before = null) {
         throw new Error('No access token available');
     }
     
-    let url = `/chats/${chatId}/messages?count=${count}`;
+    let url = `/api/chats/${chatId}/messages?count=${count}`;
     if (before) {
         url += `&before=${before}`;
     }
@@ -505,7 +505,7 @@ async function apiSendMessage(chatId, localId, text, attachments = null, replyTo
         requestBody.replyTo = replyTo;
     }
     
-    const response = await fetch(`/chats/${chatId}/messages`, {
+    const response = await fetch(`/api/chats/${chatId}/messages`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -522,7 +522,7 @@ async function apiUpdateMessage(chatId, messageId, newText, attachments = null) 
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/messages/${messageId}`, {
+    const response = await fetch(`/api/chats/${chatId}/messages/${messageId}`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -542,7 +542,7 @@ async function apiDeleteMessage(chatId, messageId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/messages/${messageId}`, {
+    const response = await fetch(`/api/chats/${chatId}/messages/${messageId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -557,7 +557,7 @@ async function apiMarkAsRead(chatId, messageId) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/chats/${chatId}/messages/${messageId}/read`, {
+    const response = await fetch(`/api/chats/${chatId}/messages/${messageId}/read`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -605,7 +605,7 @@ async function apiUploadFile(file, fileName, contentType, onProgress = null, onX
             reject(new Error('Upload aborted'));
         });
         
-        xhr.open('POST', '/uploads');
+        xhr.open('POST', '/api/uploads');
         xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
         xhr.setRequestHeader('File-Name', fileName);
         xhr.setRequestHeader('Content-Type', contentType);
@@ -620,7 +620,7 @@ async function apiDeleteUpload(fileName) {
         throw new Error('No access token available');
     }
     
-    const response = await fetch(`/uploads/${encodeURIComponent(fileName)}`, {
+    const response = await fetch(`/api/uploads/${encodeURIComponent(fileName)}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -644,7 +644,7 @@ function getVideoPreviewUrl(fileId) {
 async function apiGetRecentMedia(offset = 0, limit = 20) {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');
-    const response = await fetch(`/media/recents?offset=${offset}&limit=${limit}`, {
+    const response = await fetch(`/api/media/recents?offset=${offset}&limit=${limit}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
     return await handleResponse(response);
@@ -653,9 +653,62 @@ async function apiGetRecentMedia(offset = 0, limit = 20) {
 async function apiDeleteMedia(mediaId) {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');
-    const response = await fetch(`/media/${encodeURIComponent(mediaId)}`, {
+    const response = await fetch(`/api/media/${encodeURIComponent(mediaId)}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
+    return await handleResponse(response);
+}
+
+// Notes API
+
+async function apiPublishNote(messageId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/api/notes/publish', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ messageId })
+    });
+    return await handleResponse(response);
+}
+
+async function apiUnpublishNote(messageId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/api/notes/unpublish', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ messageId })
+    });
+    return await handleResponse(response);
+}
+
+async function apiGetNoteStatus(messageId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch(`/api/notes/status/${messageId}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}
+
+async function apiGetUserNotes(userId, count = 20, before = null) {
+    let url = `/api/users/${userId}/notes?count=${count}`;
+    if (before) {
+        url += `&before=${before}`;
+    }
+    const response = await fetch(url);
+    return await handleResponse(response);
+}
+
+async function apiGetPublicUser(userId) {
+    const response = await fetch(`/api/users/${userId}`);
     return await handleResponse(response);
 }

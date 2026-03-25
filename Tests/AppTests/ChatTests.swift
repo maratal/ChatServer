@@ -11,7 +11,7 @@ final class ChatTests: AppTestCase {
         try await service.makeMessage(for: chat1.id!, authorId: current.id!, text: "hello")
         try await service.makeMessage(for: chat2.id!, authorId: current.id!, text: "hello")
         
-        try await asyncTest(.GET, "chats", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try res.content.decode([ChatInfo].self)
             XCTAssertEqual(chats.count, 2)
@@ -20,7 +20,7 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual([chat1, chat2].map { $0.id! }.sorted(), chats.map { $0.id! }.sorted())
         })
         
-        try await asyncTest(.GET, "chats/?full=1", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/?full=1", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try res.content.decode([ChatInfo].self)
             XCTAssertEqual(chats.count, 2)
@@ -36,7 +36,7 @@ final class ChatTests: AppTestCase {
         let (user, photoRes) = try await service.seedUserWithPhoto(name: "User", username: "user")
         let (chat, imageRes) = try await service.makeChatWithImage(ownerId: current.id!, users: [user.id!])
         
-        try await asyncTest(.GET, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
@@ -54,7 +54,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         
-        try await asyncTest(.GET, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chatInfo = try res.content.decode(ChatInfo.self)
             XCTAssertEqual(chat.id, chatInfo.id)
@@ -67,7 +67,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
         
-        try await asyncTest(.GET, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
@@ -76,7 +76,7 @@ final class ChatTests: AppTestCase {
         try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         
-        try await asyncTest(.POST, "chats", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 CreateChatRequest(participants: [users[0].id!, users[1].id!], isPersonal: false)
             )
@@ -93,7 +93,7 @@ final class ChatTests: AppTestCase {
         try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         
-        try await asyncTest(.POST, "chats", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 CreateChatRequest(participants: [users[0].id!], isPersonal: true)
             )
@@ -111,7 +111,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         
-        try await asyncTest(.POST, "chats", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 CreateChatRequest(participants: [users[0].id!, users[1].id!], isPersonal: false)
             )
@@ -130,7 +130,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         XCTAssertEqual(chat.isPersonal, true)
         
-        try await asyncTest(.POST, "chats", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats", headers: .none, beforeRequest: { req in
             try req.content.encode(CreateChatRequest(participants: [users[0].id!], isPersonal: true))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -149,7 +149,7 @@ final class ChatTests: AppTestCase {
         try await service.chats.repo.save(chat)
         XCTAssertEqual(chat.isPersonal, false)
         
-        try await asyncTest(.POST, "chats", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats", headers: .none, beforeRequest: { req in
             try req.content.encode(CreateChatRequest(participants: [users[0].id!], isPersonal: true))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -167,12 +167,12 @@ final class ChatTests: AppTestCase {
         let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)!
         XCTAssertEqual(relation.isChatBlocked, false)
         
-        try await app.test(.PUT, "chats/\(chat.id!)/block", headers: .none, afterResponse: { res in
+        try await app.test(.PUT, "api/chats/\(chat.id!)/block", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
             XCTAssertEqual(relation?.isChatBlocked, true)
         })
-        try await app.test(.PUT, "chats/\(chat.id!)/unblock", headers: .none, afterResponse: { res in
+        try await app.test(.PUT, "api/chats/\(chat.id!)/unblock", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
             XCTAssertEqual(relation?.isChatBlocked, false)
@@ -186,12 +186,12 @@ final class ChatTests: AppTestCase {
         let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: users[0].id!)!
         XCTAssertEqual(relation.isUserBlocked, false)
         
-        try await app.test(.PUT, "chats/\(chat.id!)/users/\(users[0].id!)/block", headers: .none, afterResponse: { res in
+        try await app.test(.PUT, "api/chats/\(chat.id!)/users/\(users[0].id!)/block", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: users[0].id!)
             XCTAssertEqual(relation?.isUserBlocked, true)
         })
-        try await app.test(.PUT, "chats/\(chat.id!)/users/\(users[0].id!)/unblock", headers: .none, afterResponse: { res in
+        try await app.test(.PUT, "api/chats/\(chat.id!)/users/\(users[0].id!)/unblock", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: users[0].id!)
             XCTAssertEqual(relation?.isUserBlocked, false)
@@ -203,7 +203,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false, blockedId: users[0].id)
         
-        try await asyncTest(.GET, "chats/\(chat.id!)/users/blocked", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/\(chat.id!)/users/blocked", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let blockedUsers = try res.content.decode([UserInfo].self)
             XCTAssertEqual(blockedUsers.count, 1)
@@ -216,7 +216,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(title: "Some"))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -234,7 +234,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(title: "Some"))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
@@ -246,7 +246,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(title: "Some"))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .badRequest, res.body.string)
@@ -258,7 +258,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true, blockedId: current.id)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(title: "Some"))
         }, afterResponse: { res in
             XCTAssertNotEqual(res.status, .ok, res.body.string)
@@ -272,7 +272,7 @@ final class ChatTests: AppTestCase {
         let chatRelation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)!
         XCTAssertEqual(chatRelation.isMuted, false)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(isMuted: true))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -297,7 +297,7 @@ final class ChatTests: AppTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: uploadPath))
         XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/images", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/images", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(image: MediaInfo(id: fileId, fileType: fileType, fileSize: 1)))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -307,7 +307,7 @@ final class ChatTests: AppTestCase {
             XCTAssertTrue(service.previewExists(for: chatInfo.images![0]))
         })
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/images/\(fileId)", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/images/\(fileId)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
         
@@ -322,7 +322,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
-        try await app.test(.POST, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+        try await app.test(.POST, "api/chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -343,7 +343,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
         XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
@@ -356,7 +356,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false)
         XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
-        try await app.test(.DELETE, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+        try await app.test(.DELETE, "api/chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
@@ -377,7 +377,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!, users[1].id!], isPersonal: false, blockedId: current.id)
         XCTAssertEqual(chat.participantsKey, [1, 2, 3].participantsKey())
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/users", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatUsersRequest(users: [users[1].id!, users[2].id!]))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
@@ -393,7 +393,7 @@ final class ChatTests: AppTestCase {
         
         let count = 5
         var page1 = [MessageInfo]()
-        try await asyncTest(.GET, "chats/\(chat.id!)/messages?count=\(count)", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/\(chat.id!)/messages?count=\(count)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             page1 = try res.content.decode([MessageInfo].self)
             XCTAssertEqual(page1.count, 5)
@@ -401,7 +401,7 @@ final class ChatTests: AppTestCase {
             XCTAssertEqual(page1.first?.attachments?.count, 1)
             XCTAssertEqual(page1.last?.text, "text 5")
         })
-        try await asyncTest(.GET, "chats/\(chat.id!)/messages?count=\(count)&before=\(page1.last!.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/\(chat.id!)/messages?count=\(count)&before=\(page1.last!.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let page2 = try res.content.decode([MessageInfo].self)
             XCTAssertEqual(page2.count, 4)
@@ -417,7 +417,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedId: current.id)
         try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 9)
         
-        try await asyncTest(.GET, "chats/\(chat.id!)/messages?count=5", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats/\(chat.id!)/messages?count=5", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
@@ -427,7 +427,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
@@ -454,7 +454,7 @@ final class ChatTests: AppTestCase {
         var attachment: MediaInfo!
         let fileType = "test"
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID().uuidString, attachments: [MediaInfo(id: UUID(), fileType: fileType, fileSize: 1)])
             )
@@ -478,7 +478,7 @@ final class ChatTests: AppTestCase {
         try service.makeFakeUpload(fileName: fileId + "-preview." + fileType, fileSize: 1)
         
         // Inform chat users that upload is now completed and their clients can update the UI
-        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 UpdateMessageRequest(fileExists: true, previewExists: true)
             )
@@ -495,7 +495,7 @@ final class ChatTests: AppTestCase {
         
         await service.testNotificator.clearSentNotifications()
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             message = try res.content.decode(MessageInfo.self)
             attachment = try XCTUnwrap(message.attachments?.first)
@@ -514,7 +514,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false, blockedById: users[0].id)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
@@ -536,7 +536,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false, blockedId: current.id)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
@@ -550,7 +550,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true, blockedById: users[0].id)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
@@ -564,7 +564,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [users[1].id!], isPersonal: true)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: UUID().uuidString, text: "Hey")
             )
@@ -581,7 +581,7 @@ final class ChatTests: AppTestCase {
         XCTAssertEqual(message.text, "text 1")
         sleep(1)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 UpdateMessageRequest(text: "Hi")
             )
@@ -609,7 +609,7 @@ final class ChatTests: AppTestCase {
         let message = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
         XCTAssertEqual(message.text, "text 1")
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 UpdateMessageRequest(text: "Hi")
             )
@@ -626,14 +626,14 @@ final class ChatTests: AppTestCase {
         let messageInfo = try await service.chats.repo.findMessage(id: message.id!)!.info()
         XCTAssertTrue(messageInfo.readMarks == nil || messageInfo.readMarks!.isEmpty)
         
-        try await app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
+        try await app.test(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try await service.chats.repo.findMessage(id: message.id!)!.info()
             XCTAssertEqual(info.readMarks?.count, 1)
         })
         
         // Second similar request should be ignored by the server
-        try await app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
+        try await app.test(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let info = try await service.chats.repo.findMessage(id: message.id!)!.info()
             XCTAssertEqual(info.readMarks?.count, 1)
@@ -647,7 +647,7 @@ final class ChatTests: AppTestCase {
         let message = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
         XCTAssertEqual(message.text, "text 1")
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             // Message is deleted by deletion of its content:
             let updatedMessage = try res.content.decode(MessageInfo.self)
@@ -656,7 +656,7 @@ final class ChatTests: AppTestCase {
             XCTAssertNotNil(updatedMessage.deletedAt)
         })
         // Try to edit deleted message
-        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 UpdateMessageRequest(text: "Hi")
             )
@@ -672,7 +672,7 @@ final class ChatTests: AppTestCase {
         let message = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
         XCTAssertEqual(message.text, "text 1")
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, "Even blocked users should be able to delete messages in a chat - " + res.body.string)
             let updatedMessage = try res.content.decode(MessageInfo.self)
             XCTAssertEqual(updatedMessage.id, message.id)
@@ -688,12 +688,12 @@ final class ChatTests: AppTestCase {
         let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)!
         XCTAssertEqual(relation.isRemovedOnDevice, false)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/settings", headers: .none, beforeRequest: { req in
             try req.content.encode(UpdateChatRequest(isRemovedOnDevice: true))
         }, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
         })
-        try await asyncTest(.GET, "chats", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try res.content.decode([ChatInfo].self)
             XCTAssertEqual(chats.count, 0)
@@ -706,23 +706,23 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
         let message = try await service.makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
         
-        try await asyncTest(.GET, "chats", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try res.content.decode([ChatInfo].self)
             XCTAssertEqual(chats.count, 1)
         })
         // Add readMark, should be deleted together with the messages
-        try await app.test(.PUT, "chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
+        try await app.test(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)/read", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let readMarks = try await service.chats.repo.findReadMarks(for: message.id!)
             XCTAssertEqual(readMarks.count, 1)
         })
-        try await asyncTest(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let sentNotifications = await service.testNotificator.getSentNotifications()
             XCTAssertTrue(sentNotifications.contains(where: { $0.event == .chatDeleted }))
         })
-        try await app.test(.GET, "chats", headers: .none, afterResponse: { res in
+        try await app.test(.GET, "api/chats", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try res.content.decode([ChatInfo].self)
             XCTAssertEqual(chats.count, 0)
@@ -736,7 +736,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, "Only owner should be able to delete group chat - " + res.body.string)
             let sentNotifications = await service.testNotificator.getSentNotifications()
             XCTAssertEqual(sentNotifications.count, 0)
@@ -748,7 +748,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: true)
         
-        try await app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await app.test(.DELETE, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try await service.chats.repo.all(with: current.id!, fullInfo: false)
             XCTAssertEqual(chats.count, 0)
@@ -763,7 +763,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
         
-        try await app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await app.test(.DELETE, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, "Both users should be able to delete personal chat - " + res.body.string)
             let chats = try await service.chats.repo.all(with: current.id!, fullInfo: false)
             XCTAssertEqual(chats.count, 0)
@@ -779,7 +779,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true, blockedId: current.id)
         let message = try await service.makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
         
-        try await app.test(.DELETE, "chats/\(chat.id!)", headers: .none, afterResponse: { res in
+        try await app.test(.DELETE, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, "Even blocked users should be able to delete personal chat - " + res.body.string)
             let chats = try await service.chats.repo.all(with: current.id!, fullInfo: false)
             XCTAssertEqual(chats.count, 0)
@@ -798,7 +798,7 @@ final class ChatTests: AppTestCase {
         let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
         XCTAssertNotNil(relation)
         
-        try await app.test(.DELETE, "chats/\(chat.id!)/me", headers: .none, afterResponse: { res in
+        try await app.test(.DELETE, "api/chats/\(chat.id!)/me", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
             XCTAssertNil(relation)
@@ -812,7 +812,7 @@ final class ChatTests: AppTestCase {
         let relation = try await service.chats.repo.findRelation(of: chat.id!, userId: current.id!)
         XCTAssertNotNil(relation)
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/me", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/me", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .badRequest, res.body.string)
         })
     }
@@ -823,7 +823,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: [users[0].id!], isPersonal: false)
         let message = try await service.makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
         
-        try await app.test(.DELETE, "chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
+        try await app.test(.DELETE, "api/chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try await service.chats.repo.all(with: current.id!, fullInfo: false)
             XCTAssertEqual(chats.count, 1)
@@ -840,7 +840,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: false)
         
-        try await asyncTest(.DELETE, "chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .forbidden, "Only owner should be able to clear messages in a group chat - " + res.body.string) // Questionable
         })
     }
@@ -851,7 +851,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: users[0].id!, users: [current.id!], isPersonal: true)
         let message = try await service.makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
         
-        try await app.test(.DELETE, "chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
+        try await app.test(.DELETE, "api/chats/\(chat.id!)/messages", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             let chats = try await service.chats.repo.all(with: current.id!, fullInfo: false)
             XCTAssertEqual(chats.count, 1)
@@ -868,7 +868,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 2, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: false)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/notify", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/notify", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 ChatNotificationRequest(name: "typing", data: ["deleted": true].jsonData())
             )
@@ -894,7 +894,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         let original = try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1).first!
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: "Reply!", replyTo: original.id!)
             )
@@ -912,7 +912,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: "Reply!", replyTo: 99999)
             )
@@ -929,7 +929,7 @@ final class ChatTests: AppTestCase {
         let messageInChat1 = try await service.makeMessages(for: chat1.id!, authorId: current.id!, count: 1).first!
         try await service.makeMessages(for: chat2.id!, authorId: current.id!, count: 1)
         
-        try await asyncTest(.POST, "chats/\(chat2.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat2.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: "Cross-reply", replyTo: messageInChat1.id!)
             )
@@ -948,7 +948,7 @@ final class ChatTests: AppTestCase {
         XCTAssertEqual(message.text, "text 1")
         sleep(1)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 UpdateMessageRequest(text: "Edited text")
             )
@@ -969,7 +969,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         let message = try await service.makeMessages(for: chat.id!, authorId: users[0].id!, count: 1).first!
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 UpdateMessageRequest(text: "Hijacked")
             )
@@ -987,7 +987,7 @@ final class ChatTests: AppTestCase {
         try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
         let longText = String(repeating: "A", count: 2049)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)", text: longText)
             )
@@ -1002,7 +1002,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: "\(current.id!)\(UUID().uuidString)")
             )
@@ -1017,7 +1017,7 @@ final class ChatTests: AppTestCase {
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
         
-        try await asyncTest(.POST, "chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 PostMessageRequest(localId: "short", text: "Hello")
             )
@@ -1039,7 +1039,7 @@ final class ChatTests: AppTestCase {
         try service.makeFakeUpload(fileName: "\(attachmentId).\(fileType)", fileSize: 1)
         try service.makeFakeUpload(fileName: "\(attachmentId)-preview.\(fileType)", fileSize: 1)
         
-        try await asyncTest(.PUT, "chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
+        try await asyncTest(.PUT, "api/chats/\(chat.id!)/messages/\(message.id!)", headers: .none, beforeRequest: { req in
             try req.content.encode(
                 UpdateMessageRequest(attachments: [MediaInfo(id: attachmentId, fileType: fileType, fileSize: 1)])
             )

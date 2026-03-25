@@ -299,76 +299,6 @@ function displayMessages(messages, isInitialLoad = false) {
     }
 }
 
-// Build attachment HTML for a message
-function buildAttachmentHTML(attachments, messageId, overlayHTML) {
-    if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
-        return '';
-    }
-    
-    // Filter out invalid attachments (must have id and fileType)
-    const validAttachments = attachments.filter(att => att && att.id && att.fileType);
-    
-    if (validAttachments.length === 0) {
-        console.warn('No valid attachments found for message:', messageId, 'attachments:', attachments);
-        return '';
-    }
-    
-    const firstAttachment = validAttachments[0];
-    const hasMultipleAttachments = validAttachments.length > 1;
-    
-    const isImage = firstAttachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
-    const isVideo = firstAttachment.fileType.match(/^(mp4|webm|mov)$/i);
-    
-    if (!isImage && !isVideo) {
-        console.warn('Unknown attachment type:', firstAttachment.fileType, 'for message:', messageId);
-    }
-    
-    return `
-        <div class="message-attachment-container" data-message-id="${messageId}" onclick="openMessageAttachmentViewer('${messageId}')" style="cursor: pointer;">
-            ${hasMultipleAttachments ? `
-            <button class="message-attachment-chevron message-attachment-chevron-left" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', -1)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m14 18-6-6 6-6"></path>
-                </svg>
-            </button>
-            ` : ''}
-            ${isImage ? `
-            <img class="message-attachment-image" src="${getPreviewUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
-            ` : isVideo ? `
-            <div class="message-attachment-video-wrapper" data-video-src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}" onmouseleave="stopBalloonVideoPreview(this)">
-                <img class="message-attachment-image" src="${getVideoPreviewUrl(firstAttachment.id)}" alt="Video">
-            </div>
-            ` : ''}
-            ${hasMultipleAttachments ? `
-            <button class="message-attachment-chevron message-attachment-chevron-right" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', 1)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m10 18 6-6-6-6"></path>
-                </svg>
-            </button>
-            ` : ''}
-            <div class="media-overlay-bar">
-                ${isVideo ? `
-                <div class="video-info-left" onmouseenter="startBalloonVideoPreview(this.closest('.message-attachment-container').querySelector('.message-attachment-video-wrapper'))">
-                    <div class="video-camera-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg>
-                    </div>
-                    <span class="video-duration" data-video-src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}">${firstAttachment.duration ? formatVideoDuration(firstAttachment.duration) : ''}</span>
-                </div>
-                ` : ''}
-                ${hasMultipleAttachments ? `
-                <div class="media-overlay-pagination" onclick="event.stopPropagation();">
-                    ${validAttachments.map((att, index) => `
-                        <button class="message-attachment-pagination-dot ${index === 0 ? 'active' : ''}" 
-                                onclick="event.stopPropagation(); switchMessageAttachment('${messageId}', ${index})"></button>
-                    `).join('')}
-                </div>
-                ` : ''}
-                ${overlayHTML}
-            </div>
-        </div>
-    `;
-}
-
 // Create date header element
 function createDateHeader(dateString, date) {
     const headerDiv = document.createElement('div');
@@ -698,128 +628,6 @@ function showCurrentChatMessagesAsRead() {
             readMark.classList.remove('hidden');
         }
     });
-}
-
-function navigateMessageAttachment(messageId, direction) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
-    if (!messageDiv) return;
-    
-    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
-    if (attachments.length <= 1) return;
-    
-    let currentIndex = parseInt(messageDiv.dataset.currentAttachmentIndex || '0');
-    currentIndex += direction;
-    
-    if (currentIndex < 0) {
-        currentIndex = attachments.length - 1;
-    } else if (currentIndex >= attachments.length) {
-        currentIndex = 0;
-    }
-    
-    switchMessageAttachment(messageId, currentIndex);
-}
-
-// Switch message attachment
-function switchMessageAttachment(messageId, index) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
-    if (!messageDiv) return;
-    
-    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
-    if (index < 0 || index >= attachments.length) return;
-    
-    const attachment = attachments[index];
-    const container = messageDiv.querySelector('.message-attachment-container');
-    if (!container) return;
-    
-    const isImage = attachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
-    const isVideo = attachment.fileType.match(/^(mp4|webm|mov)$/i);
-    
-    // Find and replace the current image/video element
-    const currentMedia = container.querySelector('.message-attachment-image, .message-attachment-video-wrapper, .message-attachment-video');
-    if (currentMedia) {
-        if (isImage) {
-            const img = document.createElement('img');
-            img.className = 'message-attachment-image';
-            img.src = getPreviewUrl(attachment.id, attachment.fileType);
-            img.alt = 'Attachment';
-            currentMedia.replaceWith(img);
-            // Remove video info from overlay bar when switching to image
-            const overlayBarInfo = img.closest('.message-attachment-container')?.querySelector('.media-overlay-bar .video-info-left');
-            if (overlayBarInfo) overlayBarInfo.remove();
-        } else if (isVideo) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'message-attachment-video-wrapper';
-            wrapper.dataset.videoSrc = `/uploads/${attachment.id}.${attachment.fileType}`;
-            const img = document.createElement('img');
-            img.className = 'message-attachment-image';
-            img.alt = 'Video';
-            img.src = getVideoPreviewUrl(attachment.id);
-            wrapper.onmouseleave = function() { stopBalloonVideoPreview(this); };
-            wrapper.appendChild(img);
-            currentMedia.replaceWith(wrapper);
-            // Ensure video info exists in overlay bar when switching to video
-            const overlayBar = wrapper.closest('.message-attachment-container')?.querySelector('.media-overlay-bar');
-            if (overlayBar) {
-                const existingVideoInfo = overlayBar.querySelector('.video-info-left');
-                if (existingVideoInfo) {
-                    // Update duration and data-video-src on existing element
-                    const durationSpan = existingVideoInfo.querySelector('.video-duration');
-                    if (durationSpan) {
-                        durationSpan.dataset.videoSrc = `/uploads/${attachment.id}.${attachment.fileType}`;
-                        durationSpan.textContent = attachment.duration ? formatVideoDuration(attachment.duration) : '';
-                    }
-                } else {
-                    const videoInfo = document.createElement('div');
-                    videoInfo.className = 'video-info-left';
-                    videoInfo.onmouseenter = function() { startBalloonVideoPreview(this.closest('.message-attachment-container').querySelector('.message-attachment-video-wrapper')); };
-                    videoInfo.innerHTML = `<div class="video-camera-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg></div><span class="video-duration" data-video-src="/uploads/${attachment.id}.${attachment.fileType}">${attachment.duration ? formatVideoDuration(attachment.duration) : ''}</span>`;
-                    overlayBar.insertBefore(videoInfo, overlayBar.firstChild);
-                }
-            }
-        }
-    }
-    
-    // Update pagination dots
-    const dots = container.querySelectorAll('.message-attachment-pagination-dot');
-    dots.forEach((dot, i) => {
-        if (i === index) {
-            dot.classList.add('active');
-        } else {
-            dot.classList.remove('active');
-        }
-    });
-    
-    messageDiv.dataset.currentAttachmentIndex = index;
-}
-
-// Open media viewer for message attachments
-function openMessageAttachmentViewer(messageId) {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`)?.closest('.message-row, .personal-note-row');
-    if (!messageDiv) return;
-    
-    const attachments = JSON.parse(messageDiv.dataset.attachments || '[]');
-    if (attachments.length === 0) return;
-    
-    const currentIndex = parseInt(messageDiv.dataset.currentAttachmentIndex || '0');
-    
-    // Get message text
-    const messageTextElement = messageDiv.querySelector('.message-text');
-    const messageText = messageTextElement ? messageTextElement.textContent.trim() : null;
-    
-    // Convert attachments to media viewer format (with createdAt from message)
-    const messageCreatedAt = messageDiv.dataset.createdAt;
-    const mediaPhotos = attachments.map(att => ({
-        id: att.id,
-        fileType: att.fileType,
-        createdAt: messageCreatedAt // Use message creation date for all attachments
-    }));
-    
-    // Check if current attachment is a video for autoplay
-    const currentAtt = attachments[currentIndex];
-    const autoplay = currentAtt && /^(mp4|webm|mov)$/i.test(currentAtt.fileType);
-    
-    // Open media viewer with text
-    openMediaViewer(mediaPhotos, currentIndex, null, messageText, autoplay);
 }
 
 // Attachment management
@@ -2030,7 +1838,19 @@ function showMessageContextMenu(event, messageElement, message) {
     
     menuItems.push(
         { id: 'reply', label: 'Reply', icon: quoteIcon },
-        // { id: 'bookmark', label: 'Bookmark', icon: bookmarkIcon },
+    );
+    
+    // Add Publish/Unpublish for personal notes chat
+    if (isCurrentChatPersonalNotes() && message.id) {
+        const publishIcon = bookmarkIcon;
+        if (message.note) {
+            menuItems.push({ id: 'unpublish', label: 'Unpublish', icon: publishIcon });
+        } else {
+            menuItems.push({ id: 'publish', label: 'Publish', icon: publishIcon });
+        }
+    }
+    
+    menuItems.push(
         { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true }
     );
     
@@ -2070,6 +1890,12 @@ function handleMessageContextAction(action, message, messageElement) {
             break;
         case 'delete':
             deleteMessage(message);
+            break;
+        case 'publish':
+            publishNote(message);
+            break;
+        case 'unpublish':
+            unpublishNote(message);
             break;
     }
 }
@@ -2455,55 +2281,6 @@ async function updateMessageOnServer(message) {
     }
 }
 
-// Balloon video preview on camera icon hover
-function startBalloonVideoPreview(wrapper) {
-    if (!wrapper) return;
-    const videoSrc = wrapper.dataset.videoSrc;
-    if (!videoSrc) return;
-    // Lock wrapper dimensions to prevent balloon resize
-    const rect = wrapper.getBoundingClientRect();
-    wrapper.style.width = rect.width + 'px';
-    wrapper.style.height = rect.height + 'px';
-    // Hide the preview image, show inline video
-    const img = wrapper.querySelector('.message-attachment-image');
-    if (img) img.style.display = 'none';
-
-    let video = wrapper.querySelector('video');
-    if (!video) {
-        video = document.createElement('video');
-        video.className = 'message-attachment-video';
-        video.muted = true;
-        video.loop = true;
-        video.playsInline = true;
-        video.src = videoSrc;
-        wrapper.appendChild(video);
-    }
-    video.style.display = 'block';
-    video.play().catch(() => {});
-}
-
-function stopBalloonVideoPreview(wrapper) {
-    if (!wrapper) return;
-    const video = wrapper.querySelector('video');
-    if (video) {
-        video.pause();
-        video.style.display = 'none';
-    }
-    const img = wrapper.querySelector('.message-attachment-image');
-    if (img) img.style.display = '';
-
-    // Unlock wrapper dimensions
-    wrapper.style.width = '';
-    wrapper.style.height = '';
-}
-
-function formatVideoDuration(seconds) {
-    const s = Math.floor(seconds);
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return m + ':' + (sec < 10 ? '0' : '') + sec;
-}
-
 function getVideoDuration(file) {
     return new Promise((resolve) => {
         const video = document.createElement('video');
@@ -2519,4 +2296,28 @@ function getVideoDuration(file) {
             resolve(null);
         });
     });
+}
+
+// Publish a personal note message as a public note
+async function publishNote(message) {
+    if (!message.id) return;
+    try {
+        const result = await apiPublishNote(message.id);
+        message.note = { id: result.id, createdAt: result.createdAt };
+        console.log('Note published:', message.id);
+    } catch (error) {
+        console.error('Failed to publish note:', error);
+    }
+}
+
+// Unpublish a personal note message
+async function unpublishNote(message) {
+    if (!message.id) return;
+    try {
+        await apiUnpublishNote(message.id);
+        message.note = null;
+        console.log('Note unpublished:', message.id);
+    } catch (error) {
+        console.error('Failed to unpublish note:', error);
+    }
 }

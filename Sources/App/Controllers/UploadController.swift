@@ -12,7 +12,7 @@ struct UploadController: RouteCollection {
     static let previewMaxDimension = 350
     
     func boot(routes: RoutesBuilder) throws {
-        let uploads = routes.grouped("uploads").grouped(DeviceSession.authenticator())
+        let uploads = routes.grouped("api", "uploads").grouped(DeviceSession.authenticator())
         uploads.on(.POST, body: .stream, use: upload)
         uploads.delete(.catchall, use: deleteUpload)
     }
@@ -86,13 +86,11 @@ struct UploadController: RouteCollection {
     func deleteUpload(_ req: Request) async throws -> HTTPStatus {
         let logger = Logger(label: "\(UploadController.self)")
         
-        // Get filename from path (everything after /uploads/)
-        let pathComponents = req.url.path.split(separator: "/")
-        guard pathComponents.count >= 2 else {
+        // Get filename from catchall path parameters
+        let catchall = req.parameters.getCatchall()
+        guard let fileName = catchall.last, !fileName.isEmpty else {
             throw Abort(.badRequest, reason: "Invalid file path")
         }
-        
-        let fileName = String(pathComponents[1])
         let filePath = req.application.uploadPath(for: fileName)
         
         if FileManager.default.fileExists(atPath: filePath) {
