@@ -165,12 +165,7 @@
         <div class="user-selection-content">
             <div class="user-selection-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground">Users</h1>
-                <button class="inline-button" onclick="closeUserSelection()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
-                        <path d="M18 6 6 18"></path>
-                        <path d="m6 6 12 12"></path>
-                    </svg>
-                </button>
+                <button class="inline-button close-icon-button" onclick="closeUserSelection()"></button>
             </div>
             <div class="p-4">
                 <div class="relative">
@@ -192,12 +187,7 @@
         <div class="group-chat-content">
             <div class="group-chat-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground" id="groupChatModalTitle">New Group</h1>
-                <button class="inline-button" onclick="closeGroupChatModal()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
-                        <path d="M18 6 6 18"></path>
-                        <path d="m6 6 12 12"></path>
-                    </svg>
-                </button>
+                <button class="inline-button close-icon-button" onclick="closeGroupChatModal()"></button>
             </div>
             <div class="group-chat-body" id="groupChatBody">
                 <!-- Avatar and name section (hidden when adding users) -->
@@ -263,12 +253,7 @@
                 <button class="ellipsis-button" id="userProfileMenuButton" onclick="event.stopPropagation(); showUserProfileMenu()" title="Profile menu">
                     •••
                 </button>
-                <button class="inline-button" onclick="closeCurrentUserProfile()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
-                        <path d="M18 6 6 18"></path>
-                        <path d="m6 6 12 12"></path>
-                    </svg>
-                </button>
+                <button class="inline-button close-icon-button" onclick="closeCurrentUserProfile()"></button>
             </div>
             <div class="user-profile-body" id="userProfileBody">
                 <div class="user-profile-loading">Loading profile...</div>
@@ -281,12 +266,7 @@
         <div class="settings-content">
             <div class="settings-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground">Settings</h1>
-                <button class="inline-button" onclick="closeSettings()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x">
-                        <path d="M18 6 6 18"></path>
-                        <path d="m6 6 12 12"></path>
-                    </svg>
-                </button>
+                <button class="inline-button close-icon-button" onclick="closeSettings()"></button>
             </div>
             <div class="settings-body">
                 <div class="settings-section">

@@ -26,6 +26,7 @@ const uploadIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="1
 const trashIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>';
 
 // Common icons
+const closeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>`;
 const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
 
 // Message edited icon
@@ -57,3 +58,10 @@ const checkmarkSaveIconSaving = `<svg class="checkmark-save-icon checkmark-save-
     <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
     <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
 </svg>`;
+
+// Populate close icon buttons in static HTML
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.close-icon-button').forEach(button => {
+        button.innerHTML = closeIcon;
+    });
+});
