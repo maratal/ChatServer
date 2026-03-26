@@ -1626,13 +1626,19 @@ function showGroupChatAvatarMenu(event) {
 
                 try {
                     await apiDeleteChatImage(chatId, currentImage.id);
-                    // Refresh the group chat info
                     const updatedChat = await apiGetChat(chatId);
                     const chatIndex = chats.findIndex(c => c.id === chatId);
                     if (chatIndex !== -1) {
                         chats[chatIndex] = updatedChat;
                     }
-                    displayGroupChatInfo(updatedChat);
+                    if (isPersonalNotes(updatedChat)) {
+                        const modalEntry = userInfoModalStack.find(entry => entry.chatId === chatId);
+                        if (modalEntry) {
+                            displayNotesInfo(updatedChat, modalEntry.bodyId, true);
+                        }
+                    } else {
+                        displayGroupChatInfo(updatedChat);
+                    }
                     displayChats();
                     if (currentChatId === chatId) {
                         selectChat(currentChatId, false);
