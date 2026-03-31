@@ -274,10 +274,10 @@ async function saveCurrentUserAbout() {
     const saveBtn = document.getElementById('userProfileAboutSaveBtn');
     if (!aboutInput || !saveBtn) return;
 
-    const newAbout = aboutInput.value.trim() || null;
+    const newAbout = aboutInput.value.trim();
     const originalValue = aboutInput.getAttribute('data-original-value') || '';
 
-    if ((newAbout || '') === originalValue) {
+    if (newAbout === originalValue) {
         saveBtn.style.display = 'none';
         return;
     }
@@ -290,11 +290,11 @@ async function saveCurrentUserAbout() {
         await apiUpdateCurrentUser({ about: newAbout });
 
         if (currentUser && currentUser.info) {
-            currentUser.info.about = newAbout || null;
+            currentUser.info.about = newAbout;
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
         }
 
-        aboutInput.setAttribute('data-original-value', newAbout || '');
+        aboutInput.setAttribute('data-original-value', newAbout);
 
         saveBtn.classList.remove('saving');
         saveBtn.classList.add('success');

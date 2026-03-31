@@ -2069,7 +2069,7 @@ async function saveGroupChatField(chatId, field, inputId, saveBtnId, { refreshUI
     const saveBtn = document.getElementById(saveBtnId);
     if (!input || !saveBtn) return;
 
-    const newValue = input.value.trim() || null;
+    const newValue = input.value.trim();
     const originalValue = input.getAttribute('data-original-value') || '';
 
     if (newValue === originalValue) {
@@ -2085,7 +2085,7 @@ async function saveGroupChatField(chatId, field, inputId, saveBtnId, { refreshUI
         await apiUpdateChat(chat.id, { [field]: newValue });
         chat[field] = newValue;
 
-        input.setAttribute('data-original-value', newValue || '');
+        input.setAttribute('data-original-value', newValue);
 
         saveBtn.classList.remove('saving');
         saveBtn.classList.add('success');
