@@ -56,6 +56,7 @@ struct NotesController: RouteCollection {
             
             struct NotesContext: Encodable {
                 let title: String?
+                let description: String?
                 let images: [MediaResource.Info]?
                 let createdAt: Date?
             }
@@ -71,6 +72,7 @@ struct NotesController: RouteCollection {
             
             let notesContext = NotesContext(
                 title: chat?.title,
+                description: chat?.description,
                 images: chat?.images.map { $0.info() },
                 createdAt: chat?.createdAt
             )

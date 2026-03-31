@@ -122,20 +122,14 @@ function displayCurrentUserProfile() {
             <div class="user-profile-section-title">Name</div>
             <div class="group-name-input-container">
                 <input type="text" class="user-profile-name-input" id="userProfileNameInput" value="${escapeHtml(name)}" placeholder="Enter your name" data-original-value="${escapeHtml(name)}">
-                <button class="group-name-save-btn" id="userProfileNameSaveBtn" style="display: none;" onclick="saveCurrentUserName()" title="Save">
-                    ${checkmarkSaveIcon}
-                    ${checkmarkSaveIconSaving}
-                </button>
+                ${saveBtnHTML('userProfileNameSaveBtn', 'saveCurrentUserName()')}
             </div>
         </div>
         <div class="user-profile-section">
             <div class="user-profile-section-title">About</div>
             <div class="group-name-input-container" style="align-items: flex-start;">
                 <textarea class="user-profile-about-input" id="userProfileAboutInput" placeholder="Tell us about yourself" data-original-value="${escapeHtml(about)}">${escapeHtml(about)}</textarea>
-                <button class="group-name-save-btn" id="userProfileAboutSaveBtn" style="display: none;" onclick="saveCurrentUserAbout()" title="Save">
-                    ${checkmarkSaveIcon}
-                    ${checkmarkSaveIconSaving}
-                </button>
+                ${saveBtnHTML('userProfileAboutSaveBtn', 'saveCurrentUserAbout()')}
             </div>
         </div>
         <div class="user-profile-section">

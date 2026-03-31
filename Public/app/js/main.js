@@ -1401,6 +1401,10 @@ async function showGroupChatInfo(chatId) {
     }
 }
 
+function groupChatSaveBtnHTML(chatId, field) {
+    return saveBtnHTML(`groupChat${field}SaveBtn_${chatId}`, `saveGroupChat${field}('${chatId}')`);
+}
+
 function displayGroupChatInfo(chat) {
     const bodyId = `chatInfoModal_${chat.id}_body`;
     const body = document.getElementById(bodyId);
@@ -1452,11 +1456,8 @@ function displayGroupChatInfo(chat) {
             <div class="user-profile-section">
                 <div class="user-profile-section-title">Group Name</div>
                 <div class="group-name-input-container">
-                    <input type="text" class="user-profile-name-input" id="groupChatNameInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Enter group name" data-original-value="${escapeHtml(chat.title || '')}">
-                    <button class="group-name-save-btn" id="groupChatNameSaveBtn_${chat.id}" style="display: none;" onclick="saveGroupChatTitle('${chat.id}')" title="Save">
-                        ${checkmarkSaveIcon}
-                        ${checkmarkSaveIconSaving}
-                    </button>
+                    <input type="text" class="user-profile-name-input" id="groupChatTitleInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Enter group name" data-original-value="${escapeHtml(chat.title || '')}">
+                    ${groupChatSaveBtnHTML(chat.id, 'Title')}
                 </div>
             </div>
         `;
@@ -1558,8 +1559,8 @@ function displayGroupChatInfo(chat) {
         }
         
         // Add input change listener
-        const nameInput = document.getElementById(`groupChatNameInput_${chat.id}`);
-        const saveBtn = document.getElementById(`groupChatNameSaveBtn_${chat.id}`);
+        const nameInput = document.getElementById(`groupChatTitleInput_${chat.id}`);
+        const saveBtn = document.getElementById(`groupChatTitleSaveBtn_${chat.id}`);
         if (nameInput && saveBtn) {
             nameInput.addEventListener('input', function() {
                 const originalValue = this.getAttribute('data-original-value') || '';
@@ -1774,11 +1775,15 @@ function displayNotesInfo(chat, bodyId, isOwner) {
             <div class="user-profile-section">
                 <div class="user-profile-section-title">Journal Title</div>
                 <div class="group-name-input-container">
-                    <input type="text" class="user-profile-name-input" id="groupChatNameInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Personal Notes" data-original-value="${escapeHtml(chat.title || '')}">
-                    <button class="group-name-save-btn" id="groupChatNameSaveBtn_${chat.id}" style="display: none;" onclick="saveGroupChatTitle('${chat.id}')" title="Save">
-                        ${checkmarkSaveIcon}
-                        ${checkmarkSaveIconSaving}
-                    </button>
+                    <input type="text" class="user-profile-name-input" id="groupChatTitleInput_${chat.id}" value="${escapeHtml(chat.title || '')}" placeholder="Personal Notes" data-original-value="${escapeHtml(chat.title || '')}">
+                    ${groupChatSaveBtnHTML(chat.id, 'Title')}
+                </div>
+            </div>
+            <div class="user-profile-section">
+                <div class="user-profile-section-title">Description</div>
+                <div class="group-name-input-container" style="align-items: flex-start;">
+                    <textarea class="user-profile-about-input" id="groupChatDescriptionInput_${chat.id}" placeholder="Add a description" data-original-value="${escapeHtml(chat.description || '')}">${escapeHtml(chat.description || '')}</textarea>
+                    ${groupChatSaveBtnHTML(chat.id, 'Description')}
                 </div>
             </div>
         `;
@@ -1794,6 +1799,14 @@ function displayNotesInfo(chat, bodyId, isOwner) {
         `;
         if (notesTitle) {
             html += `<div class="user-info-name">${escapeHtml(notesTitle)}</div>`;
+        }
+        if (chat.description) {
+            html += `
+                <div class="user-info-section">
+                    <div class="user-info-section-title">Description</div>
+                    <div class="user-info-about">${escapeHtml(chat.description)}</div>
+                </div>
+            `;
         }
     }
 
@@ -1846,8 +1859,8 @@ function displayNotesInfo(chat, bodyId, isOwner) {
                 }
             });
         }
-        const nameInput = document.getElementById(`groupChatNameInput_${chat.id}`);
-        const saveBtn = document.getElementById(`groupChatNameSaveBtn_${chat.id}`);
+        const nameInput = document.getElementById(`groupChatTitleInput_${chat.id}`);
+        const saveBtn = document.getElementById(`groupChatTitleSaveBtn_${chat.id}`);
         if (nameInput && saveBtn) {
             nameInput.addEventListener('input', function() {
                 const originalValue = this.getAttribute('data-original-value') || '';
@@ -1857,6 +1870,20 @@ function displayNotesInfo(chat, bodyId, isOwner) {
                 if (e.key === 'Enter' && saveBtn.style.display !== 'none') {
                     e.preventDefault();
                     saveGroupChatTitle(chat.id);
+                }
+            });
+        }
+        const descriptionInput = document.getElementById(`groupChatDescriptionInput_${chat.id}`);
+        const descriptionSaveBtn = document.getElementById(`groupChatDescriptionSaveBtn_${chat.id}`);
+        if (descriptionInput && descriptionSaveBtn) {
+            descriptionInput.addEventListener('input', function() {
+                const originalValue = this.getAttribute('data-original-value') || '';
+                descriptionSaveBtn.style.display = this.value.trim() !== originalValue ? 'flex' : 'none';
+            });
+            descriptionInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && descriptionSaveBtn.style.display !== 'none') {
+                    e.preventDefault();
+                    saveGroupChatDescription(chat.id);
                 }
             });
         }
@@ -2031,52 +2058,47 @@ async function removeGroupChatMember(chatId, userId) {
     }
 }
 
-async function saveGroupChatTitle(chatId) {
+async function saveGroupChatField(chatId, field, inputId, saveBtnId, { refreshUI = false } = {}) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) {
         console.error('Chat not found:', chatId);
         return;
     }
 
-    const nameInput = document.getElementById(`groupChatNameInput_${chatId}`);
-    const saveBtn = document.getElementById(`groupChatNameSaveBtn_${chatId}`);
-    if (!nameInput || !saveBtn) return;
+    const input = document.getElementById(inputId);
+    const saveBtn = document.getElementById(saveBtnId);
+    if (!input || !saveBtn) return;
 
-    const newTitle = nameInput.value.trim() || null;
-    const originalValue = nameInput.getAttribute('data-original-value') || '';
-    
-    // No changes
-    if (newTitle === originalValue) {
+    const newValue = input.value.trim() || null;
+    const originalValue = input.getAttribute('data-original-value') || '';
+
+    if (newValue === originalValue) {
         saveBtn.style.display = 'none';
         return;
     }
 
-    // Show saving state
     saveBtn.classList.remove('idle', 'success');
     saveBtn.classList.add('saving');
     saveBtn.disabled = true;
 
     try {
-        await apiUpdateChat(chat.id, { title: newTitle });
-        chat.title = newTitle;
-        
-        // Update original value
-        nameInput.setAttribute('data-original-value', newTitle || '');
-        
-        // Show success state
+        await apiUpdateChat(chat.id, { [field]: newValue });
+        chat[field] = newValue;
+
+        input.setAttribute('data-original-value', newValue || '');
+
         saveBtn.classList.remove('saving');
         saveBtn.classList.add('success');
-        
-        // Update UI
-        displayChats();
-        if (currentChatId === chat.id) {
-            selectChat(currentChatId, false);
+
+        if (refreshUI) {
+            displayChats();
+            if (currentChatId === chat.id) {
+                selectChat(currentChatId, false);
+            }
         }
-        
-        // Fade out button after success animation
+
         setTimeout(() => {
             saveBtn.classList.add('hiding');
-            // Wait for fade transition to complete before hiding
             setTimeout(() => {
                 saveBtn.style.display = 'none';
                 saveBtn.classList.remove('success', 'hiding');
@@ -2085,14 +2107,21 @@ async function saveGroupChatTitle(chatId) {
             }, 300);
         }, 500);
     } catch (error) {
-        console.error('Error saving group chat title:', error);
-        alert('Error saving title: ' + error.message);
-        
-        // Reset to idle state
+        console.error(`Error saving group chat ${field}:`, error);
+        alert(`Error saving ${field}: ` + error.message);
+
         saveBtn.classList.remove('saving');
         saveBtn.classList.add('idle');
         saveBtn.disabled = false;
     }
+}
+
+function saveGroupChatTitle(chatId) {
+    return saveGroupChatField(chatId, 'title', `groupChatTitleInput_${chatId}`, `groupChatTitleSaveBtn_${chatId}`, { refreshUI: true });
+}
+
+function saveGroupChatDescription(chatId) {
+    return saveGroupChatField(chatId, 'description', `groupChatDescriptionInput_${chatId}`, `groupChatDescriptionSaveBtn_${chatId}`);
 }
 
 async function saveGroupChatAvatar(chatId) {

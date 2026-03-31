@@ -10,6 +10,9 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     @Field(key: "title")
     var title: String?
     
+    @Field(key: "description")
+    var description: String?
+    
     @Field(key: "is_personal")
     var isPersonal: Bool
     
@@ -44,11 +47,13 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     
     init(id: ChatID? = nil,
          title: String? = nil,
+         description: String? = nil,
          ownerId: UserID,
          isPersonal: Bool
     ) {
         self.id = id
         self.title = title
+        self.description = description
         self.$owner.id = ownerId
         self.isPersonal = isPersonal
     }
@@ -63,6 +68,7 @@ extension Chat {
     struct Info: Serializable {
         var id: ChatID?
         var title: String?
+        var description: String?
         var isPersonal: Bool?
         var owner: UserInfo?
         var allUsers: [UserInfo]?
@@ -82,6 +88,7 @@ extension Chat {
             let chat = relation.chat
             self.id = chat.id
             self.title = chat.title
+            self.description = chat.description
             self.isPersonal = chat.isPersonal
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {
@@ -105,6 +112,7 @@ extension Chat {
             let chat = relation.chat
             self.id = chat.id
             self.title = chat.title
+            self.description = chat.description
             self.isPersonal = chat.isPersonal
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {
@@ -125,6 +133,7 @@ extension Chat {
         init(from chat: Chat) {
             self.id = chat.id
             self.title = chat.title
+            self.description = chat.description
             self.isPersonal = chat.isPersonal
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {

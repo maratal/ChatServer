@@ -54,7 +54,7 @@ function initializeSidebarNotesInfo() {
     const avatarColor = getAvatarColorForUser(`group_notes_${pageUserId}`);
     const photoUrl = notesImage ? getPreviewUrl(notesImage.id, notesImage.fileType) : null;
     const createdDate = pageNotesCreatedAt ? new Date(pageNotesCreatedAt * 1000).toLocaleDateString() : null;
-    const about = pageUserAbout || '';
+    const description = pageNotesDescription || '';
 
     let html = '';
 
@@ -96,12 +96,12 @@ function initializeSidebarNotesInfo() {
         </div>
     `;
 
-    // About section (author's bio)
+    // Description section
     html += `
         <div class="user-info-section">
-            <div class="user-info-section-title">About</div>
-            <div class="user-info-about ${about ? '' : 'empty'}">
-                ${about ? escapeHtml(about) : 'No bio available'}
+            <div class="user-info-section-title">Description</div>
+            <div class="user-info-about ${description ? '' : 'empty'}">
+                ${description ? escapeHtml(description) : 'No description'}
             </div>
         </div>
     `;
@@ -425,7 +425,7 @@ function displayNotesPageInfoPanel(bodyId) {
     const avatarColor = getAvatarColorForUser(pageUserId);
     const photoUrl = authorPhoto ? getPreviewUrl(authorPhoto.id, authorPhoto.fileType) : null;
     const createdDate = pageNotesCreatedAt ? new Date(pageNotesCreatedAt * 1000).toLocaleDateString() : null;
-    const about = pageUserAbout || '';
+    const description = pageNotesDescription || '';
 
     let html = '';
 
@@ -469,12 +469,12 @@ function displayNotesPageInfoPanel(bodyId) {
         </div>
     `;
 
-    // About section (author's bio)
+    // Description section
     html += `
         <div class="user-info-section">
-            <div class="user-info-section-title">About</div>
-            <div class="user-info-about ${about ? '' : 'empty'}">
-                ${about ? escapeHtml(about) : 'No bio available'}
+            <div class="user-info-section-title">Description</div>
+            <div class="user-info-about ${description ? '' : 'empty'}">
+                ${description ? escapeHtml(description) : 'No description'}
             </div>
         </div>
     `;

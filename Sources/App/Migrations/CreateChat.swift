@@ -7,6 +7,7 @@ struct CreateChat: AsyncMigration {
         try await database.schema("chats")
             .id()
             .field("title", .string)
+            .field("description", .string)
             .field("is_personal", .bool, .required, .custom("DEFAULT TRUE"))
             .field("participants_key", .string, .required)
             .field("created_at", .datetime, .required)

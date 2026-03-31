@@ -1060,3 +1060,7 @@ function openUserInfoViewer() {
         updateUserInfoAvatarDisplay();
     });
 }
+
+function saveBtnHTML(id, onclick) {
+    return `<button class="group-name-save-btn" id="${id}" style="display: none;" onclick="${onclick}" title="Save">${checkmarkSaveIcon}${checkmarkSaveIconSaving}</button>`;
+}
