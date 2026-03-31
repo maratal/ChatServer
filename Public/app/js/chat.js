@@ -308,8 +308,7 @@ function createDateHeader(dateString, date) {
     return headerDiv;
 }
 
-function isCurrentChatPersonalNotes() {
-    const chat = chats.find(c => c.id === currentChatId);
+function isPersonalNotes(chat) {
     const otherUser = chat?.isPersonal ? chat.allUsers.find(user => user.id !== currentUser?.info.id) : null;
     return !!(chat?.isPersonal && (!otherUser || otherUser.id === currentUser?.info.id));
 }
@@ -336,8 +335,7 @@ function createMessageElement(message) {
     const chat = chats.find(c => c.id === currentChatId);
     
     // Check if this is a personal notes chat (chat with oneself)
-    const otherUser = chat?.isPersonal ? chat.allUsers.find(user => user.id !== currentUser?.info.id) : null;
-    const isPersonalNotesChat = chat?.isPersonal && (!otherUser || otherUser.id === currentUser?.info.id);
+    const isPersonalNotesChat = isPersonalNotes(chat);
     
     const isOwnMessageFlag = isOwnMessage(message) && !isPersonalNotesChat;
     if (isOwnMessageFlag) {
@@ -585,9 +583,14 @@ function createPersonalNote(message) {
         </div>`;
     }
 
+    const publishedIconHTML = message.note ? (() => {
+        const publishedDateTime = formatFullDateTime(normalizeTimestamp(message.note.createdAt));
+        return `<span class="personal-note-published-icon" title="Published: ${escapeHtml(publishedDateTime)}">${globeIcon}</span>`;
+    })() : '';
+
     noteDiv.innerHTML = `
         <div class="personal-note-date-header">
-            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>
+            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>${publishedIconHTML}
         </div>
         <div class="message-row-content personal-note-content">
             <div class="personal-note-bubble">
@@ -1718,7 +1721,8 @@ async function addMessageToChat(message, bulkAddition = false, prepend = false) 
     // Date header is now handled inside the message element by updateSingleMessageGrouping
     // No need to check for date headers here
     
-    const isPersonalNote = isCurrentChatPersonalNotes();
+    const chat = chats.find(c => c.id === currentChatId);
+    const isPersonalNote = isPersonalNotes(chat);
     const messageElement = isPersonalNote ? createPersonalNote(message) : createMessageElement(message);
     if (!messageElement) return null; // e.g. deleted personal note
     
@@ -1841,7 +1845,8 @@ function showMessageContextMenu(event, messageElement, message) {
     );
     
     // Add Publish/Unpublish for personal notes chat
-    if (isCurrentChatPersonalNotes() && message.id) {
+    const chat = chats.find(c => c.id === currentChatId);
+    if (isPersonalNotes(chat) && message.id) {
         const publishIcon = bookmarkIcon;
         if (message.note) {
             menuItems.push({ id: 'unpublish', label: 'Unpublish', icon: publishIcon });
@@ -2109,7 +2114,8 @@ async function replaceMessageElement(messageLocalId, updatedMessage, animated = 
     
     // If not animated, just replace immediately
     if (!animated) {
-        const isPersonalNote = isCurrentChatPersonalNotes();
+        const chat = chats.find(c => c.id === currentChatId);
+        const isPersonalNote = isPersonalNotes(chat);
         const newMessageElement = isPersonalNote ? createPersonalNote(updatedMessage) : createMessageElement(updatedMessage);
         if (!newMessageElement) { oldMessageElement.remove(); return null; }
         oldMessageElement.replaceWith(newMessageElement);
@@ -2124,7 +2130,8 @@ async function replaceMessageElement(messageLocalId, updatedMessage, animated = 
         const slideDirection = isOutgoing ? 'translateX(100%)' : 'translateX(-100%)';
         
         // Create the new message element
-        const isPersonalNote = isCurrentChatPersonalNotes();
+        const chat = chats.find(c => c.id === currentChatId);
+        const isPersonalNote = isPersonalNotes(chat);
         const newMessageElement = isPersonalNote ? createPersonalNote(updatedMessage) : createMessageElement(updatedMessage);
 
         if (!newMessageElement) {
@@ -2303,7 +2310,8 @@ async function publishNote(message) {
     if (!message.id) return;
     try {
         const result = await apiPublishNote(message.id);
-        message.note = { id: result.id, createdAt: result.createdAt };
+        message.note = result;
+        replaceMessageElement(message.localId ?? message.id, message, false);
         console.log('Note published:', message.id);
     } catch (error) {
         console.error('Failed to publish note:', error);
@@ -2316,6 +2324,7 @@ async function unpublishNote(message) {
     try {
         await apiUnpublishNote(message.id);
         message.note = null;
+        replaceMessageElement(message.localId ?? message.id, message, false);
         console.log('Note unpublished:', message.id);
     } catch (error) {
         console.error('Failed to unpublish note:', error);

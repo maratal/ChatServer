@@ -220,7 +220,7 @@ function createNoteElement(note) {
     noteDiv.className = 'personal-note-row';
     noteDiv.dataset.noteId = note.id;
 
-    const normalizedDate = normalizeTimestamp(message.createdAt);
+    const normalizedDate = normalizeTimestamp(note.createdAt ?? message.createdAt);
     noteDiv.dataset.createdAt = normalizedDate.toISOString();
     if (message.id) noteDiv.dataset.messageId = message.id;
 

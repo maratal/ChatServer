@@ -33,6 +33,7 @@ const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="1
 
 // Message edited icon
 const messageEditedIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="3 2 18 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.0 14.6 L13.9 4.8 A2.2 2.2 0 0 1 17.6 7.3 L10.6 17.1"/><path d="M7.0 14.6 L6.2 19.5 L10.6 17.1"/><path d="M12.8 6.4 L16.5 8.9"/></svg>`;
+const globeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>`;
 
 // Message status icons
 const messageStatusIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="message-status-icon">

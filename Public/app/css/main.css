@@ -3198,6 +3198,15 @@ input[type="text"]:disabled, textarea:disabled {
     user-select: none;
 }
 
+.personal-note-published-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 2.4px;
+    margin-left: 4px;
+    vertical-align: top;
+    cursor: default;
+}
+
 .personal-note-content {
     width: 100%;
     display: flex;
