@@ -585,7 +585,8 @@ function createPersonalNote(message) {
 
     const publishedIconHTML = message.note ? (() => {
         const publishedDateTime = formatFullDateTime(normalizeTimestamp(message.note.createdAt));
-        return `<span class="personal-note-published-icon" title="Published: ${escapeHtml(publishedDateTime)}">${globeIcon}</span>`;
+        const journalUrl = `${window.location.origin}/${currentUser?.info?.id}`;
+        return `<a class="personal-note-published-icon" href="${journalUrl}" target="_blank" title="Published: ${escapeHtml(publishedDateTime)}">${globeIcon}</a>`;
     })() : '';
 
     noteDiv.innerHTML = `

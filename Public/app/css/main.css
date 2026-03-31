@@ -3204,7 +3204,13 @@ input[type="text"]:disabled, textarea:disabled {
     margin-top: 2.4px;
     margin-left: 4px;
     vertical-align: top;
-    cursor: default;
+    cursor: pointer;
+    color: inherit;
+    text-decoration: none;
+}
+
+.personal-note-published-icon:hover {
+    color: hsl(var(--primary));
 }
 
 .personal-note-content {
