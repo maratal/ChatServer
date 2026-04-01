@@ -17,6 +17,12 @@ func routes(_ app: Application) {
         try await req.view.render("register", ProductInfo())
     }
     
+    // /users/<id> - redirect to /users/<id>/notes
+    app.get("users", ":id") { req async throws -> Response in
+        let userId = try req.parameters.require("id")
+        return req.redirect(to: "/users/\(userId)/notes", redirectType: .permanent)
+    }
+
     // /<username> or /<user_id> - redirect to /users/<id>/notes
     app.get(":username") { req async throws -> Response in
         let username = try req.parameters.require("username")
