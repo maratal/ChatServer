@@ -421,9 +421,23 @@ input[type="text"], textarea {
     font-family: inherit !important;
     font-size: inherit !important;
     resize: none !important;
-    overflow-y: hidden !important;
+    overflow-y: auto !important;
     line-height: 1.5 !important;
     min-height: 40px !important;
+    scrollbar-width: thin;
+}
+
+.message-input::-webkit-scrollbar {
+    width: 4px;
+}
+
+.message-input::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+}
+
+.message-input::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .message-input:focus-visible {

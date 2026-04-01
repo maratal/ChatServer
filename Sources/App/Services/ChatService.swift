@@ -606,6 +606,11 @@ actor ChatService: ChatServiceProtocol {
             try await repo.deletePivots(messageId: message.id!, mediaResourceIds: attachmentIds)
         }
         
+        // Unpublish note if this message was published as one
+        if let note = try await notesRepo.findBySource(messageId: id) {
+            try await notesRepo.delete(note)
+        }
+        
         let info = message.info()
         try await core.notificator.notify(chat: message.chat, in: repo, about: .messageUpdate, from: message.author, with: info.jsonObject())
         return info

@@ -308,7 +308,7 @@ function formatMessageText(text) {
     if (!text) return '';
     
     // Escape HTML to prevent XSS
-    const escaped = escapeHtml(text);
+    const escaped = escapeHtml(text).replace(/\n/g, '<br>');
 
     // Step 1: Process markdown named links — 📺[label](url) opens inline media popup on hover,
     // any md link to media opens in the media viewer on click, others open in a new tab.
