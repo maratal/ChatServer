@@ -269,18 +269,37 @@
                 <button class="inline-button close-icon-button" onclick="closeSettings()"></button>
             </div>
             <div class="settings-body">
-                <div class="settings-section">
-                    <h3 class="settings-section-title">Appearance</h3>
-                    <div class="settings-mode-toggle" id="settingsModeToggle">
-                        <button class="settings-mode-btn" data-mode="light" onclick="selectMode('light')">Light</button>
-                        <button class="settings-mode-btn" data-mode="system" onclick="selectMode('system')">System</button>
-                        <button class="settings-mode-btn" data-mode="dark" onclick="selectMode('dark')">Dark</button>
+                <div class="settings-group">
+                    <h3 class="settings-group-title">Appearance</h3>
+                    <div class="settings-section">
+                        <div class="settings-label">Theme</div>
+                        <div class="settings-mode-toggle" id="settingsModeToggle">
+                            <button class="settings-mode-btn" data-mode="light" onclick="selectMode('light')">Light</button>
+                            <button class="settings-mode-btn" data-mode="system" onclick="selectMode('system')">System</button>
+                            <button class="settings-mode-btn" data-mode="dark" onclick="selectMode('dark')">Dark</button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-label">Accent Color</div>
+                        <div class="settings-color-grid" id="settingsColorGrid">
+                            <!-- Populated by settings.js -->
+                        </div>
                     </div>
                 </div>
-                <div class="settings-section">
-                    <h3 class="settings-section-title">Accent Color</h3>
-                    <div class="settings-color-grid" id="settingsColorGrid">
-                        <!-- Populated by settings.js -->
+                <div class="settings-divider"></div>
+                <div class="settings-group">
+                    <h3 class="settings-group-title">Journal</h3>
+                    <div class="settings-section">
+                        <div class="settings-label">Title Font</div>
+                        <div class="settings-font-select" id="settingsJournalFontSelect">
+                            <!-- Populated by settings.js -->
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-label">Title Size</div>
+                        <select class="settings-dropdown" id="settingsJournalSizeSelect" onchange="selectJournalSize(this.value)">
+                            <!-- Populated by settings.js -->
+                        </select>
                     </div>
                 </div>
             </div>

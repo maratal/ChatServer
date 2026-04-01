@@ -1024,16 +1024,37 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .settings-section {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
-.settings-section-title {
-    font-size: 0.75rem;
+.settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.settings-group {
+    margin-bottom: 0.5rem;
+}
+
+.settings-group-title {
+    font-size: 0.875rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: hsl(var(--muted-foreground));
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.settings-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    margin-bottom: 0.625rem;
+}
+
+.settings-divider {
+    height: 1px;
+    background: hsl(var(--border));
+    margin: 1.25rem 0 1.75rem;
 }
 
 /* Appearance mode toggle */
@@ -1068,6 +1089,7 @@ input[type="text"]:disabled, textarea:disabled {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.75rem;
+    padding: 1rem 0;
 }
 
 .settings-color-swatch {
@@ -1099,6 +1121,116 @@ input[type="text"]:disabled, textarea:disabled {
     font-size: 0.7rem;
     color: hsl(var(--muted-foreground));
     text-align: center;
+}
+
+/* Journal settings dropdowns */
+.settings-dropdown {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2rem;
+    transition: border-color 0.15s ease;
+}
+
+.settings-dropdown:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+}
+
+.settings-dropdown option {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+}
+
+/* Custom font dropdown */
+.settings-font-select {
+    position: relative;
+    width: 100%;
+}
+
+.settings-font-trigger {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2rem;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.settings-font-dropdown {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    max-height: 260px;
+    overflow-y: auto;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    scrollbar-width: thin;
+}
+
+.settings-font-dropdown.show {
+    display: block;
+}
+
+.settings-font-group-label {
+    padding: 0.4rem 0.75rem 0.2rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+}
+
+.settings-font-divider {
+    height: 1px;
+    background: hsl(var(--border));
+    margin: 0.35rem 0.5rem;
+}
+
+.settings-font-item {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9375rem;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.settings-font-item:hover {
+    background: hsl(var(--muted));
+}
+
+.settings-font-item.active {
+    color: hsl(var(--primary-hsl));
+    font-weight: 600;
 }
 
 /* Group Chat Modal */
@@ -3316,8 +3448,7 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .notes-header-title {
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-size: 1rem;
     color: hsl(var(--foreground));
     line-height: 1.3;
 }

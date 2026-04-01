@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     detectOwnership();
     initializeSidebarNotesInfo();
     initializeHeader();
+    restoreSidebarState();
     loadNotes();
     setupScrollPagination();
 });
@@ -492,18 +493,82 @@ function displayNotesPageInfoPanel(bodyId) {
 
 // ── Sidebar Toggle ──────────────────────────────────────────────────────────
 
-function closeNotesSidebar() {
+function getSidebarStorageKey() {
+    return `chatserver_journal_sidebar_closed_${pageUserId}`;
+}
+
+function restoreSidebarState() {
+    const closed = localStorage.getItem(getSidebarStorageKey());
+    if (closed === 'true') {
+        closeNotesSidebar(false);
+    }
+}
+
+function closeNotesSidebar(animate = true) {
     const sidebar = document.getElementById('notesSidebar');
     const leftAvatar = document.getElementById('notesHeaderLeftAvatar');
+    const titleElement = document.getElementById('notesHeaderTitle');
+    const subtitleElement = document.getElementById('notesHeaderSubtitle');
+
     if (sidebar) sidebar.style.display = 'none';
     if (leftAvatar) leftAvatar.style.display = '';
+    localStorage.setItem(getSidebarStorageKey(), 'true');
+
+    applyJournalTitleStyle(titleElement, subtitleElement, animate);
 }
 
 function openNotesSidebar() {
     const sidebar = document.getElementById('notesSidebar');
     const leftAvatar = document.getElementById('notesHeaderLeftAvatar');
+    const titleElement = document.getElementById('notesHeaderTitle');
+    const subtitleElement = document.getElementById('notesHeaderSubtitle');
+
     if (sidebar) sidebar.style.display = '';
     if (leftAvatar) leftAvatar.style.display = 'none';
+    localStorage.setItem(getSidebarStorageKey(), 'false');
+
+    resetJournalTitleStyle(titleElement, subtitleElement);
+}
+
+function applyJournalTitleStyle(titleElement, subtitleElement, animate) {
+    const fontSetting = getJournalFontById(localStorage.getItem(STORAGE_JOURNAL_FONT) || DEFAULT_JOURNAL_FONT_ID);
+    const sizeSetting = getJournalSizeById(localStorage.getItem(STORAGE_JOURNAL_SIZE) || DEFAULT_JOURNAL_SIZE_ID);
+
+    if (titleElement) {
+        if (animate) {
+            titleElement.style.transition = 'font-size 0.3s ease';
+        } else {
+            titleElement.style.transition = 'none';
+        }
+        titleElement.style.fontFamily = fontSetting.family;
+        titleElement.style.fontSize = sizeSetting.size;
+    }
+    if (subtitleElement) {
+        if (animate) {
+            subtitleElement.style.transition = 'opacity 0.3s ease';
+            subtitleElement.style.opacity = '0';
+            setTimeout(() => {
+                subtitleElement.style.display = 'none';
+            }, 300);
+        } else {
+            subtitleElement.style.display = 'none';
+        }
+    }
+}
+
+function resetJournalTitleStyle(titleElement, subtitleElement) {
+    if (titleElement) {
+        titleElement.style.transition = 'font-size 0.3s ease';
+        titleElement.style.fontFamily = '';
+        titleElement.style.fontSize = '';
+    }
+    if (subtitleElement) {
+        subtitleElement.style.display = '';
+        subtitleElement.style.opacity = '0';
+        subtitleElement.offsetHeight; // force reflow
+        subtitleElement.style.transition = 'opacity 0.3s ease';
+        subtitleElement.style.opacity = '';
+    }
 }
 
 // ── User Info Modal ─────────────────────────────────────────────────────────
