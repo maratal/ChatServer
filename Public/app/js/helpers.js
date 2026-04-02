@@ -255,12 +255,10 @@ function formatChatGroupingDate(date) {
     } else if (diffDays < 7) {
         return date.toLocaleDateString([], { weekday: 'long' });
     } else {
-        return date.toLocaleDateString([], { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
+        const sameYear = date.getFullYear() === now.getFullYear();
+        const options = { month: 'long', day: 'numeric' };
+        if (!sameYear) options.year = 'numeric';
+        return date.toLocaleDateString([], options);
     }
 }
 
