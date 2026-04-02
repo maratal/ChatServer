@@ -1064,7 +1064,7 @@ function showChatMenu(point, chatId, fromModal = true) {
         );
     }
     
-    if (isOwner || chat.isPersonal) {
+    if (isOwner || isPersonal) {
         menuItems.push(
             { id: 'delete', label: 'Delete', icon: deleteIcon, separator: true, destructive: true }
         );
@@ -1668,9 +1668,7 @@ function showNotesInfo(chat, options = {}) {
     modalElement.className = 'user-info-modal';
     modalElement.style.zIndex = 1000 + userInfoModalStack.length * 10;
 
-    const headerButtons = isOwner
-        ? `<button class="ellipsis-button" id="notesInfoMenuButton_${chat.id}" onclick="event.stopPropagation(); showNotesInfoMenu('${chat.id}')" title="Notes menu">•••</button>`
-        : '<div></div>';
+    const headerButtons = `<button class="ellipsis-button" id="notesInfoMenuButton_${chat.id}" onclick="event.stopPropagation(); showNotesInfoMenu('${chat.id}')" title="Chat menu">•••</button>`;
 
     modalElement.innerHTML = `
         <div class="user-info-content">
@@ -1713,30 +1711,7 @@ function showNotesInfoMenu(chatId) {
     if (!menuButton) return;
 
     const rect = menuButton.getBoundingClientRect();
-    const userId = currentUser?.info?.id;
-    const notesUrl = `${window.location.origin}/users/${userId}/notes`;
-
-    showContextMenu({
-        items: [
-            { id: 'open', label: 'Open Journal', icon: openLinkIcon },
-            { id: 'share', label: 'Share Link', icon: shareIcon }
-        ],
-        x: rect.left,
-        y: rect.bottom + 2,
-        onAction: async (action) => {
-            if (!userId) return;
-            if (action === 'share') {
-                try {
-                    await navigator.clipboard.writeText(notesUrl);
-                    alert('Link copied to clipboard');
-                } catch (error) {
-                    console.error('Failed to copy notes URL:', error);
-                }
-            } else if (action === 'open') {
-                window.open(notesUrl, '_blank', 'noopener,noreferrer');
-            }
-        }
-    });
+    showChatMenu({ x: rect.left, y: rect.bottom + 2 }, chatId);
 }
 
 function displayNotesInfo(chat, bodyId, isOwner) {
