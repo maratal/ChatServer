@@ -13,6 +13,9 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     @Field(key: "description")
     var description: String?
     
+    @Field(key: "settings")
+    var settings: String?
+    
     @Field(key: "is_personal")
     var isPersonal: Bool
     
@@ -48,12 +51,14 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     init(id: ChatID? = nil,
          title: String? = nil,
          description: String? = nil,
+         settings: String? = nil,
          ownerId: UserID,
          isPersonal: Bool
     ) {
         self.id = id
         self.title = title
         self.description = description
+        self.settings = settings
         self.$owner.id = ownerId
         self.isPersonal = isPersonal
     }
@@ -69,6 +74,7 @@ extension Chat {
         var id: ChatID?
         var title: String?
         var description: String?
+        var settings: String?
         var isPersonal: Bool?
         var owner: UserInfo?
         var allUsers: [UserInfo]?
@@ -89,6 +95,7 @@ extension Chat {
             self.id = chat.id
             self.title = chat.title
             self.description = chat.description
+            self.settings = chat.settings
             self.isPersonal = chat.isPersonal
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {
@@ -113,6 +120,7 @@ extension Chat {
             self.id = chat.id
             self.title = chat.title
             self.description = chat.description
+            self.settings = chat.settings
             self.isPersonal = chat.isPersonal
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {
@@ -134,6 +142,7 @@ extension Chat {
             self.id = chat.id
             self.title = chat.title
             self.description = chat.description
+            self.settings = chat.settings
             self.isPersonal = chat.isPersonal
             self.owner = chat.owner.info()
             if let lastMessage = chat.lastMessage {

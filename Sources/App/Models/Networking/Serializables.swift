@@ -43,6 +43,7 @@ struct UpdateDeviceSessionRequest: Serializable {
 struct UpdateChatRequest: Serializable {
     var title: String?
     var description: String?
+    var settings: String?
     var isMuted: Bool?
     var isArchived: Bool?
     var isBlocked: Bool?

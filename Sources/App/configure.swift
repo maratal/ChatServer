@@ -33,6 +33,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(CreateMediaResource())
     app.migrations.add(CreateMessageToMedia())
     app.migrations.add(CreateNote())
+    app.migrations.add(AddChatSettings())
     
     try app.createUploadsDirectory()
     

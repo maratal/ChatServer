@@ -531,8 +531,8 @@ function openNotesSidebar() {
 }
 
 function applyJournalTitleStyle(titleElement, subtitleElement, animate) {
-    const fontSetting = getJournalFontById(localStorage.getItem(STORAGE_JOURNAL_FONT) || DEFAULT_JOURNAL_FONT_ID);
-    const sizeSetting = getJournalSizeById(localStorage.getItem(STORAGE_JOURNAL_SIZE) || DEFAULT_JOURNAL_SIZE_ID);
+    const fontSetting = getJournalFontById(getJournalFontSetting());
+    const sizeSetting = getJournalSizeById(getJournalSizeSetting());
 
     if (titleElement) {
         if (animate) {

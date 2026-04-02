@@ -96,8 +96,37 @@ const JOURNAL_SIZES = [
 
 const DEFAULT_JOURNAL_FONT_ID = 'default';
 const DEFAULT_JOURNAL_SIZE_ID = '15';
-const STORAGE_JOURNAL_FONT = 'chatserver_journal_font';
-const STORAGE_JOURNAL_SIZE = 'chatserver_journal_size';
+
+// Read journal settings from the chat's settings field (or pageNotesSettings on notes page)
+function getJournalSettings() {
+    if (typeof pageNotesSettings !== 'undefined' && pageNotesSettings) {
+        return pageNotesSettings;
+    }
+    if (typeof chats !== 'undefined') {
+        const notesChat = chats.find(chat => isPersonalNotes(chat));
+        if (notesChat?.settings) {
+            try { return JSON.parse(notesChat.settings); } catch (_) {}
+        }
+    }
+    return {};
+}
+
+function getJournalFontSetting() {
+    return getJournalSettings().font || DEFAULT_JOURNAL_FONT_ID;
+}
+
+function getJournalSizeSetting() {
+    return getJournalSettings().size || DEFAULT_JOURNAL_SIZE_ID;
+}
+
+function saveJournalSettings(settings) {
+    if (typeof chats === 'undefined') return;
+    const notesChat = chats.find(chat => isPersonalNotes(chat));
+    if (!notesChat) return;
+    const settingsJson = JSON.stringify(settings);
+    notesChat.settings = settingsJson;
+    apiUpdateChat(notesChat.id, { settings: settingsJson });
+}
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -264,12 +293,16 @@ function getJournalSizeById(id) {
 }
 
 function selectJournalFont(fontId) {
-    localStorage.setItem(STORAGE_JOURNAL_FONT, fontId);
+    const settings = getJournalSettings();
+    settings.font = fontId;
+    saveJournalSettings(settings);
     updateJournalFontSelection(fontId);
 }
 
 function selectJournalSize(sizeId) {
-    localStorage.setItem(STORAGE_JOURNAL_SIZE, sizeId);
+    const settings = getJournalSettings();
+    settings.size = sizeId;
+    saveJournalSettings(settings);
     updateJournalSizeSelection(sizeId);
 }
 
@@ -277,7 +310,7 @@ function buildJournalFontOptions() {
     const wrapper = document.getElementById('settingsJournalFontSelect');
     if (!wrapper) return;
 
-    const savedId = localStorage.getItem(STORAGE_JOURNAL_FONT) || DEFAULT_JOURNAL_FONT_ID;
+    const savedId = getJournalFontSetting();
     const savedFont = getJournalFontById(savedId);
 
     wrapper.innerHTML = '';
@@ -361,7 +394,7 @@ function buildJournalSizeOptions() {
     const select = document.getElementById('settingsJournalSizeSelect');
     if (!select) return;
 
-    const savedId = localStorage.getItem(STORAGE_JOURNAL_SIZE) || DEFAULT_JOURNAL_SIZE_ID;
+    const savedId = getJournalSizeSetting();
     select.innerHTML = '';
 
     JOURNAL_SIZES.forEach(sizeOption => {

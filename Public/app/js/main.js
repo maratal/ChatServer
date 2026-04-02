@@ -100,6 +100,8 @@ async function loadChats() {
     try {
         chats = await apiGetChats(true);
         displayChats();
+        buildJournalFontOptions();
+        buildJournalSizeOptions();
     } catch (error) {
         console.error('Error loading chats:', error);
     }

@@ -61,6 +61,7 @@
         const pageNotes = JSON.parse(document.getElementById('pageNotesData').textContent);
         const pageNotesTitle = pageNotes.title;
         const pageNotesDescription = pageNotes.description;
+        const pageNotesSettings = pageNotes.settings ? JSON.parse(pageNotes.settings) : {};
         const pageNotesImages = pageNotes.images;
         const pageNotesCreatedAt = pageNotes.createdAt;
     </script>

@@ -162,6 +162,9 @@ actor ChatService: ChatServiceProtocol {
         if let description = update.description {
             chat.description = description
         }
+        if let settings = update.settings {
+            chat.settings = settings
+        }
         try await repo.save(chat)
         let info = ChatInfo(from: relation, fullInfo: false)
         try await core.notificator.notify(chat: chat, in: repo, about: .chatUpdate, from: relation.user, with: info.jsonObject())
