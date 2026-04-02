@@ -2218,17 +2218,27 @@ function showNewChatMenu(event) {
     
     const button = document.getElementById('newChatButton');
     const rect = button.getBoundingClientRect();
+
+    const hasPersonalNotes = chats.some(chat => isPersonalNotes(chat));
+    const items = [];
+
+    if (!hasPersonalNotes) {
+        items.push({ id: 'personal_notes', label: 'Personal Notes', icon: newChatNotesIcon });
+        items.push({ separator: true });
+    }
+
+    items.push({ id: 'personal', label: 'Personal Chat', icon: newChatPersonalIcon });
+    items.push({ id: 'group', label: 'Group Chat', icon: newChatGroupIcon });
     
     showContextMenu({
-        items: [
-            { id: 'personal', label: 'Personal Chat' },
-            { id: 'group', label: 'Group Chat' }
-        ],
+        items,
         x: rect.left,
         y: rect.top - 4,
         anchor: 'bottom-left',
         onAction: (action) => {
-            if (action === 'personal') {
+            if (action === 'personal_notes') {
+                createOrOpenPersonalChat(currentUser.info.id);
+            } else if (action === 'personal') {
                 openUserSelection();
             } else if (action === 'group') {
                 openGroupChatModal();

@@ -168,6 +168,7 @@ function showContextMenu(options) {
     menu.className = 'context-menu';
     
     menu.innerHTML = items.map(item => {
+        if (item.separator && !item.id) return '<div class="context-menu-separator"></div>';
         const separator = item.separator ? '<div class="context-menu-separator"></div>' : '';
         return `${separator}<div class="context-menu-item" data-action="${item.id}">
             ${item.icon || ''}
