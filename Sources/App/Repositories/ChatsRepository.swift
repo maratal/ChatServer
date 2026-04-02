@@ -54,6 +54,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
         return try await query
             .with(\.$user) { user in
                 user.with(\.$deviceSessions)
+                user.with(\.$photos)
             }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
@@ -77,6 +78,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .filter(\.$user.$id == userId)
             .with(\.$user) { user in
                 user.with(\.$deviceSessions)
+                user.with(\.$photos)
             }
             .with(\.$chat) { chat in
                 chat.with(\.$owner)
