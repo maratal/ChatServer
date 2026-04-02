@@ -1834,12 +1834,19 @@ function displayNotesInfo(chat, bodyId, isOwner) {
         </div>
     `;
 
-    // Preview section - last published note
+    // Share section - link to the journal
+    const journalShareUrl = `${window.location.origin}/${owner?.id || ''}`;
     html += `
         <div class="user-info-section">
-            <div class="user-info-section-title">Preview</div>
-            <div id="notesInfoPreview" class="notes-info-preview">
-                <div class="user-info-loading" style="font-size: 0.8125rem;">Loading...</div>
+            <div class="user-info-section-title">Share</div>
+            <div class="notes-info-share">
+                <a class="notes-info-share-link" href="${journalShareUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(journalShareUrl)}</a>
+                <button class="inline-button small notes-info-share-copy" onclick="copyNotesShareLink(this)" title="Copy link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     `;
@@ -1896,56 +1903,30 @@ function displayNotesInfo(chat, bodyId, isOwner) {
         }
     }
 
-    // Load preview of last published note
-    loadNotesInfoPreview(chat);
 }
 
-async function loadNotesInfoPreview(chat) {
-    const previewContainer = document.getElementById('notesInfoPreview');
-    if (!previewContainer) return;
+function copyNotesShareLink(button) {
+    const shareLink = button.closest('.notes-info-share')?.querySelector('.notes-info-share-link');
+    if (!shareLink) return;
 
-    const ownerId = chat.owner?.id || currentUser?.info?.id;
-    if (!ownerId) {
-        previewContainer.innerHTML = '<div class="user-info-about empty">No preview available</div>';
-        return;
-    }
+    const url = shareLink.href;
+    navigator.clipboard.writeText(url).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+    });
 
-    try {
-        const notes = await apiGetUserNotes(ownerId, 1);
-        if (!notes || notes.length === 0) {
-            previewContainer.innerHTML = '<div class="user-info-about empty">No published notes yet</div>';
-            return;
-        }
-
-        const note = notes[0];
-        const message = note.message;
-        if (!message) {
-            previewContainer.innerHTML = '<div class="user-info-about empty">No published notes yet</div>';
-            return;
-        }
-
-        const text = message.text || '';
-        const hasAttachments = message.attachments && message.attachments.length > 0;
-        const normalizedDate = normalizeTimestamp(note.createdAt || message.createdAt);
-        const dateText = normalizedDate.toLocaleDateString();
-
-        let previewHtml = `<div class="notes-info-preview-item">`;
-        if (text) {
-            const truncated = text.length > 120 ? text.substring(0, 120) + '...' : text;
-            previewHtml += `<div class="notes-info-preview-text">${escapeHtml(truncated)}</div>`;
-        }
-        if (hasAttachments) {
-            const count = message.attachments.length;
-            previewHtml += `<div class="notes-info-preview-meta">${count} attachment${count !== 1 ? 's' : ''}</div>`;
-        }
-        previewHtml += `<div class="notes-info-preview-date">${escapeHtml(dateText)}</div>`;
-        previewHtml += `</div>`;
-
-        previewContainer.innerHTML = previewHtml;
-    } catch (error) {
-        console.error('Failed to load notes preview:', error);
-        previewContainer.innerHTML = '<div class="user-info-about empty">Failed to load preview</div>';
-    }
+    const balloon = button.closest('.notes-info-share');
+    if (!balloon) return;
+    balloon.classList.remove('flash');
+    void balloon.offsetWidth;
+    balloon.classList.add('flash');
+    balloon.addEventListener('animationend', () => balloon.classList.remove('flash'), { once: true });
 }
 
 function getNotesDisplayTitle(chat) {
