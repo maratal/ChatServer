@@ -1196,6 +1196,10 @@ input[type="text"]:disabled, textarea:disabled {
     box-sizing: border-box;
 }
 
+.settings-font-trigger.open {
+    border-color: hsl(var(--primary));
+}
+
 .settings-font-dropdown {
     display: none;
     position: absolute;
@@ -1250,6 +1254,7 @@ input[type="text"]:disabled, textarea:disabled {
 .settings-font-item.active {
     color: hsl(var(--primary-hsl));
     font-weight: 600;
+    background: hsl(var(--muted));
 }
 
 /* Group Chat Modal */

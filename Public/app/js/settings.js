@@ -28,16 +28,12 @@ const JOURNAL_FONTS_ART = [
     { id: 'chalkboard',       family: '"Chalkboard SE", Chalkboard, fantasy', label: 'Chalkboard' },
     { id: 'comic-sans',       family: '"Comic Sans MS", "Comic Sans", cursive', label: 'Comic Sans' },
     { id: 'bradley-hand',     family: '"Bradley Hand", cursive', label: 'Bradley Hand' },
-    { id: 'zapfino',          family: 'Zapfino, cursive', label: 'Zapfino' },
     { id: 'herculanum',       family: 'Herculanum, fantasy', label: 'Herculanum' },
     { id: 'luminari',         family: 'Luminari, fantasy', label: 'Luminari' },
-    { id: 'jazz-let',         family: '"Jazz LET", fantasy', label: 'Jazz LET' },
     { id: 'trattatello',      family: 'Trattatello, fantasy', label: 'Trattatello' },
     { id: 'savoye-let',       family: '"Savoye LET", cursive', label: 'Savoye LET' },
     { id: 'signpainter',      family: 'SignPainter-HouseScript, "SignPainter", cursive', label: 'SignPainter' },
     { id: 'noteworthy',       family: 'Noteworthy, cursive', label: 'Noteworthy' },
-    { id: 'kokonor',          family: 'Kokonor, fantasy', label: 'Kokonor' },
-    { id: 'stencil',          family: 'Stencil, fantasy', label: 'Stencil' },
 ];
 
 const JOURNAL_FONTS_STANDARD = [
@@ -368,6 +364,7 @@ function buildJournalFontOptions() {
         closeAllFontDropdowns();
         if (!isOpen) {
             dropdown.classList.add('show');
+            trigger.classList.add('open');
             // Scroll active item into view
             const activeItem = dropdown.querySelector('.settings-font-item.active');
             if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
@@ -383,6 +380,9 @@ function closeJournalFontDropdown() {
 function closeAllFontDropdowns() {
     document.querySelectorAll('.settings-font-dropdown').forEach(element => {
         element.classList.remove('show');
+    });
+    document.querySelectorAll('.settings-font-trigger').forEach(element => {
+        element.classList.remove('open');
     });
 }
 
