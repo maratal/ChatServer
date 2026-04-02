@@ -71,6 +71,16 @@ function initializeSidebarNotesInfo() {
         <div class="user-info-name">${escapeHtml(notesTitle)}</div>
     `;
 
+    // About section
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">About</div>
+            <div class="user-info-about ${description ? '' : 'empty'}">
+                ${description ? escapeHtml(description) : 'No description'}
+            </div>
+        </div>
+    `;
+
     // Information section
     html += `
         <div class="user-info-section">
@@ -97,16 +107,6 @@ function initializeSidebarNotesInfo() {
         </div>
     `;
 
-    // Description section
-    html += `
-        <div class="user-info-section">
-            <div class="user-info-section-title">Description</div>
-            <div class="user-info-about ${description ? '' : 'empty'}">
-                ${description ? escapeHtml(description) : 'No description'}
-            </div>
-        </div>
-    `;
-
     body.innerHTML = html;
 
     // Avatar click → open image viewer if has photo
@@ -128,6 +128,7 @@ function initializeHeader() {
     // Title
     const notesTitle = pageNotesTitle || getNotesUserInfoTitle(pageUserName);
     titleElement.textContent = notesTitle;
+    titleElement.style.fontWeight = '600';
 
     // Subtitle: "Since <year>"
     if (pageNotesCreatedAt) {
@@ -444,6 +445,16 @@ function displayNotesPageInfoPanel(bodyId) {
     // Title
     html += `<div class="user-info-name">${escapeHtml(notesTitle)}</div>`;
 
+    // About section
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">About</div>
+            <div class="user-info-about ${description ? '' : 'empty'}">
+                ${description ? escapeHtml(description) : 'No description'}
+            </div>
+        </div>
+    `;
+
     // Information section
     html += `
         <div class="user-info-section">
@@ -466,16 +477,6 @@ function displayNotesPageInfoPanel(bodyId) {
                     <span>Since: ${escapeHtml(createdDate)}</span>
                 </div>
                 ` : ''}
-            </div>
-        </div>
-    `;
-
-    // Description section
-    html += `
-        <div class="user-info-section">
-            <div class="user-info-section-title">Description</div>
-            <div class="user-info-about ${description ? '' : 'empty'}">
-                ${description ? escapeHtml(description) : 'No description'}
             </div>
         </div>
     `;
@@ -542,6 +543,7 @@ function applyJournalTitleStyle(titleElement, subtitleElement, animate) {
         }
         titleElement.style.fontFamily = fontSetting.family;
         titleElement.style.fontSize = sizeSetting.size;
+        titleElement.style.fontWeight = '';
     }
     if (subtitleElement) {
         if (animate) {
@@ -561,6 +563,7 @@ function resetJournalTitleStyle(titleElement, subtitleElement) {
         titleElement.style.transition = 'font-size 0.3s ease';
         titleElement.style.fontFamily = '';
         titleElement.style.fontSize = '';
+        titleElement.style.fontWeight = '600';
     }
     if (subtitleElement) {
         subtitleElement.style.display = '';

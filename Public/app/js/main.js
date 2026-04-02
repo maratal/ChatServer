@@ -1757,7 +1757,7 @@ function displayNotesInfo(chat, bodyId, isOwner) {
                 </div>
             </div>
             <div class="user-profile-section">
-                <div class="user-profile-section-title">Description</div>
+                <div class="user-profile-section-title">About</div>
                 <div class="group-name-input-container" style="align-items: flex-start;">
                     <textarea class="user-profile-about-input" id="groupChatDescriptionInput_${chat.id}" placeholder="Add a description" data-original-value="${escapeHtml(chat.description || '')}">${escapeHtml(chat.description || '')}</textarea>
                     ${groupChatSaveBtnHTML(chat.id, 'Description')}
@@ -1780,7 +1780,7 @@ function displayNotesInfo(chat, bodyId, isOwner) {
         if (chat.description) {
             html += `
                 <div class="user-info-section">
-                    <div class="user-info-section-title">Description</div>
+                    <div class="user-info-section-title">About</div>
                     <div class="user-info-about">${escapeHtml(chat.description)}</div>
                 </div>
             `;
