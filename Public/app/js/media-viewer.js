@@ -128,7 +128,7 @@ function updateMediaViewer() {
         existingVideo.pause();
     }
     
-    const fileUrl = currentPhoto._blobUrl || `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
+    const fileUrl = currentPhoto._blobUrl || `/uploads/${currentPhoto.id.toLowerCase()}.${currentPhoto.fileType}`;
     
     if (isVideoAttachment(currentPhoto)) {
         mediaContainer.innerHTML = `<video class="media-viewer-video" controls src="${fileUrl}"></video>`;
@@ -192,7 +192,7 @@ function downloadMediaViewerCurrent() {
     const currentPhoto = mediaViewerPhotos[mediaViewerPhotoIndex];
     if (!currentPhoto) return;
     
-    const url = currentPhoto._blobUrl || `/uploads/${currentPhoto.id}.${currentPhoto.fileType}`;
+    const url = currentPhoto._blobUrl || `/uploads/${currentPhoto.id.toLowerCase()}.${currentPhoto.fileType}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = `${currentPhoto.id}.${currentPhoto.fileType}`;

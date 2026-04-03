@@ -668,7 +668,7 @@ function buildAttachmentHTML(attachments, messageId, overlayHTML) {
             ${isImage ? `
             <img class="message-attachment-image" src="${getPreviewUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
             ` : isVideo ? `
-            <div class="message-attachment-video-wrapper" data-video-src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}" onmouseleave="stopBalloonVideoPreview(this)">
+            <div class="message-attachment-video-wrapper" data-video-src="/uploads/${firstAttachment.id.toLowerCase()}.${firstAttachment.fileType}" onmouseleave="stopBalloonVideoPreview(this)">
                 <img class="message-attachment-image" src="${getVideoPreviewUrl(firstAttachment.id)}" alt="Video">
             </div>
             ` : ''}
@@ -685,7 +685,7 @@ function buildAttachmentHTML(attachments, messageId, overlayHTML) {
                     <div class="video-camera-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg>
                     </div>
-                    <span class="video-duration" data-video-src="/uploads/${firstAttachment.id}.${firstAttachment.fileType}">${firstAttachment.duration ? formatVideoDuration(firstAttachment.duration) : ''}</span>
+                    <span class="video-duration" data-video-src="/uploads/${firstAttachment.id.toLowerCase()}.${firstAttachment.fileType}">${firstAttachment.duration ? formatVideoDuration(firstAttachment.duration) : ''}</span>
                 </div>
                 ` : ''}
                 ${hasMultipleAttachments ? `
@@ -748,7 +748,7 @@ function switchMessageAttachment(messageId, index) {
         } else if (isVideo) {
             const wrapper = document.createElement('div');
             wrapper.className = 'message-attachment-video-wrapper';
-            wrapper.dataset.videoSrc = `/uploads/${attachment.id}.${attachment.fileType}`;
+            wrapper.dataset.videoSrc = `/uploads/${attachment.id.toLowerCase()}.${attachment.fileType}`;
             const img = document.createElement('img');
             img.className = 'message-attachment-image';
             img.alt = 'Video';
@@ -762,14 +762,14 @@ function switchMessageAttachment(messageId, index) {
                 if (existingVideoInfo) {
                     const durationSpan = existingVideoInfo.querySelector('.video-duration');
                     if (durationSpan) {
-                        durationSpan.dataset.videoSrc = `/uploads/${attachment.id}.${attachment.fileType}`;
+                        durationSpan.dataset.videoSrc = `/uploads/${attachment.id.toLowerCase()}.${attachment.fileType}`;
                         durationSpan.textContent = attachment.duration ? formatVideoDuration(attachment.duration) : '';
                     }
                 } else {
                     const videoInfo = document.createElement('div');
                     videoInfo.className = 'video-info-left';
                     videoInfo.onmouseenter = function() { startBalloonVideoPreview(this.closest('.message-attachment-container').querySelector('.message-attachment-video-wrapper')); };
-                    videoInfo.innerHTML = `<div class="video-camera-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg></div><span class="video-duration" data-video-src="/uploads/${attachment.id}.${attachment.fileType}">${attachment.duration ? formatVideoDuration(attachment.duration) : ''}</span>`;
+                    videoInfo.innerHTML = `<div class="video-camera-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"></path><rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect></svg></div><span class="video-duration" data-video-src="/uploads/${attachment.id.toLowerCase()}.${attachment.fileType}">${attachment.duration ? formatVideoDuration(attachment.duration) : ''}</span>`;
                     overlayBar.insertBefore(videoInfo, overlayBar.firstChild);
                 }
             }

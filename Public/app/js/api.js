@@ -630,15 +630,15 @@ async function apiDeleteUpload(fileName) {
 }
 
 function getUploadUrl(fileId, fileType) {
-    return `/uploads/${fileId}.${fileType}`;
+    return `/uploads/${fileId.toLowerCase()}.${fileType}`;
 }
 
 function getPreviewUrl(fileId, fileType) {
-    return `/uploads/${fileId}-preview.${fileType}`;
+    return `/uploads/${fileId.toLowerCase()}-preview.${fileType}`;
 }
 
 function getVideoPreviewUrl(fileId) {
-    return `/uploads/${fileId}-preview.jpg`;
+    return `/uploads/${fileId.toLowerCase()}-preview.jpg`;
 }
 
 async function apiGetRecentMedia(offset = 0, limit = 20) {
