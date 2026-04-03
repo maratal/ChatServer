@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # ChatServer installer for Ubuntu (Digital Ocean droplet)
-# Usage: curl -sSL https://raw.githubusercontent.com/maratal/ChatServer/main/install.sh | bash
+# Usage:             curl -sSL <URL> | bash                        (self-signed cert for IP)
+# Usage with domain: curl -sSL <URL> | DOMAIN=yourdomain.com bash  (Let's Encrypt cert)
 set -euo pipefail
 
 APP_NAME="chatserver"
-APP_PORT=8080
+APP_PORT=443
 REPO_URL="https://github.com/maratal/ChatServer.git"
 INSTALL_DIR="/opt/$APP_NAME"
 APP_USER="vapor"
+DOMAIN="${DOMAIN:-${1:-}}"  # Set DOMAIN env var for Let's Encrypt HTTPS
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,9 +30,10 @@ apt-get -qq install -y ufw > /dev/null
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp comment "SSH"
-ufw allow "$APP_PORT"/tcp comment "ChatServer"
+ufw allow 80/tcp comment "HTTP"
+ufw allow 443/tcp comment "HTTPS"
 ufw --force enable
-ok "Firewall configured (SSH + port $APP_PORT)"
+ok "Firewall configured (SSH + HTTP + HTTPS)"
 
 # ── System dependencies ──────────────────────────────────────────────────────
 
@@ -50,18 +53,49 @@ ok "System packages installed"
 
 # ── Swift ────────────────────────────────────────────────────────────────────
 
-log "Installing Swift 6.0"
+SWIFT_VERSION="6.0.3"
+
+log "Installing Swift $SWIFT_VERSION"
 if command -v swift &> /dev/null && swift --version 2>&1 | grep -q "6.0"; then
     ok "Swift 6.0 already installed"
 else
-    # Install swiftly (official Swift version manager)
-    curl -sSL https://swiftlang.github.io/swiftly/swiftly-install.sh | bash -s -- --disable-confirmation -y
-    export PATH="$HOME/.swiftly/bin:$PATH"
-    # Source the env so swiftly is available
-    if [[ -f "$HOME/.local/share/swiftly/env.sh" ]]; then
-        . "$HOME/.local/share/swiftly/env.sh"
-    fi
-    swiftly install 6.0
+    # Determine architecture
+    ARCH=$(dpkg --print-architecture)
+    case "$ARCH" in
+        amd64)
+            SWIFT_ARCH=""
+            PLATFORM_SUFFIX="ubuntu2404"
+            ;;
+        arm64)
+            SWIFT_ARCH="-aarch64"
+            PLATFORM_SUFFIX="ubuntu2404-aarch64"
+            ;;
+        *) fail "Unsupported architecture: $ARCH" ;;
+    esac
+
+    SWIFT_TAG="swift-${SWIFT_VERSION}-RELEASE"
+    SWIFT_TARBALL="${SWIFT_TAG}-ubuntu24.04${SWIFT_ARCH}.tar.gz"
+    SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/${PLATFORM_SUFFIX}/${SWIFT_TAG}/${SWIFT_TARBALL}"
+
+    # Install Swift runtime dependencies
+    apt-get -qq install -y \
+        binutils libc6-dev libcurl4-openssl-dev libedit2 \
+        libgcc-13-dev libpython3-dev libsqlite3-0 libstdc++-13-dev \
+        libxml2-dev libncurses-dev libz3-dev pkg-config unzip zlib1g-dev \
+        > /dev/null
+
+    log "Downloading Swift from $SWIFT_URL"
+    curl -sSL "$SWIFT_URL" -o /tmp/swift.tar.gz
+    mkdir -p /opt/swift
+    tar xzf /tmp/swift.tar.gz -C /opt/swift --strip-components=2
+    rm /tmp/swift.tar.gz
+    ln -sf /opt/swift/bin/swift /usr/local/bin/swift
+    ln -sf /opt/swift/bin/swiftc /usr/local/bin/swiftc
+
+    # Add to PATH for this session and future shells
+    export PATH="/opt/swift/bin:$PATH"
+    echo 'export PATH="/opt/swift/bin:$PATH"' > /etc/profile.d/swift.sh
+
     ok "Swift $(swift --version 2>&1 | head -1)"
 fi
 
@@ -103,15 +137,14 @@ fi
 # ── Environment file ─────────────────────────────────────────────────────────
 
 log "Writing environment config"
-cat > "/etc/$APP_NAME.env" <<EOF
+ENV_FILE="/etc/$APP_NAME.env"
+cat > "$ENV_FILE" <<EOF
 DATABASE_HOST=localhost
 DATABASE_NAME=$DB_NAME
 DATABASE_USERNAME=$DB_USER
 DATABASE_PASSWORD=$DB_PASS
 LOG_LEVEL=info
 EOF
-chmod 600 "/etc/$APP_NAME.env"
-ok "Environment saved to /etc/$APP_NAME.env"
 
 # ── Application user ─────────────────────────────────────────────────────────
 
@@ -121,6 +154,66 @@ else
     useradd --system --user-group --create-home --home-dir /home/$APP_USER --shell /usr/sbin/nologin $APP_USER
     ok "User '$APP_USER' created"
 fi
+
+# ── TLS certificates ─────────────────────────────────────────────────────────
+
+CERT_DIR="/etc/$APP_NAME/certs"
+mkdir -p "$CERT_DIR"
+
+if [[ -n "$DOMAIN" ]]; then
+    # Domain provided — use Let's Encrypt
+    log "Setting up HTTPS with Let's Encrypt for $DOMAIN"
+    apt-get -qq install -y certbot > /dev/null
+
+    LE_DIR="/etc/letsencrypt/live/$DOMAIN"
+    if [[ -d "$LE_DIR" ]]; then
+        ok "Certificate for $DOMAIN already exists"
+    else
+        certbot certonly --standalone --non-interactive --agree-tos \
+            --register-unsafely-without-email -d "$DOMAIN"
+        ok "Certificate obtained for $DOMAIN"
+    fi
+
+    TLS_CERT="$LE_DIR/fullchain.pem"
+    TLS_KEY="$LE_DIR/privkey.pem"
+
+    # Allow the app user to read certificates
+    chmod 750 /etc/letsencrypt/live /etc/letsencrypt/archive
+    chgrp $APP_USER /etc/letsencrypt/live /etc/letsencrypt/archive
+
+    # Set up auto-renewal with service restart
+    mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+    cat > /etc/letsencrypt/renewal-hooks/deploy/restart-chatserver.sh <<'HOOK'
+#!/bin/bash
+systemctl restart chatserver
+HOOK
+    chmod +x /etc/letsencrypt/renewal-hooks/deploy/restart-chatserver.sh
+    ok "Auto-renewal configured"
+else
+    # No domain — generate self-signed certificate for the IP
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    log "Generating self-signed certificate for $SERVER_IP"
+
+    TLS_CERT="$CERT_DIR/cert.pem"
+    TLS_KEY="$CERT_DIR/key.pem"
+
+    openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
+        -keyout "$TLS_KEY" -out "$TLS_CERT" \
+        -subj "/CN=$SERVER_IP" \
+        -addext "subjectAltName=IP:$SERVER_IP"
+
+    chown $APP_USER:$APP_USER "$CERT_DIR"/*.pem
+    ok "Self-signed certificate created for $SERVER_IP"
+fi
+
+# Add TLS paths to environment
+cat >> "$ENV_FILE" <<EOF
+TLS_CERT_PATH=$TLS_CERT
+TLS_KEY_PATH=$TLS_KEY
+EOF
+
+chmod 600 "$ENV_FILE"
+ok "Environment saved to $ENV_FILE"
 
 # ── Clone & build ────────────────────────────────────────────────────────────
 
@@ -138,7 +231,7 @@ fi
 cd "$INSTALL_DIR"
 
 log "Building application (this may take several minutes)"
-swift build -c release 2>&1 | tail -5
+swift build -c release -v
 
 BIN_PATH=$(swift build -c release --show-bin-path)
 cp "$BIN_PATH/App" "$INSTALL_DIR/App"
@@ -146,6 +239,9 @@ ok "Build complete"
 
 # Set ownership
 chown -R $APP_USER:$APP_USER "$INSTALL_DIR"
+
+# Allow binding to port 443 as non-root
+setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/App"
 
 # ── Systemd service ──────────────────────────────────────────────────────────
 
@@ -183,14 +279,20 @@ ok "Service '$APP_NAME' started"
 log "Running database migrations"
 sleep 2  # Give the app a moment to start
 cd "$INSTALL_DIR"
-sudo -u $APP_USER bash -c "source /etc/$APP_NAME.env && $INSTALL_DIR/App migrate --yes" 2>&1 || true
+export $(grep -v '^#' /etc/$APP_NAME.env | xargs)
+sudo -E -u $APP_USER "$INSTALL_DIR/App" migrate --yes 2>&1 || true
 ok "Migrations complete"
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 
 log "Installation complete!"
 echo ""
-echo "  App running on:   http://$(hostname -I | awk '{print $1}'):$APP_PORT"
+if [[ -n "$DOMAIN" ]]; then
+    echo "  App running on:   https://$DOMAIN"
+else
+    echo "  App running on:   https://$(hostname -I | awk '{print $1}')"
+    echo "  (self-signed cert — browser will show a warning)"
+fi
 echo "  Service name:     $APP_NAME"
 echo "  Install dir:      $INSTALL_DIR"
 echo "  Config:           /etc/$APP_NAME.env"
