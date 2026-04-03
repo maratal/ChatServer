@@ -2,12 +2,26 @@ import Fluent
 import FluentPostgresDriver
 import Vapor
 import Leaf
+import NIOSSL
 
 func configure(_ app: Application, service: inout CoreService) throws {
     app.logger = Logger(label: "Default 👉")
     
     app.directory.viewsDirectory = app.directory.publicDirectory + "app/html"
     app.views.use(.leaf)
+    
+    // Configure TLS if certificate paths are provided
+    if let certPath = Environment.get("TLS_CERT_PATH"),
+       let keyPath = Environment.get("TLS_KEY_PATH") {
+        let certs = try NIOSSLCertificate.fromPEMFile(certPath)
+        let privateKey = try NIOSSLPrivateKey(file: keyPath, format: .pem)
+        var tlsConfig = TLSConfiguration.makeServerConfiguration(
+            certificateChain: certs.map { .certificate($0) },
+            privateKey: .privateKey(privateKey)
+        )
+        tlsConfig.minimumTLSVersion = .tlsv12
+        app.http.server.configuration.tlsConfiguration = tlsConfig
+    }
     
     // Configure database - prefer DATABASE_URL for Heroku, fallback to individual env vars
     if let databaseURL = Environment.get("DATABASE_URL") {
@@ -19,7 +33,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
             username: Environment.get("DATABASE_USERNAME") ?? "postgres",
             password: Environment.get("DATABASE_PASSWORD"),
             database: Environment.get("DATABASE_NAME") ?? "postgres",
-            tls: .prefer(try .init(configuration: .clientDefault)))
+            tls: .disable)
         ), as: .psql)
     }
 
