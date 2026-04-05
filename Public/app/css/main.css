@@ -1064,10 +1064,30 @@ input[type="text"]:disabled, textarea:disabled {
 }
 
 .settings-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
     font-size: 0.875rem;
     font-weight: 500;
     color: hsl(var(--foreground));
-    margin-bottom: 0.625rem;
+    margin-bottom: 0.5rem;
+}
+
+.settings-select {
+    width: 100%;
+    padding: 0.4rem 0.625rem;
+    font-size: 0.875rem;
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.settings-select:focus {
+    border-color: hsl(var(--primary));
 }
 
 .settings-divider {

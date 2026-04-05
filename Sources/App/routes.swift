@@ -1,8 +1,9 @@
 import Vapor
 
-func routes(_ app: Application) {
+func routes(_ app: Application, settingsService: any SettingsServiceProtocol) {
     app.get { req async throws -> View in
-        try await req.view.render("index", ProductInfo())
+        let registrationOpen = try await settingsService.isRegistrationOpen()
+        return try await req.view.render("index", IndexContext(registrationOpen: registrationOpen))
     }
     
     app.get("main") { req async throws -> View in

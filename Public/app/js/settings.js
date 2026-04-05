@@ -217,13 +217,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
 // ── Panel open / close ────────────────────────────────────────────
 
-function openSettings() {
-    const modal = document.getElementById('settingsModal');
-    modal.style.display = 'block';
-    modal.offsetHeight; // force reflow so translateX(-100%) is in place before transition
-    requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('show')));
-}
-
 function closeSettings() {
     const modal = document.getElementById('settingsModal');
     modal.classList.remove('show');
@@ -432,3 +425,83 @@ document.addEventListener('DOMContentLoaded', () => {
     buildJournalFontOptions();
     buildJournalSizeOptions();
 });
+
+// ── Server Settings (admin only) ──────────────────────────────────
+
+async function loadServerSettings() {
+    const group = document.getElementById('serverSettingsGroup');
+    const divider = document.getElementById('serverSettingsDivider');
+    const list = document.getElementById('serverSettingsList');
+    if (!group || !list) return;
+
+    let settings;
+    try {
+        settings = await apiGetServerSettings();
+    } catch (_) {
+        return; // not admin or not available
+    }
+
+    list.innerHTML = '';
+    settings.forEach(setting => {
+        let meta;
+        try { meta = JSON.parse(setting.meta); } catch (_) { return; }
+
+        const variants = meta.variants ? meta.variants.split(',').map(v => v.trim()) : [];
+
+        const section = document.createElement('div');
+        section.className = 'settings-section';
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'settings-label';
+
+        const titleText = document.createElement('span');
+        titleText.textContent = meta.title || setting.name;
+        if (meta.description) {
+            titleRow.title = meta.description;
+        }
+        titleRow.appendChild(titleText);
+
+        section.appendChild(titleRow);
+
+        if (variants.length > 0) {
+            const select = document.createElement('select');
+            select.className = 'settings-select';
+
+            variants.forEach(variant => {
+                const option = document.createElement('option');
+                option.value = variant;
+                option.textContent = variant.charAt(0).toUpperCase() + variant.slice(1);
+                option.selected = variant === setting.value;
+                select.appendChild(option);
+            });
+
+            select.addEventListener('change', async () => {
+                const previousValue = setting.value;
+                try {
+                    await apiSaveServerSetting(setting.name, select.value);
+                    setting.value = select.value;
+                } catch (error) {
+                    console.error('Failed to save setting:', error);
+                    select.value = previousValue;
+                }
+            });
+
+            section.appendChild(select);
+        }
+
+        list.appendChild(section);
+    });
+
+    group.style.display = '';
+    divider.style.display = '';
+}
+
+function openSettings() {
+    const modal = document.getElementById('settingsModal');
+    modal.style.display = 'block';
+    modal.offsetHeight;
+    requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('show')));
+    if (typeof currentUser !== 'undefined' && currentUser?.info?.id === 1) {
+        loadServerSettings();
+    }
+}
