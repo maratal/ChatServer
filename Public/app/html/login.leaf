@@ -33,6 +33,7 @@
             <button type="submit" class="login-button">Sign In</button>
         </form>
         
+        #if(registrationOpen):
         <div class="divider">
             <span>or</span>
         </div>
@@ -40,6 +41,7 @@
         <div class="register-link">
             <a href="/register">Create new account</a>
         </div>
+        #endif
     </div>
     
     <script src="/app/js/constants.js"></script>

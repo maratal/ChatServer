@@ -38,6 +38,7 @@
 .register-button {
     width: 100%;
     padding: 12px;
+    margin-top: 18px;
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: none;
@@ -131,6 +132,15 @@
 }
 
 /* Register page specific */
+
+.registration-closed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 1rem;
+    color: hsl(var(--muted-foreground));
+}
 
 .info-button {
     display: inline-block;

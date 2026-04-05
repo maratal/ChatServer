@@ -302,6 +302,13 @@
                         </select>
                     </div>
                 </div>
+                <div class="settings-divider" id="serverSettingsDivider" style="display:none"></div>
+                <div class="settings-group" id="serverSettingsGroup" style="display:none">
+                    <h3 class="settings-group-title">Server</h3>
+                    <div id="serverSettingsList">
+                        <!-- Populated by settings.js -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>

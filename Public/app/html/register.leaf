@@ -10,6 +10,7 @@
 </head>
 <body>
     <div class="register-container">
+        #if(registrationOpen):
         <div class="logo">
             <h1>ChatServer</h1>
             <p>Create your account</p>
@@ -64,6 +65,11 @@
         <div class="login-link">
             <a href="/login">Already have an account? Sign in</a>
         </div>
+        #else:
+        <div class="registration-closed">
+            <p>Registration is closed.</p>
+        </div>
+        #endif
     </div>
 
     <script src="/app/js/constants.js"></script>

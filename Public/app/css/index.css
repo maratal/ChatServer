@@ -64,6 +64,17 @@ body {
     font-size: 1.1rem;
 }
 
+.private-label {
+    display: inline-block;
+    padding: 8px 40px;
+    color: hsl(var(--muted-foreground));
+    border: 2px solid hsl(var(--border));
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.03em;
+}
+
 .logo {
     font-size: 60px;
     font-weight: 700;

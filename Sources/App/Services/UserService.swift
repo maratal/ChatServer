@@ -61,11 +61,13 @@ actor UserService: UserServiceProtocol {
 
     private let core: CoreService
     let repo: UsersRepository
+    let settingsService: SettingsServiceProtocol
     var currentUser: User?
     
-    init(core: CoreService, repo: UsersRepository) {
+    init(core: CoreService, repo: UsersRepository, settingsService: SettingsServiceProtocol) {
         self.core = core
         self.repo = repo
+        self.settingsService = settingsService
     }
     
     func with(_ currentUser: User?) -> UserService {
@@ -74,6 +76,9 @@ actor UserService: UserServiceProtocol {
     }
     
     func register(_ request: RegistrationRequest, ipAddress: String?) async throws -> User.PrivateInfo {
+        guard try await settingsService.isRegistrationOpen() else {
+            throw ServiceError(.forbidden, reason: "Registration is currently closed.")
+        }
         let registration = try validate(registration: request)
         let user = User(name: registration.name,
                         username: registration.username,

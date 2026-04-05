@@ -1,8 +1,9 @@
 import Vapor
 
-func routes(_ app: Application) {
+func routes(_ app: Application, settingsService: any SettingsServiceProtocol) {
     app.get { req async throws -> View in
-        try await req.view.render("index", ProductInfo())
+        let registrationOpen = try await settingsService.isRegistrationOpen()
+        return try await req.view.render("index", IndexContext(registrationOpen: registrationOpen))
     }
     
     app.get("main") { req async throws -> View in
@@ -10,11 +11,13 @@ func routes(_ app: Application) {
     }
     
     app.get("login") { req async throws -> View in
-        try await req.view.render("login", ProductInfo())
+        let registrationOpen = try await settingsService.isRegistrationOpen()
+        return try await req.view.render("login", IndexContext(registrationOpen: registrationOpen))
     }
     
     app.get("register") { req async throws -> View in
-        try await req.view.render("register", ProductInfo())
+        let registrationOpen = try await settingsService.isRegistrationOpen()
+        return try await req.view.render("register", IndexContext(registrationOpen: registrationOpen))
     }
     
     // /users/<id> - redirect to /users/<id>/notes

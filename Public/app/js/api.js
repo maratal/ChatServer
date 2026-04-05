@@ -213,6 +213,34 @@ async function apiDeleteUserPhoto(photoId) {
     return await handleResponse(response);
 }
 
+async function apiGetServerSettings() {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    const response = await fetch('/api/settings', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}
+
+async function apiSaveServerSetting(name, value) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    const response = await fetch(`/api/settings/${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ value })
+    });
+    return await handleResponse(response);
+}
+
 async function apiGetChats(full = true) {
     const accessToken = getAccessToken();
     if (!accessToken) {
