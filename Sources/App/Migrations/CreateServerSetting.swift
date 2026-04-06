@@ -5,11 +5,9 @@ struct CreateServerSetting: AsyncMigration {
 
     func prepare(on database: Database) async throws {
         try await database.schema("settings")
-            .id()
-            .field("name", .string, .required)
+            .field("name", .string, .identifier(auto: false))
             .field("value", .string, .required)
             .field("updated_at", .datetime)
-            .unique(on: "name")
             .create()
     }
 

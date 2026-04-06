@@ -20,9 +20,7 @@ actor SettingsDatabaseRepository: DatabaseRepository, SettingsRepository {
     }
 
     func find(name: String) async throws -> ServerSetting? {
-        try await ServerSetting.query(on: database)
-            .filter(\.$name == name)
-            .first()
+        try await ServerSetting.find(name, on: database)
     }
 
     func save(_ setting: ServerSetting) async throws {

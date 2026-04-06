@@ -4,11 +4,13 @@ import Foundation
 final class ServerSetting: RepositoryItem, @unchecked Sendable {
     static let schema = "settings"
 
-    @ID(key: .id)
-    var id: UUID?
+    @ID(custom: "name", generatedBy: .user)
+    var id: String?
 
-    @Field(key: "name")
-    var name: String
+    var name: String {
+        get { id! }
+        set { id = newValue }
+    }
 
     @Field(key: "value")
     var value: String
@@ -19,7 +21,7 @@ final class ServerSetting: RepositoryItem, @unchecked Sendable {
     init() {}
 
     init(name: String, value: String) {
-        self.name = name
+        self.id = name
         self.value = value
     }
 }
