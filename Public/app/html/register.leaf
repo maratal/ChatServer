@@ -67,12 +67,13 @@
         </div>
         #else:
         <div class="registration-closed">
-            <p>Registration is closed.</p>
+            <p><span class="lock-icon"></span>Registration is closed.</p>
         </div>
         #endif
     </div>
 
     <script src="/app/js/constants.js"></script>
+    <script src="/app/js/svg-icons.js"></script>
     <script src="/app/js/settings.js"></script>
     <script src="/app/js/api.js"></script>
     <script src="/app/js/webpush.js"></script>

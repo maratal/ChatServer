@@ -465,7 +465,7 @@ async function loadServerSettings() {
 
         if (variants.length > 0) {
             const select = document.createElement('select');
-            select.className = 'settings-select';
+            select.className = 'settings-dropdown';
 
             variants.forEach(variant => {
                 const option = document.createElement('option');
