@@ -220,8 +220,9 @@ ok "Environment saved to $ENV_FILE"
 log "Cloning repository"
 if [[ -d "$INSTALL_DIR" ]]; then
     cd "$INSTALL_DIR"
-    git fetch --all
-    git reset --hard origin/main
+    git config --global --add safe.directory "$INSTALL_DIR"
+    git fetch origin
+    git merge --ff-only origin/main
     ok "Repository updated"
 else
     git clone "$REPO_URL" "$INSTALL_DIR"
@@ -231,7 +232,7 @@ fi
 cd "$INSTALL_DIR"
 
 log "Building application (this may take several minutes)"
-swift build -c release -v
+swift build -c release -v 2>&1 | grep -E "^(Compiling|Linking|Build complete)|warning:|error:"
 
 BIN_PATH=$(swift build -c release --show-bin-path)
 cp "$BIN_PATH/App" "$INSTALL_DIR/App"
