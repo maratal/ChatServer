@@ -37,12 +37,14 @@ actor SettingsService: SettingsServiceProtocol {
 
     func allSettings() async throws -> [ServerSettingInfo] {
         let stored = try await repo.all()
-        return Self.defaults.keys.sorted().map { name in
-            let def = Self.defaults[name]!
-            if let setting = stored.first(where: { $0.name == name }) {
-                return setting.info(meta: def.meta)
+        let allNames = Set(Self.defaults.keys).union(Set(stored.map { $0.name }))
+        return allNames.compactMap { name in
+            let def = Self.defaults[name]
+            if let setting = stored.first(where: { $0.name == name }), !setting.value.isEmpty {
+                return setting.info(meta: def?.meta ?? "")
             }
-            return ServerSettingInfo(name: name, value: def.value, meta: def.meta, updatedAt: nil)
+            guard let value = def?.value, !value.isEmpty else { return nil }
+            return ServerSettingInfo(name: name, value: value, meta: def?.meta ?? "", updatedAt: nil)
         }
     }
 
