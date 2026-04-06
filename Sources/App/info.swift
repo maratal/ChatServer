@@ -10,3 +10,8 @@ struct IndexContext: Encodable {
     let productInfo = ProductInfo()
     let registrationOpen: Bool
 }
+
+struct MainContext: Encodable {
+    let productInfo = ProductInfo()
+    let serverMessage: String?
+}

@@ -326,5 +326,8 @@
     <script src="/app/js/emoji-picker.js?v=23"></script>
     <script src="/app/js/media-viewer.js?v=23"></script>
     <script src="/app/js/user-profile.js?v=23"></script>
+    #if(serverMessage):
+    <script>alert("#(serverMessage)");</script>
+    #endif
 </body>
 </html>

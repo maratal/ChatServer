@@ -7,7 +7,8 @@ func routes(_ app: Application, settingsService: any SettingsServiceProtocol) {
     }
     
     app.get("main") { req async throws -> View in
-        try await req.view.render("main", ProductInfo())
+        let message = try await settingsService.serverMessage()
+        return try await req.view.render("main", MainContext(serverMessage: message))
     }
     
     app.get("login") { req async throws -> View in
