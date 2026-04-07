@@ -58,12 +58,7 @@
                 
                 <!-- Bottom Bar: Settings (left) + New Chat (right) -->
                 <div class="new-chat-button-container">
-                    <button class="inline-button" id="settingsButton" onclick="openSettings()" title="Settings">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings">
-                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                    </button>
+                    <button class="inline-button settings-icon-button" id="settingsButton" onclick="openSettings()" title="Settings"></button>
                     <button class="inline-button" id="newChatButton" onclick="showNewChatMenu(event)" title="New chat">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -266,7 +261,10 @@
         <div class="settings-content">
             <div class="settings-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground">Settings</h1>
-                <button class="inline-button close-icon-button" onclick="closeSettings()"></button>
+                <div class="settings-header-buttons">
+                    <button class="inline-button dashboard-icon-button" id="dashboardButton" style="display:none" title="Server Dashboard" onclick="openDashboard()"></button>
+                    <button class="inline-button close-icon-button" onclick="closeSettings()"></button>
+                </div>
             </div>
             <div class="settings-body">
                 <div class="settings-group">
@@ -302,11 +300,45 @@
                         </select>
                     </div>
                 </div>
-                <div class="settings-divider" id="serverSettingsDivider" style="display:none"></div>
-                <div class="settings-group" id="serverSettingsGroup" style="display:none">
-                    <h3 class="settings-group-title">Server</h3>
-                    <div id="serverSettingsList">
-                        <!-- Populated by settings.js -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Dashboard Modal -->
+    <div class="settings-modal" id="dashboardModal" onclick="handleDashboardModalClick(event)">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h1 class="text-2xl font-bold text-sidebar-foreground">Dashboard</h1>
+                <button class="inline-button close-icon-button" onclick="closeDashboard()"></button>
+            </div>
+            <div class="settings-body">
+                <div class="settings-group">
+                    <h3 class="settings-group-title">Settings</h3>
+                    <div id="dashboardSettingsList">
+                        <!-- Populated by dashboard.js -->
+                    </div>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-group">
+                    <h3 class="settings-group-title">Actions</h3>
+                    <div class="dashboard-actions">
+                        <button class="dashboard-button" id="dashboardRefreshButton" title="Pull latest changes without rebuilding or restarting the server" onclick="dashboardRefresh()">Refresh</button>
+                        <button class="dashboard-button dashboard-button-warning" id="dashboardUpdateButton" title="Pull latest code from remote, rebuild and restart the server" onclick="dashboardUpdate()">Update</button>
+                    </div>
+                    <pre class="dashboard-log" id="dashboardLog" style="display:none"></pre>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-group">
+                    <h3 class="settings-group-title">Product Info</h3>
+                    <div id="dashboardProductInfo" class="dashboard-info">
+                        <p class="dashboard-loading">Loading...</p>
+                    </div>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-group">
+                    <h3 class="settings-group-title">System Info</h3>
+                    <div id="dashboardInfo" class="dashboard-info">
+                        <p class="dashboard-loading">Loading...</p>
                     </div>
                 </div>
             </div>
@@ -320,6 +352,7 @@
     <script src="/app/js/webpush.js?v=23"></script>
     <script src="/app/js/svg-icons.js?v=23"></script>
     <script src="/app/js/settings.js?v=23"></script>
+    <script src="/app/js/dashboard.js?v=23"></script>
     <script src="/app/js/main.js?v=23"></script>
     <script src="/app/js/chat.js?v=23"></script>
     <script src="/app/js/ws.js?v=23"></script>

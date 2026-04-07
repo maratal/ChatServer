@@ -4,33 +4,44 @@
 # Exit on error, undefined variables, and pipe failures
 set -euo pipefail
 
+# Redirect all output to the log file (and console via tee)
+LOG_FILE="/tmp/chatserver-update.log"
+rm -f "$LOG_FILE"
+exec > >(stdbuf -oL tee "$LOG_FILE") 2>&1
+
 # Configuration
 APP_NAME="chatserver"
 INSTALL_DIR="/opt/$APP_NAME"
 APP_USER="vapor"
 
 # Logging helpers
-log()  { printf '\n\033[1;34m→ %s\033[0m\n' "$*"; }
+log()  { printf '\033[1;34m→ %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
 # Require root and a valid install directory
 [[ "$(id -u)" -eq 0 ]] || fail "This script must be run as root"
 [[ -d "$INSTALL_DIR" ]] || fail "Install directory $INSTALL_DIR not found"
+export HOME=/root
 
 # Pull latest changes from remote
 log "Fetching latest code"
 cd "$INSTALL_DIR"
-git config --global --add safe.directory "$INSTALL_DIR"
+git config --global --add safe.directory '*'
 git fetch origin
-git merge --ff-only origin/main
+if ! git merge --ff-only origin/main 2>/dev/null; then
+    log "Fast-forward failed, resetting to origin/main"
+    git reset --hard origin/main
+fi
 ok "Repository updated"
 
 # Compile and replace the binary
 log "Building application"
-swift build -c release -v 2>&1 | grep -E "^(Compiling|Linking|Build complete)|warning:|error:"
+swift build -c release -v 2>&1 | grep -E "Compiling|Linking|Build complete|error:" || true
 BIN_PATH=$(swift build -c release --show-bin-path)
 log "Stopping service"
+# Delay so client could read the "Stopping service" message before the service is stopped and the connection is lost
+sleep 2
 systemctl stop "$APP_NAME"
 cp "$BIN_PATH/App" "$INSTALL_DIR/App"
 chown $APP_USER:$APP_USER "$INSTALL_DIR/App"

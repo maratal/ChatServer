@@ -155,6 +155,18 @@ else
     ok "User '$APP_USER' created"
 fi
 
+# Allow the app user to run management scripts without a password
+SUDOERS_FILE="/etc/sudoers.d/$APP_NAME"
+cat > "$SUDOERS_FILE" <<EOF
+$APP_USER ALL=(root) NOPASSWD: $INSTALL_DIR/refresh.sh, /usr/bin/systemd-run --collect $INSTALL_DIR/update.sh
+EOF
+chmod 440 "$SUDOERS_FILE"
+ok "Sudoers configured for $APP_USER"
+
+# Lock down management scripts so only root can modify them
+chown root:root "$INSTALL_DIR/refresh.sh" "$INSTALL_DIR/update.sh"
+chmod 755 "$INSTALL_DIR/refresh.sh" "$INSTALL_DIR/update.sh"
+
 # ── TLS certificates ─────────────────────────────────────────────────────────
 
 CERT_DIR="/etc/$APP_NAME/certs"

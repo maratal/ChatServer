@@ -20,6 +20,10 @@ func routes(_ app: Application, settingsService: any SettingsServiceProtocol) {
         let registrationOpen = try await settingsService.isRegistrationOpen()
         return try await req.view.render("register", IndexContext(registrationOpen: registrationOpen))
     }
+
+    app.get("api", "info") { req async throws in
+        ProductInfo()
+    }
     
     // /users/<id> - redirect to /users/<id>/notes
     app.get("users", ":id") { req async throws -> Response in

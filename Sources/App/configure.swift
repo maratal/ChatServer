@@ -59,6 +59,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     try app.register(collection: UploadController())
     try app.register(collection: NotesController(service: service.notes, usersService: service.users))
     try app.register(collection: SettingsController(service: service.settings))
+    try app.register(collection: DashboardController())
     
     // Use custom FileMiddleware that only handles GET/HEAD requests
     app.middleware.use(ReadOnlyFileMiddleware(publicDirectory: app.directory.publicDirectory))

@@ -1,9 +1,9 @@
 import Foundation
 
-struct ProductInfo: Encodable {
-    let productName = "Chat Server"
-    let version = "0.1.0"
-    let apiVersion = "0.9"
+struct ProductInfo: Serializable {
+    var productName = "Chat Server"
+    var version = "0.1.0"
+    var apiVersion = "0.9"
 }
 
 struct IndexContext: Encodable {

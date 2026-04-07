@@ -9,7 +9,7 @@ APP_NAME="chatserver"
 INSTALL_DIR="/opt/$APP_NAME"
 
 # Logging helpers
-log()  { printf '\n\033[1;34m→ %s\033[0m\n' "$*"; }
+log()  { printf '\033[1;34m→ %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 

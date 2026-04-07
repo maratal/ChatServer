@@ -241,6 +241,49 @@ async function apiSaveServerSetting(name, value) {
     return await handleResponse(response);
 }
 
+async function apiDashboardInfo() {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/dashboard/api/info', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}
+
+async function apiDashboardRefresh() {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/dashboard/api/refresh', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}
+
+async function apiDashboardUpdate() {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/dashboard/api/update', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}
+
+async function apiDashboardUpdateLog() {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/dashboard/api/log', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    return await handleResponse(response);
+}
+
+async function apiInfo() {
+    const response = await fetch('/api/info');
+    return await handleResponse(response);
+}
+
 async function apiGetChats(full = true) {
     const accessToken = getAccessToken();
     if (!accessToken) {

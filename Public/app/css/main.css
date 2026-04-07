@@ -1277,6 +1277,103 @@ input[type="text"]:disabled, textarea:disabled {
     background: hsl(var(--muted));
 }
 
+/* Dashboard Panel */
+.settings-header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dashboard-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+}
+
+.dashboard-info-label {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.dashboard-info-value {
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+    font-weight: 500;
+}
+
+.dashboard-loading,
+.dashboard-error {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.dashboard-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.dashboard-button {
+    width: 100%;
+    padding: 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.dashboard-button:hover {
+    background: hsl(var(--accent));
+}
+
+.dashboard-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.dashboard-button-warning {
+    background: hsl(0 60% 50% / 0.15);
+    border-color: hsl(0 60% 50% / 0.3);
+    color: hsl(0 60% 60%);
+}
+
+.dashboard-button-warning:hover {
+    background: hsl(0 60% 50% / 0.25);
+}
+
+.dashboard-log {
+    margin: 0;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.dashboard-log-error {
+    color: hsl(0 60% 60%);
+    background: hsl(0 60% 50% / 0.08);
+    border-color: hsl(0 60% 50% / 0.2);
+}
+
+.dashboard-log-success {
+    color: hsl(140 60% 60%);
+    background: hsl(140 60% 50% / 0.08);
+    border-color: hsl(140 60% 50% / 0.2);
+}
+
 /* Group Chat Modal */
 .group-chat-modal {
     position: fixed;
