@@ -576,7 +576,7 @@ function resetJournalTitleStyle(titleElement, subtitleElement) {
 
 // ── User Info Modal ─────────────────────────────────────────────────────────
 
-function showNotesUserInfo() {
+async function showNotesUserInfo() {
     const modalId = `notesUserInfoModal_${pageUserId}`;
     if (document.getElementById(modalId)) return;
 
@@ -618,14 +618,20 @@ function showNotesUserInfo() {
 
     notesInfoModalStack.push(modalElement);
 
-    displayUserInfo({
-        id: pageUserId,
-        name: pageUserName,
-        username: pageUserUsername,
-        about: pageUserAbout,
-        photos: pageUserPhotos,
-        lastSeen: pageUserLastSeen ? new Date(pageUserLastSeen * 1000).toISOString() : null
-    }, `${modalId}_body`);
+    const bodyId = `${modalId}_body`;
+    try {
+        const user = await apiGetUser(pageUserId, true);
+        displayUserInfo(user, bodyId);
+    } catch (_) {
+        displayUserInfo({
+            id: pageUserId,
+            name: pageUserName,
+            username: pageUserUsername,
+            about: pageUserAbout,
+            photos: pageUserPhotos,
+            lastSeen: pageUserLastSeen ? new Date(pageUserLastSeen * 1000).toISOString() : null
+        }, bodyId);
+    }
 }
 
 function closeNotesUserInfo() {

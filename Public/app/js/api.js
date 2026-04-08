@@ -124,18 +124,11 @@ async function apiChangePassword(currentPassword, newPassword) {
     return await handleResponse(response);
 }
 
-async function apiGetUser(userId) {
+async function apiGetUser(userId, full = false) {
     const accessToken = getAccessToken();
-    if (!accessToken) {
-        throw new Error('No access token available');
-    }
-    
-    const response = await fetch(`/api/users/${userId}`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
+    const url = full ? `/api/users/${userId}?full=1` : `/api/users/${userId}`;
+    const headers = accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {};
+    const response = await fetch(url, { method: 'GET', headers });
     return await handleResponse(response);
 }
 
@@ -776,10 +769,5 @@ async function apiGetUserNotes(userId, count = 20, before = null) {
         url += `&before=${before}`;
     }
     const response = await fetch(url);
-    return await handleResponse(response);
-}
-
-async function apiGetPublicUser(userId) {
-    const response = await fetch(`/api/users/${userId}`);
     return await handleResponse(response);
 }

@@ -104,7 +104,8 @@ struct UserController: RouteCollection {
     }
     
     func getUser(_ req: Request) async throws -> UserInfo {
-        try await service.with(req.currentUser()).getUser(id: req.objectID(), fullInfo: true)
+        let fullInfo = req.query[Int.self, at: "full"] == 1
+        return try await service.with(req.currentUser()).getUser(id: req.objectID(), fullInfo: fullInfo)
     }
     
     func users(_ req: Request) async throws -> [UserInfo] {

@@ -980,7 +980,7 @@ async function showUserInfo(userId) {
     userInfoModalStack.push({ userId, element: modalElement, bodyId: `${modalId}_body` });
 
     try {
-        const user = await apiGetUser(userId);
+        const user = await apiGetUser(userId, true);
         console.log('User data received:', user);
         displayUserInfo(user, `${modalId}_body`);
     } catch (error) {
