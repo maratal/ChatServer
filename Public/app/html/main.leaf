@@ -360,7 +360,11 @@
     <script src="/app/js/media-viewer.js?v=23"></script>
     <script src="/app/js/user-profile.js?v=23"></script>
     #if(serverMessage):
-    <script>alert("#(serverMessage)");</script>
+    <div id="serverMessageData" style="display:none" data-message="#(serverMessage)"></div>
+    <script>
+        const _msgElement = document.getElementById('serverMessageData');
+        if (_msgElement) initServerMessage(_msgElement.dataset.message);
+    </script>
     #endif
 </body>
 </html>

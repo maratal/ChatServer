@@ -82,29 +82,26 @@ async function loadDashboardSettings() {
 
     list.innerHTML = '';
     settings.forEach(setting => {
-        let meta;
-        try { meta = JSON.parse(setting.meta); } catch (_) { return; }
+        let meta = {};
+        try { meta = JSON.parse(setting.meta); } catch (_) {}
 
         const variants = meta.variants ? meta.variants.split(',').map(v => v.trim()) : [];
+        const title = meta.title || (setting.name.charAt(0).toUpperCase() + setting.name.slice(1));
 
         const section = document.createElement('div');
         section.className = 'settings-section';
 
         const titleRow = document.createElement('div');
         titleRow.className = 'settings-label';
-
         const titleText = document.createElement('span');
-        titleText.textContent = meta.title || setting.name;
-        if (meta.description) {
-            titleRow.title = meta.description;
-        }
+        titleText.textContent = title;
+        if (meta.description) titleRow.title = meta.description;
         titleRow.appendChild(titleText);
         section.appendChild(titleRow);
 
         if (variants.length > 0) {
             const select = document.createElement('select');
             select.className = 'settings-dropdown';
-
             variants.forEach(variant => {
                 const option = document.createElement('option');
                 option.value = variant;
@@ -112,7 +109,6 @@ async function loadDashboardSettings() {
                 option.selected = variant === setting.value;
                 select.appendChild(option);
             });
-
             select.addEventListener('change', async () => {
                 const previousValue = setting.value;
                 try {
@@ -123,15 +119,13 @@ async function loadDashboardSettings() {
                     select.value = previousValue;
                 }
             });
-
             section.appendChild(select);
         } else {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'settings-dropdown';
+            const input = document.createElement('textarea');
+            input.className = 'settings-message-textarea';
             input.value = setting.value;
-            input.placeholder = meta.description || '';
-
+            input.placeholder = 'Enter system message';
+            input.rows = 3;
             let saveTimeout;
             input.addEventListener('input', () => {
                 clearTimeout(saveTimeout);
@@ -144,12 +138,63 @@ async function loadDashboardSettings() {
                     }
                 }, 500);
             });
-
+            input.addEventListener('keydown', async (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    clearTimeout(saveTimeout);
+                    try {
+                        await apiSaveServerSetting(setting.name, input.value);
+                        setting.value = input.value;
+                    } catch (error) {
+                        console.error('Failed to save setting:', error);
+                    }
+                    input.blur();
+                }
+            });
             section.appendChild(input);
         }
 
         list.appendChild(section);
     });
+}
+
+// ── Server Message Banner ────────────────────────────────────────────────────
+
+function initServerMessage(message) {
+    if (!message) return;
+    const storageKey = 'chatserver_dismissed_server_message';
+    if (localStorage.getItem(storageKey) === message) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'serverMessageBanner';
+    banner.className = 'server-message-banner';
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'server-message-text';
+    textSpan.textContent = message;
+
+    const dismissButton = document.createElement('button');
+    dismissButton.className = 'server-message-dismiss';
+    dismissButton.innerHTML = closeIcon;
+    dismissButton.addEventListener('click', () => dismissServerMessage(message));
+
+    const infoIcon = document.createElement('span');
+    infoIcon.className = 'server-message-icon';
+    infoIcon.innerHTML = noticeIcon;
+
+    banner.appendChild(infoIcon);
+    banner.appendChild(textSpan);
+    banner.appendChild(dismissButton);
+    document.body.appendChild(banner);
+
+    requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('show')));
+}
+
+function dismissServerMessage(message) {
+    const banner = document.getElementById('serverMessageBanner');
+    if (!banner) return;
+    if (message) localStorage.setItem('chatserver_dismissed_server_message', message);
+    banner.remove();
 }
 
 async function dashboardRefresh() {
