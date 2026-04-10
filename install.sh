@@ -163,10 +163,6 @@ EOF
 chmod 440 "$SUDOERS_FILE"
 ok "Sudoers configured for $APP_USER"
 
-# Lock down management scripts so only root can modify them
-chown root:root "$INSTALL_DIR/refresh.sh" "$INSTALL_DIR/update.sh"
-chmod 755 "$INSTALL_DIR/refresh.sh" "$INSTALL_DIR/update.sh"
-
 # ── TLS certificates ─────────────────────────────────────────────────────────
 
 CERT_DIR="/etc/$APP_NAME/certs"
@@ -253,6 +249,16 @@ ok "Build complete"
 # Set ownership
 chown -R $APP_USER:$APP_USER "$INSTALL_DIR"
 
+# Lock down management scripts so only root can modify them
+if [[ -f "$INSTALL_DIR/refresh.sh" ]]; then
+    chown root:root "$INSTALL_DIR/refresh.sh"
+    chmod 755 "$INSTALL_DIR/refresh.sh"
+fi
+if [[ -f "$INSTALL_DIR/update.sh" ]]; then
+    chown root:root "$INSTALL_DIR/update.sh"
+    chmod 755 "$INSTALL_DIR/update.sh"
+fi
+
 # Allow binding to port 443 as non-root
 setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/App"
 
@@ -286,15 +292,6 @@ systemctl daemon-reload
 systemctl enable "$APP_NAME"
 systemctl restart "$APP_NAME"
 ok "Service '$APP_NAME' started"
-
-# ── Run migrations ───────────────────────────────────────────────────────────
-
-log "Running database migrations"
-sleep 2  # Give the app a moment to start
-cd "$INSTALL_DIR"
-export $(grep -v '^#' /etc/$APP_NAME.env | xargs)
-sudo -E -u $APP_USER "$INSTALL_DIR/App" migrate --yes 2>&1 || true
-ok "Migrations complete"
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 
