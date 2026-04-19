@@ -12,7 +12,7 @@ exec > >(stdbuf -oL tee "$LOG_FILE") 2>&1
 # Configuration
 APP_NAME="chatserver"
 INSTALL_DIR="/opt/$APP_NAME"
-APP_USER="vapor"
+APP_USER=$(grep -oP '^User=\K.*' /etc/systemd/system/"$APP_NAME".service 2>/dev/null || echo "app_user")
 
 # Logging helpers
 log()  { printf '\033[1;34m→ %s\033[0m\n' "$*"; }
