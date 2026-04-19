@@ -54,6 +54,7 @@ else
     swift build -c release 2>&1 | grep -E "^(Compiling|Linking|Build complete)|error:"
     BIN_PATH=$(swift build -c release --show-bin-path)
     cp "$BIN_PATH/App" "$BIN_FILE"
+    cp "$BIN_FILE" "$INSTALL_DIR/Public/prebuilds/$BIN_NAME"
     ok "Build complete — saved as $BIN_NAME"
 fi
 
