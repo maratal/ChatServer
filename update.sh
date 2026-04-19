@@ -61,13 +61,13 @@ fi
 log "Stopping service"
 # Delay so client could read the "Stopping service" message before the service is stopped and the connection is lost
 sleep 2
-systemctl stop "$APP_NAME"
+systemctl disable --now "$APP_NAME"
 cp "$BIN_FILE" "$INSTALL_DIR/App"
 chown $APP_USER:$APP_USER "$BIN_FILE" "$INSTALL_DIR/App"
-setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/App" # Allow binding to port 443 without root
+setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/App"
 ok "Binary updated"
 
 # Restart the service to pick up the new binary
 log "Restarting service"
-systemctl restart "$APP_NAME"
+systemctl enable --now "$APP_NAME"
 ok "Service '$APP_NAME' restarted"
