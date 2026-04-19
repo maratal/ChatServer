@@ -16,6 +16,9 @@ protocol SettingsServiceProtocol: Sendable {
 
     /// Returns the current system message, or nil if not set.
     func serverMessage() async throws -> String?
+
+    /// Returns true if the index page should redirect to the admin's journal when users are registered.
+    func isJournalAtIndexEnabled() async throws -> Bool
 }
 
 actor SettingsService: SettingsServiceProtocol {
@@ -35,6 +38,10 @@ actor SettingsService: SettingsServiceProtocol {
         "message": SettingDefault(
             value: "",
             meta: #"{"title":"System Message","description":"A message shown to all users on the main page. Leave empty to disable."}"#
+        ),
+        "journalAtIndex": SettingDefault(
+            value: "disabled",
+            meta: #"{"title":"Journal at Index","variants":"disabled,enabled","description":"When enabled, the home page redirects to the admin's journal if users are registered."}"#
         )
     ]
 
@@ -80,6 +87,13 @@ actor SettingsService: SettingsServiceProtocol {
             return nil
         }
         return setting.value
+    }
+
+    func isJournalAtIndexEnabled() async throws -> Bool {
+        guard let setting = try await repo.find(name: "journalAtIndex") else {
+            return false
+        }
+        return setting.value == "enabled"
     }
 }
 

@@ -1,9 +1,15 @@
 import Vapor
 
 func routes(_ app: Application, settingsService: any SettingsServiceProtocol) {
-    app.get { req async throws -> View in
+    app.get { req async throws -> Response in
+        if try await settingsService.isJournalAtIndexEnabled() {
+            if let _ = try await User.find(1, on: req.db) {
+                return req.redirect(to: "/users/1/notes")
+            }
+        }
         let registrationOpen = try await settingsService.isRegistrationOpen()
-        return try await req.view.render("index", IndexContext(registrationOpen: registrationOpen))
+        let view = req.view.render("index", IndexContext(registrationOpen: registrationOpen))
+        return try await view.encodeResponse(for: req).get()
     }
     
     app.get("main") { req async throws -> View in
