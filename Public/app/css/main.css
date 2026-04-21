@@ -3719,6 +3719,7 @@ input[type="text"]:disabled, textarea:disabled {
     object-fit: cover;
 }
 
+.notes-sidebar-modal .user-info-content,
 .notes-user-info-modal .user-info-content {
     right: auto;
     left: 0;
@@ -3726,6 +3727,7 @@ input[type="text"]:disabled, textarea:disabled {
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
 }
 
+.notes-sidebar-modal.show .user-info-content,
 .notes-user-info-modal.show .user-info-content {
     transform: translateX(0);
 }

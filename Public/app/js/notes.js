@@ -16,7 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     detectOwnership();
     initializeSidebarNotesInfo();
     initializeHeader();
-    restoreSidebarState();
+    setupSidebarModal();
+    applyJournalTitleStyle(
+        document.getElementById('notesHeaderTitle'),
+        document.getElementById('notesHeaderSubtitle'),
+        false
+    );
     loadNotes();
     setupScrollPagination();
 });
@@ -137,7 +142,7 @@ function initializeHeader() {
         subtitleElement.textContent = `Since ${year}`;
     }
 
-    // Left avatar — notes avatar, hidden initially, shown when sidebar is closed
+    // Left avatar — notes avatar, always visible as the journal info trigger
     const leftAvatarContainer = document.getElementById('notesHeaderLeftAvatar');
     const notesImage = pageNotesImages && pageNotesImages.length > 0 ? pageNotesImages[0] : null;
     if (notesImage && notesImage.id && notesImage.fileType) {
@@ -494,41 +499,42 @@ function displayNotesPageInfoPanel(bodyId) {
 
 // ── Sidebar Toggle ──────────────────────────────────────────────────────────
 
-function getSidebarStorageKey() {
-    return `chatserver_journal_sidebar_closed_${pageUserId}`;
+function setupSidebarModal() {
+    const modal = document.getElementById('notesSidebarModal');
+    if (!modal) return;
+
+    modal.addEventListener('click', event => {
+        if (event.target === modal) {
+            closeNotesSidebar();
+        }
+    });
 }
 
-function restoreSidebarState() {
-    const closed = localStorage.getItem(getSidebarStorageKey());
-    if (closed === 'true') {
-        closeNotesSidebar(false);
-    }
-}
+function closeNotesSidebar() {
+    const modal = document.getElementById('notesSidebarModal');
+    if (!modal || !modal.classList.contains('show')) return;
 
-function closeNotesSidebar(animate = true) {
-    const sidebar = document.getElementById('notesSidebar');
-    const leftAvatar = document.getElementById('notesHeaderLeftAvatar');
-    const titleElement = document.getElementById('notesHeaderTitle');
-    const subtitleElement = document.getElementById('notesHeaderSubtitle');
-
-    if (sidebar) sidebar.style.display = 'none';
-    if (leftAvatar) leftAvatar.style.display = '';
-    localStorage.setItem(getSidebarStorageKey(), 'true');
-
-    applyJournalTitleStyle(titleElement, subtitleElement, animate);
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+    setTimeout(() => {
+        if (!modal.classList.contains('show')) {
+            modal.style.display = 'none';
+        }
+    }, 300);
 }
 
 function openNotesSidebar() {
-    const sidebar = document.getElementById('notesSidebar');
-    const leftAvatar = document.getElementById('notesHeaderLeftAvatar');
-    const titleElement = document.getElementById('notesHeaderTitle');
-    const subtitleElement = document.getElementById('notesHeaderSubtitle');
+    const modal = document.getElementById('notesSidebarModal');
+    if (!modal || modal.classList.contains('show')) return;
 
-    if (sidebar) sidebar.style.display = '';
-    if (leftAvatar) leftAvatar.style.display = 'none';
-    localStorage.setItem(getSidebarStorageKey(), 'false');
-
-    resetJournalTitleStyle(titleElement, subtitleElement);
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    modal.offsetHeight;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            modal.classList.add('show');
+        });
+    });
 }
 
 function applyJournalTitleStyle(titleElement, subtitleElement, animate) {
