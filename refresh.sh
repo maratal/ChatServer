@@ -22,5 +22,8 @@ log "Fetching latest code"
 cd "$INSTALL_DIR"
 git config --global --add safe.directory "$INSTALL_DIR"
 git fetch origin
-git merge --ff-only origin/main
+if ! git merge --ff-only origin/main 2>/dev/null; then
+    log "Fast-forward failed, resetting to origin/main"
+    git reset --hard origin/main
+fi
 ok "Repository updated"
