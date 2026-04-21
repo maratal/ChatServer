@@ -18,22 +18,12 @@ const STORAGE_MODE  = 'chatserver_mode';
 // ── Journal Title Settings ────────────────────────────────────────
 
 const JOURNAL_FONTS_ART = [
-    { id: 'snell-roundhand',  family: '"Snell Roundhand", cursive', label: 'Snell Roundhand' },
-    { id: 'brush-script',     family: '"Brush Script MT", cursive', label: 'Brush Script' },
-    { id: 'chalkduster',      family: 'Chalkduster, fantasy', label: 'Chalkduster' },
-    { id: 'marker-felt',      family: '"Marker Felt", fantasy', label: 'Marker Felt' },
-    { id: 'papyrus',          family: 'Papyrus, fantasy', label: 'Papyrus' },
-    { id: 'party-let',        family: '"Party LET", cursive', label: 'Party LET' },
-    { id: 'phosphate',        family: 'Phosphate, fantasy', label: 'Phosphate' },
-    { id: 'chalkboard',       family: '"Chalkboard SE", Chalkboard, fantasy', label: 'Chalkboard' },
-    { id: 'comic-sans',       family: '"Comic Sans MS", "Comic Sans", cursive', label: 'Comic Sans' },
-    { id: 'bradley-hand',     family: '"Bradley Hand", cursive', label: 'Bradley Hand' },
-    { id: 'herculanum',       family: 'Herculanum, fantasy', label: 'Herculanum' },
-    { id: 'luminari',         family: 'Luminari, fantasy', label: 'Luminari' },
-    { id: 'trattatello',      family: 'Trattatello, fantasy', label: 'Trattatello' },
-    { id: 'savoye-let',       family: '"Savoye LET", cursive', label: 'Savoye LET' },
-    { id: 'signpainter',      family: 'SignPainter-HouseScript, "SignPainter", cursive', label: 'SignPainter' },
-    { id: 'noteworthy',       family: 'Noteworthy, cursive', label: 'Noteworthy' },
+    { id: 'system-cursive',   family: 'cursive', label: 'System Cursive' },
+    { id: 'handwritten',      family: '"Comic Sans MS", "Segoe Print", "Bradley Hand", "Chalkboard SE", cursive', label: 'Handwritten' },
+    { id: 'marker',           family: '"Segoe Print", "Marker Felt", "Comic Sans MS", cursive', label: 'Marker' },
+    { id: 'storybook',        family: '"Trebuchet MS", "Comic Sans MS", Verdana, cursive', label: 'Storybook' },
+    { id: 'poster',           family: 'Impact, "Arial Black", fantasy', label: 'Poster' },
+    { id: 'system-fantasy',   family: 'fantasy', label: 'System Fantasy' },
 ];
 
 const JOURNAL_FONTS_STANDARD = [
@@ -274,7 +264,9 @@ function updateModeButtons(mode) {
 // ── Journal font / size helpers ────────────────────────────────────
 
 function getJournalFontById(id) {
-    return JOURNAL_FONTS.find(font => font.id === id) || JOURNAL_FONTS[0];
+    return JOURNAL_FONTS.find(font => font.id === id)
+        || JOURNAL_FONTS_STANDARD.find(font => font.id === DEFAULT_JOURNAL_FONT_ID)
+        || JOURNAL_FONTS[0];
 }
 
 function getJournalSizeById(id) {
@@ -333,7 +325,7 @@ function buildJournalFontOptions() {
     // Art group header
     const artHeader = document.createElement('div');
     artHeader.className = 'settings-font-group-label';
-    artHeader.textContent = 'Art & Decorative';
+    artHeader.textContent = 'Decorative';
     dropdown.appendChild(artHeader);
     JOURNAL_FONTS_ART.forEach(addFontItem);
 
