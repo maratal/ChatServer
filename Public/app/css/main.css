@@ -294,7 +294,7 @@ input[type="text"], textarea {
 
 /* Title styling adjustments */
 .h-header.bg-sidebar h1.text-2xl,
-.user-selection-header h1.text-2xl {
+.modal-panel-header h1.text-2xl {
     padding-left: 2px;
 }
 
@@ -575,7 +575,7 @@ input[type="text"]:disabled, textarea:disabled {
     transform: translateX(0);
 }
 
-.user-selection-header {
+.modal-panel-header {
     height: var(--header-height);
     background: hsl(var(--sidebar-background));
     display: flex;
@@ -690,19 +690,6 @@ input[type="text"]:disabled, textarea:disabled {
 
 .user-info-modal.show .user-info-content {
     transform: translateX(0);
-}
-
-.user-info-header {
-    height: var(--header-height);
-    background: hsl(var(--sidebar-background));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1rem;
-}
-
-.user-info-header h1.text-2xl {
-    padding-left: 2px;
 }
 
 .user-info-body {
@@ -1025,14 +1012,6 @@ input[type="text"]:disabled, textarea:disabled {
 
 .settings-modal.show .settings-content {
     transform: translateX(0);
-}
-
-.settings-header {
-    height: var(--header-height);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1rem;
 }
 
 .settings-body {
@@ -1505,15 +1484,6 @@ input[type="text"]:disabled, textarea:disabled {
     transform: translateX(0);
 }
 
-.group-chat-header {
-    height: var(--header-height);
-    background: hsl(var(--sidebar-background));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1rem;
-}
-
 .group-chat-header > div:first-child {
     display: flex;
     flex-direction: column;
@@ -1761,14 +1731,6 @@ input[type="text"]:disabled, textarea:disabled {
 
 .user-profile-modal.show .user-profile-content {
     transform: translateX(0);
-}
-
-.user-profile-header {
-    height: var(--header-height);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1rem;
 }
 
 .user-profile-body {

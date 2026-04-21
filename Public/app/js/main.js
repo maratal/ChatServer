@@ -939,7 +939,7 @@ async function showUserInfo(userId) {
     
     modalElement.innerHTML = `
         <div class="user-info-content">
-            <div class="user-info-header">
+            <div class="modal-panel-header user-info-header">
                 <button class="ellipsis-button" id="userInfoMenuButton_${userId}" onclick="event.stopPropagation(); showUserInfoMenu(${userId})" title="Chat menu">
                     •••
                 </button>
@@ -1348,7 +1348,7 @@ async function showGroupChatInfo(chatId) {
     
     modalElement.innerHTML = `
         <div class="user-info-content">
-            <div class="user-info-header">
+            <div class="modal-panel-header user-info-header">
                 <button class="ellipsis-button" id="chatInfoMenuButton_${chatId}" onclick="event.stopPropagation(); showChatInfoMenu('${chatId}')" title="Chat menu">
                     •••
                 </button>
@@ -1674,7 +1674,7 @@ function showNotesInfo(chat, options = {}) {
 
     modalElement.innerHTML = `
         <div class="user-info-content">
-            <div class="user-info-header">
+            <div class="modal-panel-header user-info-header">
                 ${headerButtons}
                 <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
                 <button class="inline-button" onclick="closeTopModalInfoPanel()">

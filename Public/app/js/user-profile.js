@@ -359,7 +359,7 @@ function showChangePasswordModal() {
     
     modalElement.innerHTML = `
         <div class="user-profile-content">
-            <div class="user-profile-header">
+            <div class="modal-panel-header user-profile-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
                 <button class="inline-button" onclick="closeTopModalInfoPanel()">
                     ${closeIcon}

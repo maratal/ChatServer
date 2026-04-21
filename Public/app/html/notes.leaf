@@ -14,7 +14,7 @@
     <div class="user-info-modal notes-sidebar-modal" id="notesSidebarModal" aria-hidden="true">
         <div class="user-info-content">
             <!-- Title bar -->
-            <div class="h-header bg-sidebar flex items-center justify-between px-4">
+            <div class="modal-panel-header">
                 <h1 class="text-2xl font-bold text-sidebar-foreground" id="notesSidebarTitle">Journal</h1>
                 <button class="inline-button close-icon-button" onclick="closeNotesSidebar()" title="Close"></button>
             </div>

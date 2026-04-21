@@ -367,7 +367,7 @@ function openNotesInfoPanel() {
 
     modalElement.innerHTML = `
         <div class="user-info-content">
-            <div class="user-info-header">
+            <div class="modal-panel-header user-info-header">
                 <div></div>
                 <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
                 <button class="inline-button" onclick="closeNotesInfoPanel()">
@@ -593,7 +593,7 @@ async function showNotesUserInfo() {
 
     modalElement.innerHTML = `
         <div class="user-info-content">
-            <div class="user-info-header">
+            <div class="modal-panel-header user-info-header">
                 <div></div>
                 <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
                 <button class="inline-button" onclick="closeNotesUserInfo()">
