@@ -8,7 +8,7 @@ import SwiftGD
 
 struct UploadController: RouteCollection {
     
-    static let maxBytes = 150_000_000
+    static let maxBytes = 200_000_000
     static let previewMaxDimension = 350
     
     func boot(routes: RoutesBuilder) throws {
