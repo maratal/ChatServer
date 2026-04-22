@@ -301,23 +301,77 @@ function isMediaUrl(url) {
     return /^(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/.test(ext);
 }
 
+function parseInlineMediaReference(content) {
+    if (!content) return null;
+
+    const trimmed = content.trim();
+    const markdownMatch = trimmed.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)$/i);
+
+    let label;
+    let href;
+
+    if (markdownMatch) {
+        label = markdownMatch[1];
+        href = markdownMatch[2];
+    } else if (/^(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)$/i.test(trimmed)) {
+        label = trimmed;
+        href = trimmed;
+    } else {
+        return null;
+    }
+
+    if (href.toLowerCase().startsWith('www.')) href = 'https://' + href;
+    if (!isMediaUrl(href)) return null;
+
+    return { label, href };
+}
+
+function createInlineMediaPopupLinkHtml(label, href) {
+    return `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${escapeHtml(href)}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;"><b>${escapeHtml(label)}</b></a></span>`;
+}
+
+function createInlineMediaEmbedHtml(label, href) {
+    const path = href.split('?')[0].split('#')[0];
+    const ext = path.split('.').pop().toLowerCase();
+    const isVideo = /^(mp4|webm|mov)$/.test(ext);
+
+    if (isVideo) {
+        return `<div class="inline-media-embed"><video class="inline-media-embed-content video" src="${escapeHtml(href)}" controls preload="metadata" playsinline></video></div>`;
+    }
+
+    return `<div class="inline-media-embed"><img class="inline-media-embed-content" src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;'></div>`;
+}
+
 // Convert links in text to clickable links
 function formatMessageText(text) {
     if (!text) return '';
+
+    const taggedMediaPlaceholders = [];
+    const textWithTaggedMedia = text.replace(/<popup>([\s\S]*?)<\/popup>|<embed>([\s\S]*?)<\/embed>/gi, function(match, popupContent, embedContent) {
+        const isPopup = typeof popupContent === 'string';
+        const content = isPopup ? popupContent : embedContent;
+        const media = parseInlineMediaReference(content);
+        const html = media
+            ? (isPopup
+                ? createInlineMediaPopupLinkHtml(media.label, media.href)
+                : createInlineMediaEmbedHtml(media.label, media.href))
+            : escapeHtml(match);
+        const idx = taggedMediaPlaceholders.length;
+        taggedMediaPlaceholders.push(html);
+        return `\x00MEDIATAG${idx}\x00`;
+    });
     
     // Escape HTML to prevent XSS
-    const escaped = escapeHtml(text).replace(/\n/g, '<br>');
+    const escaped = escapeHtml(textWithTaggedMedia).replace(/\n/g, '<br>');
 
-    // Step 1: Process markdown named links — 📺[label](url) opens inline media popup on hover,
-    // any md link to media opens in the media viewer on click, others open in a new tab.
+    // Step 1: Process markdown named links.
+    // Media links open in the viewer on click, others open in a new tab.
     const mdLinkPlaceholders = [];
-    let processed = escaped.replace(/(📺)?\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, function(_, tvIcon, label, url) {
+    let processed = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, function(_, label, url) {
         const href = url.toLowerCase().startsWith('www.') ? 'https://' + url : url;
         let html;
-        if (tvIcon) {
-            html = `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${href}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick="openMediaViewerForUrl('${href}'); return false;" style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;"><b>${label}</b></a></span>`;
-        } else if (isMediaUrl(href)) {
-            html = `<a href="#" onclick="openMediaViewerForUrl('${href}'); return false;" style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;">${label}</a>`;
+        if (isMediaUrl(href)) {
+            html = `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;">${label}</a>`;
         } else {
             html = `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: hsl(var(--primary)); text-decoration: underline;">${label}</a>`;
         }
@@ -333,7 +387,7 @@ function formatMessageText(text) {
 
     // Step 3: Auto-link plain URLs, skipping text already inside HTML tags or placeholders
     const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
-    processed = processed.split(/(<[^>]*>|\x00MDLINK\d+\x00)/).map((segment, i) => {
+    processed = processed.split(/(<[^>]*>|\x00MDLINK\d+\x00|\x00MEDIATAG\d+\x00)/).map((segment, i) => {
         if (i % 2 === 1) return segment; // HTML tag or placeholder — leave alone
         return segment.replace(urlRegex, (url) => {
             let href = url;
@@ -341,15 +395,18 @@ function formatMessageText(text) {
             if (url.toLowerCase().startsWith('www.')) href = 'https://' + url;
             if (displayUrl.length > 100) displayUrl = displayUrl.substring(0, 100) + '...';
             if (isMediaUrl(href)) {
-                return `<a href="#" onclick="openMediaViewerForUrl('${href}'); return false;" style="color: inherit; text-decoration: underline; cursor: pointer;">${displayUrl}</a>`;
+                return `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: inherit; text-decoration: underline; cursor: pointer;">${displayUrl}</a>`;
             }
             return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
         });
     }).join('');
 
-    // Step 4: Restore markdown link placeholders
+    // Step 4: Restore markdown link placeholders and custom media tags
     if (mdLinkPlaceholders.length > 0) {
         processed = processed.replace(/\x00MDLINK(\d+)\x00/g, (_, idx) => mdLinkPlaceholders[parseInt(idx, 10)]);
+    }
+    if (taggedMediaPlaceholders.length > 0) {
+        processed = processed.replace(/\x00MEDIATAG(\d+)\x00/g, (_, idx) => taggedMediaPlaceholders[parseInt(idx, 10)]);
     }
 
     return processed;

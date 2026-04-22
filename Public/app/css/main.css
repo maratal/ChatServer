@@ -2774,8 +2774,7 @@ input[type="text"]:disabled, textarea:disabled {
     align-self: flex-start; /* Align text to top of bubble */
     font-size: 1rem;
     flex: 1;
-    display: flex;
-    align-items: center;
+    display: block;
     padding: 6px 10px;
     margin: 1px;
 }
@@ -3630,6 +3629,30 @@ img.inline-media-popup-content {
 .inline-media-popup-content.video {
     width: 100%;
     height: auto;
+}
+
+.inline-media-embed {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+}
+
+.inline-media-embed-content {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.inline-media-embed-content.video {
+    background: #000;
+    max-height: 420px;
+}
+
+img.inline-media-embed-content {
+    cursor: pointer;
 }
 
 .notes-header-center {
