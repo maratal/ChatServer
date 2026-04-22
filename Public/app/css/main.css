@@ -3620,6 +3620,13 @@ input[type="text"]:disabled, textarea:disabled {
     border-radius: 4px;
 }
 
+img.inline-media-popup-content {
+    width: auto;
+    height: auto;
+    max-width: 300px;
+    max-height: 300px;
+}
+
 .inline-media-popup-content.video {
     width: 100%;
     height: auto;
