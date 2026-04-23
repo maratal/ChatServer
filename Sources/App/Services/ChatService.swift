@@ -403,8 +403,8 @@ actor ChatService: ChatServiceProtocol {
         }
         
         if let text = info.text {
-            guard text.count > 0 && text.count <= 20000 else {
-                throw ServiceError(.badRequest, reason: "Message text should be between 1 and 20000 characters long.")
+            guard text.count > 0 else {
+                throw ServiceError(.badRequest, reason: "Message text should be at least 1 character long.")
             }
         }
         

@@ -27,8 +27,8 @@ struct ChatController: RouteCollection {
             route.get("users", "blocked", use: blockedUsersInChat)
             
             route.get("messages", use: messages)
-            route.post("messages", use: postMessage)
-            route.put("messages", .messageId, use: updateMessage)
+            route.on(.POST, "messages", body: .collect(maxSize: "100kb"), use: postMessage)
+            route.on(.PUT, "messages", .messageId, body: .collect(maxSize: "100kb"), use: updateMessage)
             route.put("messages", .messageId, "read", use: readMessage)
             route.delete("messages", .messageId, use: deleteMessage)
             route.delete("messages", use: clearChat)
