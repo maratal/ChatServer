@@ -385,6 +385,14 @@ function formatMessageText(text) {
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/(?<![\w*])_(.+?)_(?![\w*])/g, '<em>$1</em>');
 
+    processed = processed.split('<br>').map((segment) => {
+        const centeredStrongLineMatch = segment.match(/^\s*<strong>(.*?)<\/strong>\s*$/);
+        if (!centeredStrongLineMatch) {
+            return segment;
+        }
+        return `<div class="message-centered-line"><strong>${centeredStrongLineMatch[1]}</strong></div>`;
+    }).join('<br>').replace(/<\/div><br>/g, '</div>');
+
     // Step 3: Auto-link plain URLs, skipping text already inside HTML tags or placeholders
     const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
     processed = processed.split(/(<[^>]*>|\x00MDLINK\d+\x00|\x00MEDIATAG\d+\x00)/).map((segment, i) => {

@@ -2779,6 +2779,12 @@ input[type="text"]:disabled, textarea:disabled {
     margin: 1px;
 }
 
+.message-centered-line {
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
 .message-timestamp-area {
     display: flex;
     flex-direction: row;
