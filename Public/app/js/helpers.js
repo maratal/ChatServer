@@ -362,12 +362,18 @@ function createInlineMediaEmbedHtml(label, href, options = {}) {
     return `<div class="${wrapperClass}"><img class="${imageClass}" src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;'></div>`;
 }
 
+function stripEmbedPlaceholderLineBreaks(text) {
+    return text
+    .replace(/(?:[ \t]*\n[ \t]*)+(\x00EMBEDTAG\d+\x00)/g, '$1')
+    .replace(/(\x00EMBEDTAG\d+\x00)(?:[ \t]*\n[ \t]*)+/g, '$1');
+}
+
 // Convert links in text to clickable links
 function formatMessageText(text) {
     if (!text) return '';
 
     const taggedMediaPlaceholders = [];
-    const textWithTaggedMedia = text.replace(/<(popup|embed)(\s+[^>]*)?>([\s\S]*?)<\/\1>/gi, function(match, tagName, rawAttributes, tagContent) {
+    const textWithTaggedMedia = stripEmbedPlaceholderLineBreaks(text.replace(/<(popup|embed)(\s+[^>]*)?>([\s\S]*?)<\/\1>/gi, function(match, tagName, rawAttributes, tagContent) {
         const isPopup = tagName.toLowerCase() === 'popup';
         const attributes = parseInlineTagAttributes(rawAttributes);
         const content = tagContent;
@@ -381,8 +387,8 @@ function formatMessageText(text) {
             : escapeHtml(match);
         const idx = taggedMediaPlaceholders.length;
         taggedMediaPlaceholders.push(html);
-        return `\x00MEDIATAG${idx}\x00`;
-    });
+        return isPopup ? `\x00MEDIATAG${idx}\x00` : `\x00EMBEDTAG${idx}\x00`;
+    }));
     
     // Escape HTML to prevent XSS
     const escaped = escapeHtml(textWithTaggedMedia).replace(/\n/g, '<br>');
@@ -418,7 +424,7 @@ function formatMessageText(text) {
 
     // Step 3: Auto-link plain URLs, skipping text already inside HTML tags or placeholders
     const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
-    processed = processed.split(/(<[^>]*>|\x00MDLINK\d+\x00|\x00MEDIATAG\d+\x00)/).map((segment, i) => {
+    processed = processed.split(/(<[^>]*>|\x00MDLINK\d+\x00|\x00MEDIATAG\d+\x00|\x00EMBEDTAG\d+\x00)/).map((segment, i) => {
         if (i % 2 === 1) return segment; // HTML tag or placeholder — leave alone
         return segment.replace(urlRegex, (url) => {
             let href = url;
@@ -438,6 +444,7 @@ function formatMessageText(text) {
     }
     if (taggedMediaPlaceholders.length > 0) {
         processed = processed.replace(/\x00MEDIATAG(\d+)\x00/g, (_, idx) => taggedMediaPlaceholders[parseInt(idx, 10)]);
+        processed = processed.replace(/\x00EMBEDTAG(\d+)\x00/g, (_, idx) => taggedMediaPlaceholders[parseInt(idx, 10)]);
     }
 
     return processed;

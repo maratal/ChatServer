@@ -3640,7 +3640,7 @@ img.inline-media-popup-content {
 .inline-media-embed {
     display: block;
     width: 100%;
-    margin: 8px 0;
+    margin: 10px 0;
 }
 
 .inline-media-embed-blurred {
