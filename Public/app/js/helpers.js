@@ -356,10 +356,9 @@ function createInlineMediaEmbedHtml(label, href, options = {}) {
         return `<div class="inline-media-embed"><video class="inline-media-embed-content video" src="${escapeHtml(href)}" controls preload="metadata" playsinline></video></div>`;
     }
 
-    const wrapperClass = shouldBlur ? 'inline-media-embed inline-media-embed-blurred' : 'inline-media-embed';
     const imageClass = shouldBlur ? 'inline-media-embed-content inline-media-embed-content-blurred' : 'inline-media-embed-content';
 
-    return `<div class="${wrapperClass}"><img class="${imageClass}" src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;'></div>`;
+    return `<div class="inline-media-embed"><img class="${imageClass}" src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;'></div>`;
 }
 
 function stripEmbedPlaceholderLineBreaks(text) {

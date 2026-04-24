@@ -3641,9 +3641,6 @@ img.inline-media-popup-content {
     display: block;
     width: 100%;
     margin: 10px 0;
-}
-
-.inline-media-embed-blurred {
     overflow: hidden;
     border-radius: 8px;
 }
