@@ -330,16 +330,36 @@ function createInlineMediaPopupLinkHtml(label, href) {
     return `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${escapeHtml(href)}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;"><b>${escapeHtml(label)}</b></a></span>`;
 }
 
-function createInlineMediaEmbedHtml(label, href) {
+function parseInlineTagAttributes(rawAttributes) {
+    const attributes = {};
+    if (!rawAttributes) return attributes;
+
+    rawAttributes.replace(/([a-zA-Z_:][\w:.-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>/]+)))?/g, function(_, name, doubleQuotedValue, singleQuotedValue, bareValue) {
+        attributes[name.toLowerCase()] = doubleQuotedValue ?? singleQuotedValue ?? bareValue ?? 'true';
+        return '';
+    });
+
+    return attributes;
+}
+
+function isTruthyInlineTagAttribute(value) {
+    return typeof value === 'string' && /^(true|1|yes|on)$/i.test(value.trim());
+}
+
+function createInlineMediaEmbedHtml(label, href, options = {}) {
     const path = href.split('?')[0].split('#')[0];
     const ext = path.split('.').pop().toLowerCase();
     const isVideo = /^(mp4|webm|mov)$/.test(ext);
+    const shouldBlur = options.blurred === true && !isVideo;
 
     if (isVideo) {
         return `<div class="inline-media-embed"><video class="inline-media-embed-content video" src="${escapeHtml(href)}" controls preload="metadata" playsinline></video></div>`;
     }
 
-    return `<div class="inline-media-embed"><img class="inline-media-embed-content" src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;'></div>`;
+    const wrapperClass = shouldBlur ? 'inline-media-embed inline-media-embed-blurred' : 'inline-media-embed';
+    const imageClass = shouldBlur ? 'inline-media-embed-content inline-media-embed-content-blurred' : 'inline-media-embed-content';
+
+    return `<div class="${wrapperClass}"><img class="${imageClass}" src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;'></div>`;
 }
 
 // Convert links in text to clickable links
@@ -347,14 +367,17 @@ function formatMessageText(text) {
     if (!text) return '';
 
     const taggedMediaPlaceholders = [];
-    const textWithTaggedMedia = text.replace(/<popup>([\s\S]*?)<\/popup>|<embed>([\s\S]*?)<\/embed>/gi, function(match, popupContent, embedContent) {
-        const isPopup = typeof popupContent === 'string';
-        const content = isPopup ? popupContent : embedContent;
+    const textWithTaggedMedia = text.replace(/<(popup|embed)(\s+[^>]*)?>([\s\S]*?)<\/\1>/gi, function(match, tagName, rawAttributes, tagContent) {
+        const isPopup = tagName.toLowerCase() === 'popup';
+        const attributes = parseInlineTagAttributes(rawAttributes);
+        const content = tagContent;
         const media = parseInlineMediaReference(content);
         const html = media
             ? (isPopup
                 ? createInlineMediaPopupLinkHtml(media.label, media.href)
-                : createInlineMediaEmbedHtml(media.label, media.href))
+                : createInlineMediaEmbedHtml(media.label, media.href, {
+                    blurred: isTruthyInlineTagAttribute(attributes.blurred)
+                }))
             : escapeHtml(match);
         const idx = taggedMediaPlaceholders.length;
         taggedMediaPlaceholders.push(html);

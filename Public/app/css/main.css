@@ -3640,7 +3640,12 @@ img.inline-media-popup-content {
 .inline-media-embed {
     display: block;
     width: 100%;
-    margin: 10px 0;
+    margin: 8px 0;
+}
+
+.inline-media-embed-blurred {
+    overflow: hidden;
+    border-radius: 8px;
 }
 
 .inline-media-embed-content {
@@ -3650,6 +3655,10 @@ img.inline-media-popup-content {
     height: auto;
     border-radius: 8px;
     object-fit: contain;
+}
+
+.inline-media-embed-content-blurred {
+    filter: blur(25px) saturate(0.7);
 }
 
 .inline-media-embed-content.video {
