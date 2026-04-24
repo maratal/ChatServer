@@ -1433,19 +1433,108 @@ function updateSendButtonState() {
 // Message input handling
 function initializeMessageInput() {
     const messageInput = getMessageInputElement();
+    const messageInputContainer = document.getElementById('messageInputContainer');
     const sendButton = document.getElementById('sendButton');
+    let preferredHeight = null;
+    let isResizingInput = false;
+    let resizeStartY = 0;
+    let resizeStartHeight = 0;
+
+    function getMessageInputMinHeight() {
+        const minHeight = parseFloat(window.getComputedStyle(messageInput).minHeight);
+        return Number.isFinite(minHeight) ? minHeight : 40;
+    }
+
+    function getMessageInputMaxHeight() {
+        return Math.max(getMessageInputMinHeight(), Math.floor(window.innerHeight * 0.5));
+    }
+
+    function applyMessageInputHeight(height) {
+        const clampedHeight = Math.min(Math.max(height, getMessageInputMinHeight()), getMessageInputMaxHeight());
+        messageInput.style.height = clampedHeight + 'px';
+        return clampedHeight;
+    }
+
+    function resetMessageInputHeight() {
+        messageInput.style.height = 'auto';
+        const naturalHeight = Math.max(messageInput.scrollHeight, preferredHeight ?? 0, getMessageInputMinHeight());
+        applyMessageInputHeight(naturalHeight);
+    }
     
     function adjustHeight() {
-        // Reset to auto to get natural height
-        messageInput.style.height = 'auto';
-        // Set to scroll height, constrained by CSS max-height
-        messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+        resetMessageInputHeight();
         
         // Update send button state
         updateSendButtonState();
     }
+
+    function syncResizeCursor(clientY) {
+        if (!messageInputContainer || isResizingInput) return;
+
+        const resizeHotspotHeight = 12;
+        const rect = messageInputContainer.getBoundingClientRect();
+        const isInTopResizeZone = clientY >= rect.top && clientY <= rect.top + resizeHotspotHeight;
+        messageInputContainer.style.cursor = isInTopResizeZone ? 'ns-resize' : '';
+    }
+
+    function stopInputResize() {
+        if (!isResizingInput) return;
+
+        isResizingInput = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        syncResizeCursor(-1);
+    }
+
+    function handleInputResize(event) {
+        if (!isResizingInput) return;
+
+        const nextHeight = resizeStartHeight + (resizeStartY - event.clientY);
+        preferredHeight = applyMessageInputHeight(nextHeight);
+        updateSendButtonState();
+    }
+
+    function startInputResize(event) {
+        if (!messageInputContainer || event.button !== 0) return;
+
+        const resizeHotspotHeight = 12;
+        const rect = messageInputContainer.getBoundingClientRect();
+        const isInTopResizeZone = event.clientY >= rect.top && event.clientY <= rect.top + resizeHotspotHeight;
+        if (!isInTopResizeZone) return;
+
+        isResizingInput = true;
+        resizeStartY = event.clientY;
+        resizeStartHeight = messageInput.getBoundingClientRect().height;
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        event.preventDefault();
+    }
+
+    function resetInputResizeToContent(event) {
+        if (!messageInputContainer) return;
+
+        const resizeHotspotHeight = 12;
+        const rect = messageInputContainer.getBoundingClientRect();
+        const isInTopResizeZone = event.clientY >= rect.top && event.clientY <= rect.top + resizeHotspotHeight;
+        if (!isInTopResizeZone) return;
+
+        preferredHeight = null;
+        adjustHeight();
+        event.preventDefault();
+    }
     
     messageInput.addEventListener('input', adjustHeight);
+
+    if (messageInputContainer) {
+        messageInputContainer.addEventListener('mousemove', (event) => syncResizeCursor(event.clientY));
+        messageInputContainer.addEventListener('mouseleave', () => syncResizeCursor(-1));
+        messageInputContainer.addEventListener('mousedown', startInputResize);
+        messageInputContainer.addEventListener('dblclick', resetInputResizeToContent);
+        document.addEventListener('mousemove', handleInputResize);
+        document.addEventListener('mouseup', stopInputResize);
+    }
+
+    window.addEventListener('resize', adjustHeight);
     
     messageInput.addEventListener('focus', function() {
         // Mark chat as read when message input is focused
@@ -1461,7 +1550,7 @@ function initializeMessageInput() {
             // Priority 1: Clear text if there's any
             if (this.value.trim()) {
                 this.value = '';
-                this.style.height = '38px';
+                resetMessageInputHeight();
                 updateSendButtonState();
                 return; // Exit early to avoid clearing attachments or canceling edit/reply if text was present
             }
@@ -1488,7 +1577,7 @@ function initializeMessageInput() {
                 if (handleDebugCommandWrapper(text)) {
                     // Debug command handled, clear input
                     this.value = '';
-                    this.style.height = '38px';
+                    resetMessageInputHeight();
                     updateSendButtonState();
                 }
             } else if (text) {
@@ -1593,7 +1682,7 @@ async function sendMessage(textOverride = null) {
     // Only clear input if we're not overriding with direct text
     if (text && textOverride === null && messageInput) {
         messageInput.value = '';
-        messageInput.style.height = '38px';
+        messageInput.dispatchEvent(new Event('input'));
     }
     
     updateSendButtonState();
@@ -1980,8 +2069,7 @@ function editMessage(message) {
     
     // Fill input with message text
     messageInput.value = message.text || '';
-    messageInput.style.height = 'auto';
-    messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+    messageInput.dispatchEvent(new Event('input'));
     
     // Focus input
     messageInput.focus();
@@ -2094,7 +2182,7 @@ function cancelEditMessage() {
     
     const messageInput = getMessageInputElement();
     messageInput.value = '';
-    messageInput.style.height = '38px';
+    messageInput.dispatchEvent(new Event('input'));
     
     // Clear attachments
     selectedAttachments = [];

@@ -104,7 +104,7 @@
             <div class="px-4" id="messageInputContainer" style="display: none;">
                 <div id="editPreviewContainer" style="display: none;"></div>
                 <div id="mediaPanelContainer" style="display: none;"></div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-end gap-2">
                     <input type="file" id="attachmentInput" accept="image/*,video/*" multiple style="display: none;">
                     <button class="inline-button" id="attachButton" onclick="handleAttachButtonClick(event)" onmouseenter="handleAttachButtonHover(event)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paperclip">
