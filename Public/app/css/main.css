@@ -156,16 +156,20 @@ input[type="text"], textarea {
     align-items: flex-end !important;
 }
 
+.message-input-action-slot {
+    display: flex;
+    align-items: flex-end;
+    flex-shrink: 0;
+    padding-bottom: 2px;
+}
+
 .message-input-side-controls {
     position: relative;
-    display: flex;
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
     align-self: stretch;
     height: auto;
-    padding-bottom: 2px;
-    flex-shrink: 0;
 }
 
 .message-input-format-buttons {
@@ -202,10 +206,6 @@ input[type="text"], textarea {
 .message-input-format-buttons .inline-button.small svg {
     width: 14px;
     height: 14px;
-}
-
-#attachButton {
-    margin-top: auto;
 }
 
 #messageInput {
@@ -356,8 +356,6 @@ input[type="text"], textarea {
 
 /* Send Button Animation */
 #sendButton {
-    align-self: flex-end;
-    margin-bottom: 2px;
     transition: opacity 0.2s ease, transform 0.2s ease;
     transform-origin: center;
 }
@@ -2946,17 +2944,16 @@ input[type="text"]:disabled, textarea:disabled {
     position: relative;
     height: 84px;
     padding: 0;
-    border: 1px solid transparent;
+    border: 2px solid transparent;
     border-radius: 8px;
     overflow: hidden;
     background-color: hsl(var(--muted));
     cursor: pointer;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+    transition: border-color 0.15s ease;
 }
 
 .message-input-media-picker-item:hover {
-    border-color: hsl(var(--ring));
-    transform: translateY(-1px);
+    border-color: hsl(var(--primary));
 }
 
 .message-input-media-picker-item img {

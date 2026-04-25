@@ -1556,7 +1556,13 @@ function initializeMessageInput() {
         const isInTopResizeZone = event.clientY >= rect.top && event.clientY <= rect.top + resizeHotspotHeight;
         if (!isInTopResizeZone) return;
 
-        preferredHeight = null;
+        const formattingRevealHeight = messageInputFormatting.getMessageInputFormattingRevealHeight();
+        const isEmpty = !messageInput.value.trim();
+        const shouldExpandToFormatting = isEmpty
+            && Number.isFinite(formattingRevealHeight)
+            && messageInput.getBoundingClientRect().height + 1 < formattingRevealHeight;
+
+        preferredHeight = shouldExpandToFormatting ? formattingRevealHeight : null;
         adjustHeight();
         event.preventDefault();
     }

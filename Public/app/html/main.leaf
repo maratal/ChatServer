@@ -106,7 +106,7 @@
                 <div id="mediaPanelContainer" style="display: none;"></div>
                 <div class="flex items-end gap-2 message-input-row">
                     <input type="file" id="attachmentInput" accept="image/*,video/*" multiple style="display: none;">
-                    <div class="message-input-side-controls">
+                    <div class="message-input-action-slot message-input-side-controls">
                         <div class="message-input-format-buttons" id="messageInputFormatButtons" aria-hidden="true">
                             <button class="inline-button small format-bold-icon-button" id="messageInputBoldButton" type="button" title="Bold text" onmousedown="event.preventDefault()" onclick="applyMessageInputFormat('bold')"></button>
                             <button class="inline-button small format-italic-icon-button" id="messageInputItalicButton" type="button" title="Italic" onmousedown="event.preventDefault()" onclick="applyMessageInputFormat('italic')"></button>
@@ -120,13 +120,15 @@
                         </button>
                     </div>
                     <textarea placeholder="Type a message..." rows="1" class="message-input flex w-full text-base placeholder:text-muted-foreground md:text-sm flex-1 min-h-[40px] max-h-[120px] resize-none" id="messageInput"></textarea>
-                    <button class="inline-button hidden" id="sendButton" onclick="sendMessage()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
-                            <path d="m22 2-7 20-4-9-9-4Z"></path>
-                            <path d="M22 2 11 13"></path>
-                        </svg>
-                    </button>
-                    <div class="relative">
+                    <div class="message-input-action-slot">
+                        <button class="inline-button hidden" id="sendButton" onclick="sendMessage()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
+                                <path d="m22 2-7 20-4-9-9-4Z"></path>
+                                <path d="M22 2 11 13"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="message-input-action-slot relative">
                         <button class="inline-button" id="emojiButton" onclick="toggleEmojiPicker()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smile">
                                 <circle cx="12" cy="12" r="10"></circle>

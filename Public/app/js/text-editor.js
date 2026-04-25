@@ -469,6 +469,7 @@ function createMessageInputFormattingController(options = {}) {
     }
 
     return {
+        getMessageInputFormattingRevealHeight,
         updateMessageInputFormattingButtons,
         updateMessageInputFormatButtonStates,
         queueMessageInputFormatButtonStateUpdate
