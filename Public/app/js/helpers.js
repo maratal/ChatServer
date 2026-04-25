@@ -305,7 +305,7 @@ function parseInlineMediaReference(content) {
     if (!content) return null;
 
     const trimmed = content.trim();
-    const markdownMatch = trimmed.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)$/i);
+    const markdownMatch = trimmed.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+|\/uploads\/[^\s)]+)\)$/i);
 
     let label;
     let href;
@@ -313,7 +313,7 @@ function parseInlineMediaReference(content) {
     if (markdownMatch) {
         label = markdownMatch[1];
         href = markdownMatch[2];
-    } else if (/^(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)$/i.test(trimmed)) {
+    } else if (/^(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|\/uploads\/[^\s<>"']+)$/i.test(trimmed)) {
         label = trimmed;
         href = trimmed;
     } else {
@@ -408,9 +408,10 @@ function formatMessageText(text) {
         return `\x00MDLINK${idx}\x00`;
     });
 
-    // Step 2: Apply bold and italic formatting
+    // Step 2: Apply inline text formatting
     processed = processed
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/~~(.+?)~~/g, '<del>$1</del>')
         .replace(/(?<![\w*])_(.+?)_(?![\w*])/g, '<em>$1</em>');
 
     processed = processed.split('<br>').map((segment) => {

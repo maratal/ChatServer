@@ -647,12 +647,13 @@ function handleAttachButtonClick(event) {
 // Show recents toolbar on attach button hover
 function handleAttachButtonHover(event) {
     const button = document.getElementById('attachButton');
+    const formatButtons = document.getElementById('messageInputFormatButtons');
     showPopupToolbar({
         items: [
             { id: 'recents', tooltip: 'Recent Uploads', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' }
         ],
         hoverElement: button,
-        position: 'top',
+        position: formatButtons && formatButtons.classList.contains('is-visible') ? 'right' : 'top',
         onAction: (action) => {
             if (action === 'recents') {
                 openRecentsPanel();
@@ -1434,7 +1435,23 @@ function updateSendButtonState() {
 function initializeMessageInput() {
     const messageInput = getMessageInputElement();
     const messageInputContainer = document.getElementById('messageInputContainer');
+    const messageInputRow = messageInputContainer?.querySelector('.message-input-row');
+    const messageInputFormatButtons = document.getElementById('messageInputFormatButtons');
+    const messageInputBoldButton = document.getElementById('messageInputBoldButton');
+    const messageInputItalicButton = document.getElementById('messageInputItalicButton');
+    const messageInputStrikeButton = document.getElementById('messageInputStrikeButton');
+    const messageInputLinkButton = document.getElementById('messageInputLinkButton');
+    const attachButton = document.getElementById('attachButton');
     const sendButton = document.getElementById('sendButton');
+    const messageInputFormatting = createMessageInputFormattingController({
+        messageInput,
+        messageInputFormatButtons,
+        messageInputBoldButton,
+        messageInputItalicButton,
+        messageInputStrikeButton,
+        messageInputLinkButton,
+        attachButton
+    });
     let preferredHeight = null;
     let isResizingInput = false;
     let resizeStartY = 0;
@@ -1449,6 +1466,13 @@ function initializeMessageInput() {
         return Math.max(getMessageInputMinHeight(), Math.floor(window.innerHeight * 0.5));
     }
 
+    function updateMessageInputLayoutState() {
+        if (!messageInputRow) return;
+
+        const isExpanded = messageInput.getBoundingClientRect().height > getMessageInputMinHeight() + 1;
+        messageInputRow.classList.toggle('is-expanded', isExpanded);
+    }
+
     function applyMessageInputHeight(height) {
         const clampedHeight = Math.min(Math.max(height, getMessageInputMinHeight()), getMessageInputMaxHeight());
         messageInput.style.height = clampedHeight + 'px';
@@ -1460,9 +1484,21 @@ function initializeMessageInput() {
         const naturalHeight = Math.max(messageInput.scrollHeight, preferredHeight ?? 0, getMessageInputMinHeight());
         applyMessageInputHeight(naturalHeight);
     }
+
+    function resetMessageInputToDefaultHeight() {
+        preferredHeight = null;
+        resetMessageInputHeight();
+        updateMessageInputLayoutState();
+        messageInputFormatting.updateMessageInputFormattingButtons();
+        messageInputFormatting.updateMessageInputFormatButtonStates();
+        updateSendButtonState();
+    }
     
     function adjustHeight() {
         resetMessageInputHeight();
+        updateMessageInputLayoutState();
+        messageInputFormatting.updateMessageInputFormattingButtons();
+        messageInputFormatting.updateMessageInputFormatButtonStates();
         
         // Update send button state
         updateSendButtonState();
@@ -1491,6 +1527,8 @@ function initializeMessageInput() {
 
         const nextHeight = resizeStartHeight + (resizeStartY - event.clientY);
         preferredHeight = applyMessageInputHeight(nextHeight);
+        updateMessageInputLayoutState();
+        messageInputFormatting.updateMessageInputFormattingButtons();
         updateSendButtonState();
     }
 
@@ -1522,8 +1560,15 @@ function initializeMessageInput() {
         adjustHeight();
         event.preventDefault();
     }
+
+    messageInput._resetToDefaultHeight = resetMessageInputToDefaultHeight;
     
     messageInput.addEventListener('input', adjustHeight);
+    messageInput.addEventListener('click', messageInputFormatting.queueMessageInputFormatButtonStateUpdate);
+    messageInput.addEventListener('focus', messageInputFormatting.queueMessageInputFormatButtonStateUpdate);
+    messageInput.addEventListener('keyup', messageInputFormatting.queueMessageInputFormatButtonStateUpdate);
+    messageInput.addEventListener('mouseup', messageInputFormatting.queueMessageInputFormatButtonStateUpdate);
+    messageInput.addEventListener('select', messageInputFormatting.queueMessageInputFormatButtonStateUpdate);
 
     if (messageInputContainer) {
         messageInputContainer.addEventListener('mousemove', (event) => syncResizeCursor(event.clientY));
@@ -1533,6 +1578,12 @@ function initializeMessageInput() {
         document.addEventListener('mousemove', handleInputResize);
         document.addEventListener('mouseup', stopInputResize);
     }
+
+    document.addEventListener('selectionchange', () => {
+        if (document.activeElement === messageInput) {
+            messageInputFormatting.updateMessageInputFormatButtonStates();
+        }
+    });
 
     window.addEventListener('resize', adjustHeight);
     
@@ -1550,8 +1601,7 @@ function initializeMessageInput() {
             // Priority 1: Clear text if there's any
             if (this.value.trim()) {
                 this.value = '';
-                resetMessageInputHeight();
-                updateSendButtonState();
+                resetMessageInputToDefaultHeight();
                 return; // Exit early to avoid clearing attachments or canceling edit/reply if text was present
             }
             
@@ -1577,8 +1627,7 @@ function initializeMessageInput() {
                 if (handleDebugCommandWrapper(text)) {
                     // Debug command handled, clear input
                     this.value = '';
-                    resetMessageInputHeight();
-                    updateSendButtonState();
+                    resetMessageInputToDefaultHeight();
                 }
             } else if (text) {
                 sendMessage();
@@ -1679,10 +1728,10 @@ async function sendMessage(textOverride = null) {
         renderMediaPanel();
     }
     
-    // Only clear input if we're not overriding with direct text
-    if (text && textOverride === null && messageInput) {
+    // Reset the input after sending when we're using the live textarea.
+    if (textOverride === null && messageInput) {
         messageInput.value = '';
-        messageInput.dispatchEvent(new Event('input'));
+        messageInput._resetToDefaultHeight?.();
     }
     
     updateSendButtonState();
@@ -2182,7 +2231,7 @@ function cancelEditMessage() {
     
     const messageInput = getMessageInputElement();
     messageInput.value = '';
-    messageInput.dispatchEvent(new Event('input'));
+    messageInput._resetToDefaultHeight?.();
     
     // Clear attachments
     selectedAttachments = [];

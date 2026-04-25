@@ -39,6 +39,12 @@ const dashboardIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height
 const shareIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" x2="12" y1="2" y2="15"></line></svg>`;
 const openLinkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>`;
 const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+const formatBoldIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h8a4 4 0 0 0 0-8H6z"></path><path d="M6 20h10a4 4 0 0 0 0-8H6z"></path></svg>`;
+const formatItalicIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>`;
+const formatStrikeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="20" y2="12"></line></svg>`;
+const formatLinkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07L11.7 5"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07L12.3 19"></path></svg>`;
+const formatPopupIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5H20"></path><path d="M18 4.5a2 2 0 0 1 2 2V12"></path><path d="M15 4.5h5v5"></path><path d="m19.5 5-7 7"></path><path d="M9 7.5H5a2 2 0 0 0-2 2v9.5a2 2 0 0 0 2 2h9.5a2 2 0 0 0 2-2V14"></path></svg>`;
+const formatEmbedIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M6 16.5 10 12.5a1 1 0 0 1 1.4 0l2.1 2.1a1 1 0 0 0 1.4 0l1-1a1 1 0 0 1 1.4 0l1.6 1.6"></path></svg>`;
 
 // Message edited icon
 const messageEditedIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="3 2 18 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.0 14.6 L13.9 4.8 A2.2 2.2 0 0 1 17.6 7.3 L10.6 17.1"/><path d="M7.0 14.6 L6.2 19.5 L10.6 17.1"/><path d="M12.8 6.4 L16.5 8.9"/></svg>`;
@@ -84,5 +90,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.querySelectorAll('.dashboard-icon-button').forEach(button => {
         button.innerHTML = dashboardIcon;
+    });
+    document.querySelectorAll('.format-bold-icon-button').forEach(button => {
+        button.innerHTML = formatBoldIcon;
+    });
+    document.querySelectorAll('.format-italic-icon-button').forEach(button => {
+        button.innerHTML = formatItalicIcon;
+    });
+    document.querySelectorAll('.format-strike-icon-button').forEach(button => {
+        button.innerHTML = formatStrikeIcon;
+    });
+    document.querySelectorAll('.format-link-icon-button').forEach(button => {
+        button.innerHTML = formatLinkIcon;
     });
 });

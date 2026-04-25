@@ -152,6 +152,62 @@ input[type="text"], textarea {
     width: 100% !important;
 }
 
+.message-input-row {
+    align-items: flex-end !important;
+}
+
+.message-input-side-controls {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    align-self: stretch;
+    height: auto;
+    padding-bottom: 2px;
+    flex-shrink: 0;
+}
+
+.message-input-format-buttons {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    opacity: 0;
+    transform: translate(-50%, -12px);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 20;
+}
+
+.message-input-format-buttons.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    pointer-events: auto;
+}
+
+.message-input-format-buttons .inline-button.small {
+    background: none;
+    box-shadow: none;
+}
+
+.message-input-format-buttons .inline-button.small:hover,
+.message-input-format-buttons .inline-button.small.is-active {
+    background-color: hsl(var(--sidebar-accent));
+}
+
+.message-input-format-buttons .inline-button.small svg {
+    width: 14px;
+    height: 14px;
+}
+
+#attachButton {
+    margin-top: auto;
+}
+
 #messageInput {
     flex: 1 !important;
     width: 100% !important;
@@ -300,6 +356,8 @@ input[type="text"], textarea {
 
 /* Send Button Animation */
 #sendButton {
+    align-self: flex-end;
+    margin-bottom: 2px;
     transition: opacity 0.2s ease, transform 0.2s ease;
     transform-origin: center;
 }
@@ -2842,6 +2900,79 @@ input[type="text"]:disabled, textarea:disabled {
 .popup-toolbar .inline-button svg {
     width: 16px;
     height: 16px;
+}
+
+.message-input-media-picker {
+    position: fixed;
+    z-index: 10000;
+    width: min(320px, calc(100vw - 20px));
+    background-color: hsl(var(--popover));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-sizing: border-box;
+    animation: context-menu-fade-in 0.18s ease forwards;
+}
+
+.message-input-media-picker-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+}
+
+.message-input-media-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.message-input-media-picker-status {
+    grid-column: 1 / -1;
+    padding: 16px 8px;
+    text-align: center;
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.message-input-media-picker-item {
+    position: relative;
+    height: 84px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: hsl(var(--muted));
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.message-input-media-picker-item:hover {
+    border-color: hsl(var(--ring));
+    transform: translateY(-1px);
+}
+
+.message-input-media-picker-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.message-input-media-picker-item-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: hsl(var(--muted-foreground));
 }
 
 /* Context Menu - Unified menu styles */
