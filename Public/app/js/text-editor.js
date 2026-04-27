@@ -1,5 +1,7 @@
 // Track the open recent-media picker tied to the message formatter.
 let activeMessageInputMediaPickerCleanup = null;
+let messageInputRecentMediaRefreshPromise = null;
+let messageInputRecentMediaRefreshSequence = 0;
 
 // Close the active recent-media picker used by the link formatter.
 function closeMessageInputMediaPicker() {
@@ -8,6 +10,29 @@ function closeMessageInputMediaPicker() {
     const cleanup = activeMessageInputMediaPickerCleanup;
     activeMessageInputMediaPickerCleanup = null;
     cleanup();
+}
+
+// Refresh the shared recents cache used by the link formatter without blocking UI.
+function refreshMessageInputRecentMedia() {
+    const requestSequence = ++messageInputRecentMediaRefreshSequence;
+    const refreshPromise = apiGetRecentMedia(0, RECENTS_PAGE_SIZE)
+        .then((mediaItems) => {
+            if (requestSequence !== messageInputRecentMediaRefreshSequence) {
+                return recentMediaItems;
+            }
+
+            recentMediaItems = mediaItems;
+            hasMoreRecents = mediaItems.length === RECENTS_PAGE_SIZE;
+            return mediaItems;
+        })
+        .finally(() => {
+            if (requestSequence === messageInputRecentMediaRefreshSequence) {
+                messageInputRecentMediaRefreshPromise = null;
+            }
+        });
+
+    messageInputRecentMediaRefreshPromise = refreshPromise;
+    return refreshPromise;
 }
 
 // Capture the current textarea selection before opening menus or popups.
@@ -305,6 +330,19 @@ function createMessageInputMediaPickerItem(media, action, selectionSnapshot) {
     return button;
 }
 
+function renderMessageInputMediaPickerGrid(grid, mediaItems, action, selectionSnapshot) {
+    grid.innerHTML = '';
+
+    if (mediaItems.length === 0) {
+        grid.innerHTML = '<div class="message-input-media-picker-status">No recent media</div>';
+        return;
+    }
+
+    mediaItems.forEach((media) => {
+        grid.appendChild(createMessageInputMediaPickerItem(media, action, selectionSnapshot));
+    });
+}
+
 // Open the recent-media picker and populate it for embed or popup insertion.
 async function openMessageInputRecentMediaPicker(action, anchorElement, selectionSnapshot) {
     closeMessageInputMediaPicker();
@@ -349,30 +387,23 @@ async function openMessageInputRecentMediaPicker(action, anchorElement, selectio
     }, 0);
     window.addEventListener('resize', handleResize);
 
-    try {
-        const mediaItems = recentMediaItems.length > 0
-            ? recentMediaItems
-            : await apiGetRecentMedia(0, RECENTS_PAGE_SIZE);
+    const grid = popupElement.querySelector('.message-input-media-picker-grid');
+    if (recentMediaItems.length > 0) {
+        renderMessageInputMediaPickerGrid(grid, recentMediaItems, action, selectionSnapshot);
+        positionMessageInputMediaPicker(popupElement, anchorElement);
+    }
 
-        if (recentMediaItems.length === 0) {
-            recentMediaItems = mediaItems;
-            hasMoreRecents = mediaItems.length === RECENTS_PAGE_SIZE;
-        }
+    try {
+        const mediaItems = await (messageInputRecentMediaRefreshPromise
+            ?? (recentMediaItems.length > 0
+                ? Promise.resolve(recentMediaItems)
+                : refreshMessageInputRecentMedia()));
 
         if (activeMessageInputMediaPickerCleanup !== cleanup || !document.body.contains(popupElement)) {
             return;
         }
 
-        const grid = popupElement.querySelector('.message-input-media-picker-grid');
-        grid.innerHTML = '';
-
-        if (mediaItems.length === 0) {
-            grid.innerHTML = '<div class="message-input-media-picker-status">No recent media</div>';
-        } else {
-            mediaItems.forEach((media) => {
-                grid.appendChild(createMessageInputMediaPickerItem(media, action, selectionSnapshot));
-            });
-        }
+        renderMessageInputMediaPickerGrid(grid, mediaItems, action, selectionSnapshot);
 
         positionMessageInputMediaPicker(popupElement, anchorElement);
     } catch (error) {
@@ -380,7 +411,6 @@ async function openMessageInputRecentMediaPicker(action, anchorElement, selectio
             return;
         }
 
-        const grid = popupElement.querySelector('.message-input-media-picker-grid');
         grid.innerHTML = '<div class="message-input-media-picker-status">Can\'t load recents</div>';
     }
 }
@@ -390,6 +420,9 @@ function handleMessageInputLinkButton(event) {
     event.preventDefault();
     event.stopPropagation();
     closeMessageInputMediaPicker();
+    refreshMessageInputRecentMedia().catch((error) => {
+        console.error('Failed to refresh recent media for the link picker:', error);
+    });
 
     const button = event.currentTarget || event.target.closest('button');
     if (!button) return;
