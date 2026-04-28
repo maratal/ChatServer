@@ -2162,12 +2162,15 @@ function editMessage(message) {
         selectedAttachments = message.attachments.map(att => {
             // Determine MIME type from fileType extension
             let mimeType = 'application/octet-stream';
+            let previewUrl = null;
             if (att.fileType) {
                 const fileTypeExt = att.fileType.toLowerCase();
                 if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileTypeExt)) {
                     mimeType = `image/${fileTypeExt === 'jpg' ? 'jpeg' : fileTypeExt}`;
+                    previewUrl = getPreviewUrl(att.id, att.fileType);
                 } else if (['mp4', 'webm', 'mov'].includes(fileTypeExt)) {
                     mimeType = `video/${fileTypeExt}`;
+                    previewUrl = getVideoPreviewUrl(att.id);
                 }
             }
             
@@ -2179,7 +2182,7 @@ function editMessage(message) {
                     size: att.fileSize,
                     type: mimeType
                 },
-                preview: att.id ? `${UPLOADS_URL}/${att.id}.${att.fileType}` : null,
+                preview: att.id ? previewUrl : null,
                 uploaded: true,
                 previewWidth: att.previewWidth,
                 previewHeight: att.previewHeight
