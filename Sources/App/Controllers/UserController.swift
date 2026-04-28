@@ -34,9 +34,6 @@ struct UserController: RouteCollection {
         
         protectedPath.get(use: search)
         protectedPath.get("all", use: users)
-        protectedPath.group(.id) { route in
-            route.get(use: getUser)
-        }
     }
     
     func register(req: Request) async throws -> User.PrivateInfo {

@@ -2812,22 +2812,39 @@ document.addEventListener('click', function(event) {
 
 // Browser back/forward button navigation through chat history
 window.addEventListener('popstate', function(event) {
-    if (event.state && event.state.chatId) {
-        // Navigate to the chat from history
-        selectChat(event.state.chatId, false);
-    } else {
-        // No state or no chatId - clear selection
-        currentChatId = null;
-        localStorage.removeItem('selectedChatId');
-        
-        // Clear active state
-        document.querySelectorAll('.chat-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Clear UI
-        makeNoChatsSelected();
+    const nextState = event.state || {};
+    const openLinkedTarget = () => {
+        if (nextState.note && typeof openNoteLinkTarget === 'function') {
+            return Promise.resolve(openNoteLinkTarget(nextState.note.noteId, nextState.note.userId, {
+                target: nextState.note.target,
+                historyMode: 'none'
+            }));
+        }
+
+        if (typeof closeNotePopup === 'function') {
+            closeNotePopup();
+        }
+        return Promise.resolve();
+    };
+
+    if (nextState.chatId) {
+        Promise.resolve(selectChat(nextState.chatId, false))
+            .then(openLinkedTarget)
+            .catch(console.error);
+        return;
     }
+
+    currentChatId = null;
+    localStorage.removeItem('selectedChatId');
+    
+    // Clear active state
+    document.querySelectorAll('.chat-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Clear UI
+    makeNoChatsSelected();
+    openLinkedTarget().catch(console.error);
 });
 
 function makeNoChatsSelected() {

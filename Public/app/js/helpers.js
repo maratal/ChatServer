@@ -330,6 +330,289 @@ function createInlineMediaPopupLinkHtml(label, href) {
     return `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${escapeHtml(href)}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;"><b>${escapeHtml(label)}</b></a></span>`;
 }
 
+function parseNoteUrl(href) {
+    if (!href) return null;
+
+    try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return null;
+
+        const match = url.pathname.match(/^\/users\/(\d+)\/notes\/([0-9a-fA-F-]{36})\/?$/);
+        if (!match) return null;
+
+        return {
+            userId: match[1],
+            noteId: match[2].toLowerCase(),
+            target: url.searchParams.get('target')?.toLowerCase() ?? null,
+            href: `${url.pathname}${url.search}`
+        };
+    } catch (error) {
+        return null;
+    }
+}
+
+function createNoteHref(userId, noteId, options = {}) {
+    const normalizedUserId = String(userId ?? '').trim();
+    const normalizedNoteId = String(noteId ?? '').trim().toLowerCase();
+    if (!/^\d+$/.test(normalizedUserId)) return null;
+    if (!/^[0-9a-fA-F-]{36}$/.test(normalizedNoteId)) return null;
+
+    const url = new URL(`/users/${encodeURIComponent(normalizedUserId)}/notes/${encodeURIComponent(normalizedNoteId)}`, window.location.origin);
+    const target = typeof options.target === 'string' ? options.target.trim() : '';
+    if (target) {
+        url.searchParams.set('target', target);
+    }
+
+    return `${url.pathname}${url.search}`;
+}
+
+function createNoteLinkHtml(label, href, style) {
+    const noteLink = parseNoteUrl(href);
+    if (!noteLink) return null;
+
+    return `<a href="${escapeHtml(noteLink.href)}" onclick='return handleNoteLinkClick(event, ${JSON.stringify(noteLink.href)})' style="${style}">${label}</a>`;
+}
+
+function handleNoteLinkClick(event, href) {
+    const noteLink = parseNoteUrl(href);
+    if (!noteLink) return true;
+    if (typeof openNoteLinkTarget !== 'function') return true;
+
+    event?.preventDefault?.();
+    Promise.resolve(openNoteLinkTarget(noteLink.noteId, noteLink.userId, {
+        target: noteLink.target,
+        href: noteLink.href,
+        historyMode: 'push'
+    })).catch((error) => {
+        console.error('Failed to open linked journal post:', error);
+    });
+    return false;
+}
+
+function getCurrentPageHistoryUrl() {
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+function finalizeNotePopupRow(row) {
+    if (!row) return null;
+
+    row.classList.add('message-link-popup-row');
+    return row;
+}
+
+function createNoteNavigationController(options = {}) {
+    const popupController = options.popupController;
+    if (!popupController || typeof popupController.open !== 'function' || typeof popupController.close !== 'function') {
+        throw new Error('createNoteNavigationController requires a popupController with open/close methods');
+    }
+
+    const getBaseState = typeof options.getBaseState === 'function'
+        ? options.getBaseState
+        : () => {
+            const baseState = { ...(history.state || {}) };
+            delete baseState.note;
+            delete baseState.baseState;
+            delete baseState.baseUrl;
+            return baseState;
+        };
+
+    const getBaseUrl = typeof options.getBaseUrl === 'function'
+        ? options.getBaseUrl
+        : ({ userId, historyMode }) => historyMode === 'replace'
+            ? `/users/${userId}/notes`
+            : getCurrentPageHistoryUrl();
+
+    const canScrollToLoadedPost = typeof options.canScrollToLoadedPost === 'function'
+        ? options.canScrollToLoadedPost
+        : () => true;
+
+    const findLoadedPostElement = typeof options.findLoadedPostElement === 'function'
+        ? options.findLoadedPostElement
+        : (noteId) => document.querySelector(`[data-note-id="${noteId}"]`);
+
+    function close() {
+        popupController.close();
+    }
+
+    function dismiss() {
+        if (history.state?.note) {
+            const nextState = history.state.baseState ?? getBaseState();
+            const nextUrl = history.state.baseUrl ?? getBaseUrl({
+                noteId: history.state.note.noteId,
+                userId: history.state.note.userId,
+                historyMode: 'replace'
+            });
+            history.replaceState(nextState, '', nextUrl);
+        }
+
+        close();
+    }
+
+    function syncHistory(noteId, userId, options = {}) {
+        const historyMode = options.historyMode ?? 'push';
+        if (historyMode === 'none') return;
+
+        const href = options.href ?? createNoteHref(userId, noteId, { target: options.target });
+        if (!href) return;
+
+        const baseState = getBaseState({ noteId, userId, historyMode, options });
+        const baseUrl = options.baseUrl ?? getBaseUrl({ noteId, userId, historyMode, options });
+        const nextState = {
+            ...baseState,
+            note: {
+                noteId: String(noteId),
+                userId: String(userId),
+                target: options.target ?? null
+            },
+            baseState,
+            baseUrl
+        };
+
+        if (historyMode === 'replace') {
+            history.replaceState(nextState, '', href);
+            return;
+        }
+
+        history.pushState(nextState, '', href);
+    }
+
+    function scrollToLoadedPost(noteId) {
+        const noteElement = findLoadedPostElement(noteId);
+        if (!noteElement) return false;
+
+        close();
+        noteElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return true;
+    }
+
+    async function openLinkTarget(noteId, userId, options = {}) {
+        const normalizedNoteId = String(noteId ?? '').trim().toLowerCase();
+        const normalizedUserId = String(userId ?? '').trim();
+        if (!normalizedNoteId || !normalizedUserId) return false;
+
+        syncHistory(normalizedNoteId, normalizedUserId, options);
+
+        const forcePopup = String(options.target ?? '').toLowerCase() === 'popup';
+        if (!forcePopup && canScrollToLoadedPost(normalizedNoteId, normalizedUserId, options) && scrollToLoadedPost(normalizedNoteId)) {
+            return true;
+        }
+
+        await popupController.open(normalizedNoteId, normalizedUserId);
+        return false;
+    }
+
+    function handleInitialNavigation(options = {}) {
+        const noteLink = parseNoteUrl(window.location.pathname + window.location.search);
+        if (!noteLink) return Promise.resolve(false);
+
+        return openLinkTarget(noteLink.noteId, noteLink.userId, {
+            target: noteLink.target,
+            href: noteLink.href,
+            historyMode: 'replace',
+            ...options
+        });
+    }
+
+    return {
+        close,
+        dismiss,
+        syncHistory,
+        scrollToLoadedPost,
+        openLinkTarget,
+        handleInitialNavigation
+    };
+}
+
+function createNotePopupController(options = {}) {
+    let activeCleanup = null;
+    let requestSequence = 0;
+
+    function close() {
+        if (!activeCleanup) return;
+
+        const cleanup = activeCleanup;
+        activeCleanup = null;
+        cleanup();
+    }
+
+    async function open(noteId, userId) {
+        close();
+
+        const currentRequestSequence = ++requestSequence;
+        const title = options.title ?? 'Journal post';
+        const loadingText = options.loadingText ?? 'Loading journal post...';
+        const unavailableText = options.unavailableText ?? 'Journal post is unavailable';
+        const errorText = options.errorText ?? 'Can\'t load this journal post';
+        const dismiss = typeof options.onDismiss === 'function' ? options.onDismiss : close;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'message-link-popup-layer';
+        overlay.innerHTML = `
+            <button type="button" class="media-viewer-close message-link-popup-close" aria-label="Close ${escapeHtml(title.toLowerCase())}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+            </button>
+            <div class="message-link-popup-status" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">${escapeHtml(loadingText)}</div>
+        `;
+        document.body.appendChild(overlay);
+
+        const status = overlay.querySelector('.message-link-popup-status');
+        const handleClick = (event) => {
+            if (event.target === overlay || event.target.closest('.message-link-popup-close')) {
+                dismiss();
+            }
+        };
+        const handleKeydown = (event) => {
+            if (event.key === 'Escape') {
+                if (document.getElementById('mediaViewer')) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                dismiss();
+            }
+        };
+        const cleanup = () => {
+            overlay.removeEventListener('click', handleClick);
+            document.removeEventListener('keydown', handleKeydown, true);
+            if (document.body.contains(overlay)) {
+                overlay.remove();
+            }
+        };
+
+        activeCleanup = cleanup;
+        overlay.addEventListener('click', handleClick);
+        document.addEventListener('keydown', handleKeydown, true);
+
+        try {
+            const note = await apiGetUserNote(userId, noteId);
+            if (activeCleanup !== cleanup || currentRequestSequence !== requestSequence || !document.body.contains(overlay)) {
+                return;
+            }
+
+            const row = typeof options.renderRow === 'function' ? options.renderRow(note) : null;
+            if (!row) {
+                if (status) status.textContent = unavailableText;
+                return;
+            }
+
+            if (status) status.remove();
+            overlay.appendChild(row);
+        } catch (error) {
+            if (activeCleanup !== cleanup || currentRequestSequence !== requestSequence || !document.body.contains(overlay)) {
+                return;
+            }
+
+            if (status) status.textContent = errorText;
+        }
+    }
+
+    return {
+        close,
+        open
+    };
+}
+
 function parseInlineTagAttributes(rawAttributes) {
     const attributes = {};
     if (!rawAttributes) return attributes;
@@ -395,11 +678,14 @@ function formatMessageText(text) {
     // Step 1: Process markdown named links.
     // Media links open in the viewer on click, others open in a new tab.
     const mdLinkPlaceholders = [];
-    let processed = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, function(_, label, url) {
+    const markdownLinkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+|\/users\/\d+\/notes\/[0-9a-fA-F-]{36}(?:\?[^\s)]+)?)\)/gi;
+    let processed = escaped.replace(markdownLinkPattern, function(_, label, url) {
         const href = url.toLowerCase().startsWith('www.') ? 'https://' + url : url;
         let html;
         if (isMediaUrl(href)) {
             html = `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;">${label}</a>`;
+        } else if (parseNoteUrl(href)) {
+            html = createNoteLinkHtml(label, href, 'color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;');
         } else {
             html = `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: hsl(var(--primary)); text-decoration: underline;">${label}</a>`;
         }
@@ -423,7 +709,7 @@ function formatMessageText(text) {
     }).join('<br>').replace(/<\/div><br>/g, '</div>');
 
     // Step 3: Auto-link plain URLs, skipping text already inside HTML tags or placeholders
-    const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+    const urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|\/users\/\d+\/notes\/[0-9a-fA-F-]{36}(?:\?[^\s<>"']+)*)/gi;
     processed = processed.split(/(<[^>]*>|\x00MDLINK\d+\x00|\x00MEDIATAG\d+\x00|\x00EMBEDTAG\d+\x00)/).map((segment, i) => {
         if (i % 2 === 1) return segment; // HTML tag or placeholder — leave alone
         return segment.replace(urlRegex, (url) => {
@@ -433,6 +719,9 @@ function formatMessageText(text) {
             if (displayUrl.length > 100) displayUrl = displayUrl.substring(0, 100) + '...';
             if (isMediaUrl(href)) {
                 return `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: inherit; text-decoration: underline; cursor: pointer;">${displayUrl}</a>`;
+            }
+            if (parseNoteUrl(href)) {
+                return createNoteLinkHtml(displayUrl, href, 'color: inherit; text-decoration: underline; cursor: pointer;');
             }
             return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
         });

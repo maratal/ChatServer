@@ -771,3 +771,8 @@ async function apiGetUserNotes(userId, count = 20, before = null) {
     const response = await fetch(url);
     return await handleResponse(response);
 }
+
+async function apiGetUserNote(userId, noteId) {
+    const response = await fetch(`/api/users/${encodeURIComponent(userId)}/notes/${encodeURIComponent(noteId)}`);
+    return await handleResponse(response);
+}

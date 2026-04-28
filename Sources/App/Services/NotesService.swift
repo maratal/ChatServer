@@ -13,6 +13,9 @@ protocol NotesServiceProtocol: LoggedIn {
     
     /// Checks if a message is published as a note.
     func isPublished(messageId: MessageID) async throws -> Bool
+
+    /// Returns a single published note for a particular journal owner. Public access (no auth required).
+    func note(_ id: NoteID, for userId: UserID) async throws -> NoteInfo
     
     /// Returns paginated published notes for a given user. Public access (no auth required).
     func notes(for userId: UserID, before noteId: NoteID?, count: Int) async throws -> [NoteInfo]
@@ -64,6 +67,16 @@ actor NotesService: NotesServiceProtocol {
     func isPublished(messageId: MessageID) async throws -> Bool {
         let note = try await repo.findBySource(messageId: messageId)
         return note != nil
+    }
+
+    func note(_ id: NoteID, for userId: UserID) async throws -> NoteInfo {
+        guard let note = try await repo.find(id: id) else {
+            throw ServiceError(.notFound)
+        }
+        guard note.source.author.id == userId else {
+            throw ServiceError(.notFound)
+        }
+        return note.info()
     }
     
     func notes(for userId: UserID, before noteId: NoteID?, count: Int) async throws -> [NoteInfo] {

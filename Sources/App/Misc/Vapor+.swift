@@ -13,6 +13,7 @@ extension Request {
         case id
         case userId
         case messageId
+        case noteId
     }
     
     func objectID() throws -> Int {
@@ -32,6 +33,13 @@ extension Request {
     func messageID() throws -> Int {
         guard let id = parameters.get(Parameter.messageId.rawValue, as: Int.self) else {
             throw Abort(.badRequest, reason: "Message id was not found in the path.")
+        }
+        return id
+    }
+
+    func noteID() throws -> UUID {
+        guard let id = parameters.get(Parameter.noteId.rawValue, as: UUID.self) else {
+            throw Abort(.badRequest, reason: "Note id was not found in the path.")
         }
         return id
     }
@@ -93,6 +101,7 @@ extension PathComponent {
     static var id: Self { ":\(Request.Parameter.id)" }
     static var userId: Self { ":\(Request.Parameter.userId)" }
     static var messageId: Self { ":\(Request.Parameter.messageId)" }
+    static var noteId: Self { ":\(Request.Parameter.noteId)" }
 }
 
 extension Request {

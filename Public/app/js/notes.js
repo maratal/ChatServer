@@ -10,6 +10,46 @@ let allNotesLoaded = false;
 let notesPageIsOwner = false;
 let notesInfoModalStack = [];
 
+const notePopupController = createNotePopupController({
+    title: 'Journal post',
+    loadingText: 'Loading journal post...',
+    unavailableText: 'Journal post is unavailable',
+    errorText: 'Can\'t load this journal post',
+    onDismiss: () => dismissNotePopup(),
+    renderRow: (note) => createNotePopupRow(note)
+});
+
+const noteNavigation = createNoteNavigationController({
+    popupController: notePopupController,
+    getBaseState: () => {
+        const baseState = { ...(history.state || {}) };
+        delete baseState.note;
+        delete baseState.baseState;
+        delete baseState.baseUrl;
+        return baseState;
+    },
+    getBaseUrl: ({ userId, historyMode }) => historyMode === 'replace'
+        ? `/users/${userId ?? pageUserId}/notes`
+        : getCurrentPageHistoryUrl(),
+    canScrollToLoadedPost: (_noteId, userId) => userId === String(pageUserId)
+});
+
+function closeNotePopup() {
+    return noteNavigation.close();
+}
+
+function dismissNotePopup() {
+    return noteNavigation.dismiss();
+}
+
+function openNoteLinkTarget(noteId, userId, options = {}) {
+    return noteNavigation.openLinkTarget(noteId, userId, options);
+}
+
+function handleInitialNoteNavigation(options = {}) {
+    return noteNavigation.handleInitialNavigation(options);
+}
+
 // ── Initialization ──────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,9 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('notesHeaderSubtitle'),
         false
     );
-    loadNotes();
+    loadNotes().then(() => {
+        handleInitialNoteNavigation().catch(console.error);
+    });
     setupScrollPagination();
 });
+
+function createNotePopupRow(note) {
+    return finalizeNotePopupRow(createNoteElement(note));
+}
 
 function getNotesUserInfoTitle(fullName) {
     if (!fullName) return 'Notes';
@@ -225,7 +271,7 @@ function createNoteElement(note) {
 
     const noteDiv = document.createElement('div');
     noteDiv.className = 'personal-note-row';
-    noteDiv.dataset.noteId = note.id;
+    noteDiv.dataset.noteId = String(note.id).toLowerCase();
 
     const normalizedDate = normalizeTimestamp(note.createdAt ?? message.createdAt);
     noteDiv.dataset.createdAt = normalizedDate.toISOString();
@@ -301,6 +347,19 @@ function createNoteElement(note) {
 
     return noteDiv;
 }
+
+window.addEventListener('popstate', function(event) {
+    const nextState = event.state || {};
+    if (nextState.note && typeof openNoteLinkTarget === 'function') {
+        Promise.resolve(openNoteLinkTarget(nextState.note.noteId, nextState.note.userId, {
+            target: nextState.note.target,
+            historyMode: 'none'
+        })).catch(console.error);
+        return;
+    }
+
+    closeNotePopup();
+});
 
 // ── Owner Context Menu ──────────────────────────────────────────────────────
 

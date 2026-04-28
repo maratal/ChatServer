@@ -3650,6 +3650,83 @@ input[type="text"]:disabled, textarea:disabled {
     font-size: 0.95rem;
 }
 
+.message-link-popup-layer {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    padding: 72px 24px 24px;
+    background: hsl(var(--background) / 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 900;
+    overflow: auto;
+    box-sizing: border-box;
+}
+
+.message-link-popup-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 901;
+}
+
+.message-link-popup-status {
+    max-width: min(560px, 100%);
+    padding: 14px 18px;
+    text-align: center;
+    color: hsl(var(--popover-foreground));
+    font-size: 0.95rem;
+    background: hsl(var(--popover) / 0.96);
+    border: 1px solid hsl(var(--border));
+    border-radius: 999px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+
+.message-link-popup-row {
+    margin: 0 !important;
+}
+
+.message-link-popup-row.message-row .message-content-wrapper {
+    max-width: min(100%, 560px);
+}
+
+.message-link-popup-row.message-row .message-row-content {
+    width: 100%;
+}
+
+.message-link-popup-row.personal-note-row {
+    width: min(560px, 100%);
+}
+
+.message-link-popup-row.personal-note-row .personal-note-date-header {
+    margin-top: 0;
+}
+
+.message-link-popup-row.personal-note-row .personal-note-content {
+    width: 100%;
+}
+
+.message-link-popup-row.personal-note-row .personal-note-bubble {
+    width: 100%;
+    max-width: none;
+}
+
+@media (max-width: 768px) {
+    .message-link-popup-layer {
+        padding: 60px 12px 12px;
+    }
+
+    .message-link-popup-close {
+        top: 12px;
+        right: 12px;
+    }
+
+    .message-link-popup-row.message-row .message-content-wrapper {
+        max-width: min(100%, 85vw);
+    }
+}
+
 /* ── Personal Notes ─────────────────────────────────────────────────────────── */
 
 .personal-note-row {

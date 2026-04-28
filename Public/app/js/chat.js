@@ -19,6 +19,49 @@ let activeMediaTab = 'uploads'; // 'uploads' | 'recents'
 let isUploadPanelCollapsed = false; // Whether the upload panel items row is collapsed
 let hasConfirmedSendWithUploading = false; // Whether the user confirmed sending while uploads are in progress
 
+const notePopupController = createNotePopupController({
+    title: 'Journal post',
+    loadingText: 'Loading journal post...',
+    unavailableText: 'Journal post is unavailable',
+    errorText: 'Can\'t load this journal post',
+    onDismiss: () => dismissNotePopup(),
+    renderRow: (note) => createNotePopupRow(note)
+});
+
+const noteNavigation = createNoteNavigationController({
+    popupController: notePopupController,
+    getBaseState: () => {
+        const chatId = currentChatId ?? history.state?.chatId ?? null;
+        const baseState = { ...(history.state || {}) };
+        delete baseState.messageLink;
+        delete baseState.note;
+        delete baseState.baseState;
+        delete baseState.baseUrl;
+        if (chatId) {
+            baseState.chatId = chatId;
+        }
+        return baseState;
+    },
+    getBaseUrl: ({ historyMode }) => {
+        const chatId = currentChatId ?? history.state?.chatId ?? null;
+        return historyMode === 'replace'
+            ? (chatId ? `#chat-${chatId}` : '/main')
+            : getCurrentPageHistoryUrl();
+    }
+});
+
+function closeNotePopup() {
+    return noteNavigation.close();
+}
+
+function dismissNotePopup() {
+    return noteNavigation.dismiss();
+}
+
+function openNoteLinkTarget(noteId, userId, options = {}) {
+    return noteNavigation.openLinkTarget(noteId, userId, options);
+}
+
 // Load messages for a chat
 async function loadMessages(chatId, initialLoad = false) {
     if (isLoadingMessages) {
@@ -115,16 +158,37 @@ function scrollMessagesToBottom(instant = false) {
     }
 }
 
-// Scroll to a specific message by ID and briefly highlight it
+function highlightMessageRow(row) {
+    row.classList.add('message-highlight');
+    setTimeout(() => row.classList.remove('message-highlight'), 1500);
+}
+
+function createNotePopupRow(note) {
+    if (!note?.message) return null;
+
+    const message = {
+        ...note.message,
+        note: {
+            id: note.id,
+            createdAt: note.createdAt,
+            userId: note.message.author?.id
+        },
+        createdAt: note.createdAt ?? note.message.createdAt
+    };
+
+    return finalizeNotePopupRow(createPersonalNote(message));
+}
+
+// Scroll to a specific message by ID and briefly highlight it.
 function scrollToMessage(messageId) {
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
     if (!messageElement) return;
-    
+
+    closeNotePopup();
+
     const row = messageElement.querySelector('.message-row-content') || messageElement;
     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
-    row.classList.add('message-highlight');
-    setTimeout(() => row.classList.remove('message-highlight'), 1500);
+    highlightMessageRow(row);
 }
 
 // Setup infinite scroll for messages container
@@ -506,6 +570,7 @@ function createPersonalNote(message) {
     noteDiv.dataset.createdAt = normalizedDate.toISOString();
     if (message.localId) noteDiv.dataset.localId = message.localId;
     if (message.id) noteDiv.dataset.messageId = message.id;
+    if (message.note?.id) noteDiv.dataset.noteId = String(message.note.id).toLowerCase();
 
     const fullDateTime = formatFullDateTime(normalizedDate);
     const messageTime = normalizedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -585,8 +650,9 @@ function createPersonalNote(message) {
 
     const publishedIconHTML = message.note ? (() => {
         const publishedDateTime = formatFullDateTime(normalizeTimestamp(message.note.createdAt));
-        const journalUrl = `${window.location.origin}/${currentUser?.info?.id}`;
-        return `<a class="personal-note-published-icon" href="${journalUrl}" target="_blank" title="Published: ${escapeHtml(publishedDateTime)}">${globeIcon}</a>`;
+        const journalUrl = createNoteHref(message.note.userId ?? currentUser?.info?.id, message.note.id, { target: 'popup' });
+        if (!journalUrl) return '';
+        return `<a class="personal-note-published-icon" href="${journalUrl}" target="_blank" rel="noopener noreferrer" title="Published: ${escapeHtml(publishedDateTime)}">${globeIcon}</a>`;
     })() : '';
 
     noteDiv.innerHTML = `
