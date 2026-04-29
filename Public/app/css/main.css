@@ -3860,6 +3860,10 @@ img.inline-media-popup-content {
     border-radius: 8px;
 }
 
+.inline-media-embed:last-child {
+    margin-bottom: 0;
+}
+
 .inline-media-embed-content {
     display: block;
     width: 100%;
