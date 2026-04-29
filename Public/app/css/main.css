@@ -3080,23 +3080,24 @@ input[type="text"]:disabled, textarea:disabled {
     width: 100%;
 }
 
-.message-text a {
+.message-text a,
+.personal-note-title a,
+.personal-note-body a,
+.inline-media-link {
     color: inherit;
-    text-decoration: underline;
-    word-break: break-all;
+    text-decoration: none;
+    word-break: break-word;
 }
 
-.message-text a:hover {
-    text-decoration: none;
-    opacity: 0.8;
+.message-text a:hover,
+.personal-note-title a:hover,
+.personal-note-body a:hover,
+.inline-media-link:hover {
+    text-decoration: underline;
 }
 
 .message.own .message-text a {
     color: rgba(255, 255, 255, 0.9);
-}
-
-.message.own .message-text a:hover {
-    color: white;
 }
 
 .message-time {

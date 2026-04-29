@@ -327,7 +327,7 @@ function parseInlineMediaReference(content) {
 }
 
 function createInlineMediaPopupLinkHtml(label, href) {
-    return `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${escapeHtml(href)}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;"><b>${escapeHtml(label)}</b></a></span>`;
+    return `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${escapeHtml(href)}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); cursor: pointer;"><b>${escapeHtml(label)}</b></a></span>`;
 }
 
 function parseNoteUrl(href) {
@@ -683,11 +683,11 @@ function formatMessageText(text) {
         const href = url.toLowerCase().startsWith('www.') ? 'https://' + url : url;
         let html;
         if (isMediaUrl(href)) {
-            html = `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;">${label}</a>`;
+            html = `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: hsl(var(--primary)); cursor: pointer;">${label}</a>`;
         } else if (parseNoteUrl(href)) {
-            html = createNoteLinkHtml(label, href, 'color: hsl(var(--primary)); text-decoration: underline; cursor: pointer;');
+            html = createNoteLinkHtml(label, href, 'color: hsl(var(--primary)); cursor: pointer;');
         } else {
-            html = `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: hsl(var(--primary)); text-decoration: underline;">${label}</a>`;
+            html = `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: hsl(var(--primary));">${label}</a>`;
         }
         const idx = mdLinkPlaceholders.length;
         mdLinkPlaceholders.push(html);
@@ -718,12 +718,12 @@ function formatMessageText(text) {
             if (url.toLowerCase().startsWith('www.')) href = 'https://' + url;
             if (displayUrl.length > 100) displayUrl = displayUrl.substring(0, 100) + '...';
             if (isMediaUrl(href)) {
-                return `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: inherit; text-decoration: underline; cursor: pointer;">${displayUrl}</a>`;
+                return `<a href="#" onclick='openMediaViewerForUrl(${JSON.stringify(href)}); return false;' style="color: inherit; cursor: pointer;">${displayUrl}</a>`;
             }
             if (parseNoteUrl(href)) {
-                return createNoteLinkHtml(displayUrl, href, 'color: inherit; text-decoration: underline; cursor: pointer;');
+                return createNoteLinkHtml(displayUrl, href, 'color: inherit; cursor: pointer;');
             }
-            return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayUrl}</a>`;
+            return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit;">${displayUrl}</a>`;
         });
     }).join('');
 
