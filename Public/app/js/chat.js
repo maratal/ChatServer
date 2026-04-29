@@ -1722,13 +1722,7 @@ async function sendMessage(textOverride = null) {
     
     if (!text && selectedAttachments.length === 0 && recentAttachments.length === 0) return;
     if (!currentChatId || !currentUser || !currentUser.info.id) return;
-    
-    // Check if we're editing a message
-    if (editingMessage) {
-        await updateMessage(editingMessage, text, selectedAttachments);
-        return;
-    }
-    
+
     // Get uploaded attachments (only send those that are ready) + recents (always ready)
     const uploadedAttachments = selectedAttachments.filter(a => a.uploaded);
     const pendingCount = selectedAttachments.filter(a => !a.uploaded).length;
@@ -1746,6 +1740,12 @@ async function sendMessage(textOverride = null) {
             if (!confirm(confirmMsg)) return;
             hasConfirmedSendWithUploading = true;
         }
+    }
+
+    // Check if we're editing a message
+    if (editingMessage) {
+        await updateMessage(editingMessage, text, allReadyAttachments);
+        return;
     }
 
     // Determine if we should send attachments
@@ -2473,7 +2473,7 @@ async function updateMessageOnServer(message) {
     try {
         // Prepare attachments if present
         let attachments = null;
-        if (message.attachments && message.attachments.length > 0) {
+        if (Array.isArray(message.attachments)) {
             attachments = message.attachments.map(att => ({
                 id: att.id,
                 fileType: att.fileType,
