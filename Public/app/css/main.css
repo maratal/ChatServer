@@ -3750,15 +3750,26 @@ input[type="text"]:disabled, textarea:disabled {
     user-select: none;
 }
 
+.personal-note-status-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+    vertical-align: top;
+}
+
 .personal-note-published-icon {
     display: inline-flex;
     align-items: center;
-    margin-top: 2.4px;
-    margin-left: 4px;
-    vertical-align: top;
     cursor: pointer;
     color: inherit;
     text-decoration: none;
+}
+
+.personal-note-pinned-icon {
+    display: inline-flex;
+    align-items: center;
+    color: hsl(var(--primary));
 }
 
 .personal-note-published-icon:hover {

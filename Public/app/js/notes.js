@@ -4,6 +4,7 @@
 var currentUser = null;
 
 const NOTES_PAGE_SIZE = 20;
+const MAX_PINNED_NOTES = 7; // Keep in sync with NotesService.maxPinnedNotes
 let notesOldestId = null;
 let isLoadingNotes = false;
 let allNotesLoaded = false;
@@ -208,9 +209,19 @@ async function loadNotes() {
     const container = document.getElementById('notesContainer');
 
     try {
-        const notes = await apiGetUserNotes(pageUserId, NOTES_PAGE_SIZE, notesOldestId);
+        let pinnedNotes = [];
+        let notes = [];
 
-        if (notes.length === 0) {
+        if (!notesOldestId) {
+            [pinnedNotes, notes] = await Promise.all([
+                apiGetUserNotes(pageUserId, { count: MAX_PINNED_NOTES, pinned: true }),
+                apiGetUserNotes(pageUserId, { count: NOTES_PAGE_SIZE, pinned: false })
+            ]);
+        } else {
+            notes = await apiGetUserNotes(pageUserId, { count: NOTES_PAGE_SIZE, before: notesOldestId, pinned: false });
+        }
+
+        if (pinnedNotes.length === 0 && notes.length === 0) {
             if (!notesOldestId) {
                 // First load, no notes at all — ensure placeholder is visible
                 const placeholder = document.getElementById('emptyPlaceholder');
@@ -227,17 +238,17 @@ async function loadNotes() {
         const existingPlaceholder = document.getElementById('emptyPlaceholder');
         if (existingPlaceholder) existingPlaceholder.remove();
 
-        // Render notes
-        for (const note of notes) {
+        // Render notes, pinned first
+        for (const note of [...pinnedNotes, ...notes]) {
             const noteElement = createNoteElement(note);
             if (noteElement) {
                 container.appendChild(noteElement);
             }
         }
 
-        // Update cursor for pagination
+        // Update cursor for pagination (pinned notes are all loaded up front and never paginated)
         const lastNote = notes[notes.length - 1];
-        notesOldestId = lastNote.id;
+        notesOldestId = lastNote?.id ?? notesOldestId;
 
         if (notes.length < NOTES_PAGE_SIZE) {
             allNotesLoaded = true;
@@ -245,11 +256,28 @@ async function loadNotes() {
     } catch (error) {
         console.error('Failed to load notes:', error);
         if (!notesOldestId) {
-            placeholder.textContent = 'Failed to load notes';
+            const placeholder = document.getElementById('emptyPlaceholder');
+            if (placeholder) {
+                placeholder.textContent = 'Failed to load notes';
+            } else if (container) {
+                container.innerHTML = '<div class="no-messages" id="emptyPlaceholder">Failed to load notes</div>';
+            }
         }
     }
 
     isLoadingNotes = false;
+}
+
+async function reloadNotesList() {
+    const container = document.getElementById('notesContainer');
+    if (!container) return;
+
+    notesOldestId = null;
+    allNotesLoaded = false;
+    isLoadingNotes = false;
+    container.innerHTML = '';
+
+    await loadNotes();
 }
 
 function setupScrollPagination() {
@@ -281,6 +309,12 @@ function createNoteElement(note) {
     const messageTime = normalizedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const dateGroupText = formatChatGroupingDate(normalizedDate);
     const dateHeaderText = `${dateGroupText}, ${messageTime}`;
+    const pinnedIconHTML = note.isPinned
+        ? `<span class="personal-note-pinned-icon" title="Pinned">${pinIcon}</span>`
+        : '';
+    const statusIconsHTML = pinnedIconHTML
+        ? `<span class="personal-note-status-icons">${pinnedIconHTML}</span>`
+        : '';
 
     const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
     const messageId = message.id || note.id;
@@ -324,7 +358,7 @@ function createNoteElement(note) {
 
     noteDiv.innerHTML = `
         <div class="personal-note-date-header">
-            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>
+            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>${statusIconsHTML}
         </div>
         <div class="message-row-content personal-note-content">
             <div class="personal-note-bubble">
@@ -370,6 +404,10 @@ function showNoteContextMenu(event, noteDiv, note, message) {
         menuItems.push({ id: 'copy', label: 'Copy Text', icon: copyIcon });
     }
 
+    if (message.id) {
+        menuItems.push({ id: note.isPinned ? 'unpin' : 'pin', label: note.isPinned ? 'Unpin' : 'Pin', icon: pinIcon });
+    }
+
     menuItems.push({ id: 'unpublish', label: 'Unpublish', icon: bookmarkIcon });
 
     showContextMenu({
@@ -395,16 +433,29 @@ async function handleNoteContextAction(action, note, message, noteDiv) {
                 }
             }
             break;
+        case 'pin':
+            try {
+                if (!note.id) return;
+                await apiPinNote(note.id);
+                await reloadNotesList();
+            } catch (error) {
+                console.error('Failed to pin note:', error);
+                alert(apiErrorReason(error));
+            }
+            break;
+        case 'unpin':
+            try {
+                if (!note.id) return;
+                await apiUnpinNote(note.id);
+                await reloadNotesList();
+            } catch (error) {
+                console.error('Failed to unpin note:', error);
+            }
+            break;
         case 'unpublish':
             try {
                 await apiUnpublishNote(message.id);
-                noteDiv.remove();
-                // Show placeholder if no notes left
-                const container = document.getElementById('notesContainer');
-                const remaining = container.querySelectorAll('.personal-note-row');
-                if (remaining.length === 0) {
-                    container.innerHTML = '<div class="no-messages" id="emptyPlaceholder">No published notes yet</div>';
-                }
+                await reloadNotesList();
             } catch (error) {
                 console.error('Failed to unpublish note:', error);
             }

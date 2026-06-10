@@ -14,6 +14,8 @@ struct NotesController: RouteCollection {
         let apiNotes = routes.grouped("api", "notes").grouped(DeviceSession.authenticator())
         apiNotes.post("publish", use: publish)
         apiNotes.post("unpublish", use: unpublish)
+        apiNotes.post("pin", use: pin)
+        apiNotes.post("unpin", use: unpin)
         apiNotes.get("status", .messageId, use: noteStatus)
         
         // Public API route (no auth) - get notes for a user
@@ -119,6 +121,18 @@ struct NotesController: RouteCollection {
         try await service.with(currentUser).unpublish(messageId: body.messageId, by: currentUser.requireID())
         return .ok
     }
+
+    func pin(_ req: Request) async throws -> NoteInfo {
+        let currentUser = try await req.requireCurrentUser()
+        let body = try req.content.decode(PinNoteRequest.self)
+        return try await service.with(currentUser).pinNote(id: body.noteId)
+    }
+
+    func unpin(_ req: Request) async throws -> NoteInfo {
+        let currentUser = try await req.requireCurrentUser()
+        let body = try req.content.decode(PinNoteRequest.self)
+        return try await service.with(currentUser).unpinNote(id: body.noteId)
+    }
     
     func noteStatus(_ req: Request) async throws -> NoteStatusResponse {
         let _ = try await req.requireCurrentUser()
@@ -136,12 +150,17 @@ struct NotesController: RouteCollection {
         let userId = try req.objectID()
         let before: NoteID? = req.query["before"]
         let count = req.countFromQuery(default: 20)
-        return try await service.notes(for: userId, before: before, count: count)
+        let pinned = req.query["pinned"] ?? false
+        return try await service.notes(for: userId, before: before, count: count, pinned: pinned)
     }
 }
 
 struct PublishNoteRequest: Serializable {
     var messageId: MessageID
+}
+
+struct PinNoteRequest: Serializable {
+    var noteId: NoteID
 }
 
 struct NoteStatusResponse: Serializable {

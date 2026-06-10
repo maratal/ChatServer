@@ -7,6 +7,7 @@ struct CreateNote: AsyncMigration {
         try await database.schema("notes")
             .id()
             .field("source_id", .uint64, .required, .references("messages", "id", onDelete: .cascade))
+            .field("is_pinned", .bool, .required, .custom("DEFAULT FALSE"))
             .field("created_at", .datetime)
             .unique(on: "source_id")
             .create()

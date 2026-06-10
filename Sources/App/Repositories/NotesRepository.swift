@@ -5,7 +5,7 @@ protocol NotesRepository: Sendable {
     func find(id: NoteID) async throws -> Note?
     func findBySource(messageId: MessageID) async throws -> Note?
     func findBySourceIds(messageIds: [MessageID]) async throws -> [MessageID: Note]
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int) async throws -> [Note]
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool) async throws -> [Note]
     func save(_ note: Note) async throws
     func delete(_ note: Note) async throws
 }
@@ -50,12 +50,13 @@ actor NotesDatabaseRepository: DatabaseRepository, NotesRepository {
         return result
     }
     
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int) async throws -> [Note] {
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool) async throws -> [Note] {
         var query = Note.query(on: database)
             .join(Message.self, on: \Note.$source.$id == \Message.$id)
             .join(Chat.self, on: \Message.$chat.$id == \Chat.$id)
             .filter(Message.self, \.$author.$id == userId)
             .filter(Chat.self, \.$isPersonal == true)
+            .filter(\.$isPinned == pinned)
         
         if let noteId = noteId {
             // Get the note to find its creation date for cursor pagination

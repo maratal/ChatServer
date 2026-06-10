@@ -11,15 +11,19 @@ final class Note: RepositoryItem, @unchecked Sendable {
     
     @Parent(key: "source_id")
     var source: Message
+
+    @Field(key: "is_pinned")
+    var isPinned: Bool
     
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     
     init() {}
     
-    init(id: NoteID? = nil, sourceId: MessageID) {
+    init(id: NoteID? = nil, sourceId: MessageID, isPinned: Bool = false) {
         self.id = id
         self.$source.id = sourceId
+        self.isPinned = isPinned
     }
 }
 
@@ -29,10 +33,12 @@ extension Note {
     struct Ref: Serializable {
         var id: NoteID?
         var createdAt: Date?
+        var isPinned: Bool
         
         init(from note: Note) {
             self.id = note.id
             self.createdAt = note.createdAt
+            self.isPinned = note.isPinned
         }
     }
     
@@ -40,10 +46,12 @@ extension Note {
         var id: NoteID?
         var message: MessageInfo?
         var createdAt: Date?
+        var isPinned: Bool
         
         init(from note: Note) {
             self.id = note.id
             self.createdAt = note.createdAt
+            self.isPinned = note.isPinned
             if note.$source.value != nil {
                 self.message = note.source.info()
             }

@@ -655,9 +655,17 @@ function createPersonalNote(message) {
         return `<a class="personal-note-published-icon" href="${journalUrl}" target="_blank" rel="noopener noreferrer" title="Published: ${escapeHtml(publishedDateTime)}">${globeIcon}</a>`;
     })() : '';
 
+    const pinnedIconHTML = message.note?.isPinned
+        ? `<span class="personal-note-pinned-icon" title="Pinned">${pinIcon}</span>`
+        : '';
+
+    const statusIconsHTML = publishedIconHTML || pinnedIconHTML
+        ? `<span class="personal-note-status-icons">${publishedIconHTML}${pinnedIconHTML}</span>`
+        : '';
+
     noteDiv.innerHTML = `
         <div class="personal-note-date-header">
-            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>${publishedIconHTML}
+            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>${statusIconsHTML}
         </div>
         <div class="message-row-content personal-note-content">
             <div class="personal-note-bubble">
@@ -2060,6 +2068,7 @@ function showMessageContextMenu(event, messageElement, message) {
     if (isPersonalNotes(chat) && message.id) {
         const publishIcon = bookmarkIcon;
         if (message.note) {
+            menuItems.push({ id: message.note.isPinned ? 'unpin' : 'pin', label: message.note.isPinned ? 'Unpin' : 'Pin', icon: pinIcon });
             menuItems.push({ id: 'unpublish', label: 'Unpublish', icon: publishIcon });
         } else {
             menuItems.push({ id: 'publish', label: 'Publish', icon: publishIcon });
@@ -2109,6 +2118,12 @@ function handleMessageContextAction(action, message, messageElement) {
             break;
         case 'publish':
             publishNote(message);
+            break;
+        case 'pin':
+            pinNote(message);
+            break;
+        case 'unpin':
+            unpinNote(message);
             break;
         case 'unpublish':
             unpublishNote(message);
@@ -2528,6 +2543,31 @@ async function publishNote(message) {
         console.log('Note published:', message.id);
     } catch (error) {
         console.error('Failed to publish note:', error);
+    }
+}
+
+// Pin a published personal note
+async function pinNote(message) {
+    if (!message.note?.id) return;
+    try {
+        message.note = await apiPinNote(message.note.id);
+        replaceMessageElement(message.localId ?? message.id, message, false);
+        console.log('Note pinned:', message.id);
+    } catch (error) {
+        console.error('Failed to pin note:', error);
+        alert(apiErrorReason(error));
+    }
+}
+
+// Unpin a published personal note
+async function unpinNote(message) {
+    if (!message.note?.id) return;
+    try {
+        message.note = await apiUnpinNote(message.note.id);
+        replaceMessageElement(message.localId ?? message.id, message, false);
+        console.log('Note unpinned:', message.id);
+    } catch (error) {
+        console.error('Failed to unpin note:', error);
     }
 }
 

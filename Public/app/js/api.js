@@ -8,6 +8,15 @@ function getAccessToken() {
 }
 
 // Helper to handle response and throw on error
+// Extracts the server-provided reason from an error thrown by handleResponse, falling back to the raw response text
+function apiErrorReason(error) {
+    try {
+        return JSON.parse(error.responseText).reason || error.responseText;
+    } catch {
+        return error.responseText || error.message;
+    }
+}
+
 async function handleResponse(response) {
     if (!response.ok) {
         const errorText = await response.text();
@@ -754,6 +763,34 @@ async function apiUnpublishNote(messageId) {
     return await handleResponse(response);
 }
 
+async function apiPinNote(noteId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/api/notes/pin', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ noteId })
+    });
+    return await handleResponse(response);
+}
+
+async function apiUnpinNote(noteId) {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/api/notes/unpin', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ noteId })
+    });
+    return await handleResponse(response);
+}
+
 async function apiGetNoteStatus(messageId) {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');
@@ -763,8 +800,8 @@ async function apiGetNoteStatus(messageId) {
     return await handleResponse(response);
 }
 
-async function apiGetUserNotes(userId, count = 20, before = null) {
-    let url = `/api/users/${userId}/notes?count=${count}`;
+async function apiGetUserNotes(userId, { count = 20, before = null, pinned = false } = {}) {
+    let url = `/api/users/${userId}/notes?count=${count}&pinned=${pinned ? 'true' : 'false'}`;
     if (before) {
         url += `&before=${before}`;
     }
