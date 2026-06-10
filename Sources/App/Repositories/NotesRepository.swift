@@ -6,6 +6,7 @@ protocol NotesRepository: Sendable {
     func findBySource(messageId: MessageID) async throws -> Note?
     func findBySourceIds(messageIds: [MessageID]) async throws -> [MessageID: Note]
     func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool) async throws -> [Note]
+    func pinnedCount(for userId: UserID) async throws -> Int
     func save(_ note: Note) async throws
     func delete(_ note: Note) async throws
 }
@@ -81,6 +82,16 @@ actor NotesDatabaseRepository: DatabaseRepository, NotesRepository {
             .all()
     }
     
+    func pinnedCount(for userId: UserID) async throws -> Int {
+        try await Note.query(on: database)
+            .join(Message.self, on: \Note.$source.$id == \Message.$id)
+            .join(Chat.self, on: \Message.$chat.$id == \Chat.$id)
+            .filter(Message.self, \.$author.$id == userId)
+            .filter(Chat.self, \.$isPersonal == true)
+            .filter(\.$isPinned == true)
+            .count()
+    }
+
     func save(_ note: Note) async throws {
         try await note.save(on: database)
     }

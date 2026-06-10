@@ -108,8 +108,7 @@ actor NotesService: NotesServiceProtocol {
         }
         if isPinned {
             let userId = try note.source.author.requireID()
-            let pinned = try await repo.notes(for: userId, before: nil, count: Self.maxPinnedNotes, pinned: true)
-            guard pinned.count < Self.maxPinnedNotes else {
+            guard try await repo.pinnedCount(for: userId) < Self.maxPinnedNotes else {
                 throw ServiceError(.badRequest, reason: "You can pin at most \(Self.maxPinnedNotes) notes.")
             }
         }
