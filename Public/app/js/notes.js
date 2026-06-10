@@ -102,7 +102,7 @@ function detectOwnership() {
 // ── Viewer language ─────────────────────────────────────────────────────────
 
 // Account language setting for logged-in users, browser storage for guests,
-// then the journal's default language, then browser (system) language
+// then the journal's default language; unselected when none of those are set
 function resolveViewerLanguageCode() {
     const codes = getJournalLanguagesSetting().map(language => language.code);
 
@@ -117,8 +117,7 @@ function resolveViewerLanguageCode() {
     const journalCode = getJournalLanguageSetting();
     if (journalCode && codes.includes(journalCode)) return journalCode;
 
-    const systemCode = (navigator.language || '').split('-')[0].toUpperCase();
-    return codes.find(code => code.toUpperCase() === systemCode) ?? null;
+    return null;
 }
 
 function initializeLanguageSelector() {
