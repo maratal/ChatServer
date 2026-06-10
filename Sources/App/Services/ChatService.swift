@@ -83,6 +83,8 @@ protocol ChatServiceProtocol: LoggedIn {
 
 actor ChatService: ChatServiceProtocol {
 
+    static let maxMessageLength = 25_000
+
     private let core: CoreService
     let repo: ChatsRepository
     let notesRepo: NotesRepository
@@ -424,6 +426,9 @@ actor ChatService: ChatServiceProtocol {
             guard text.count > 0 else {
                 throw ServiceError(.badRequest, reason: "Message text should be at least 1 character long.")
             }
+            guard text.count <= Self.maxMessageLength else {
+                throw ServiceError(.badRequest, reason: "Message text can be at most \(Self.maxMessageLength) characters long.")
+            }
         }
         
         // Validate replyTo if provided
@@ -532,6 +537,9 @@ actor ChatService: ChatServiceProtocol {
         var shouldSave = false
         var shouldReload = false
         if let text = update.text {
+            guard text.count <= Self.maxMessageLength else {
+                throw ServiceError(.badRequest, reason: "Message text can be at most \(Self.maxMessageLength) characters long.")
+            }
             message.text = text
             message.editedAt = Date()
             shouldSave = true

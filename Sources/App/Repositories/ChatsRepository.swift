@@ -338,14 +338,16 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
 }
 
 extension ChatsDatabaseRepository {
-    /// Deletes all files (with preview) for media resources
+    /// Deletes all files (with previews) for media resources
     private func deleteFilesForAttachments(_ attachments: [MediaResource]) {
-        let filePairs: [(filePath: String, previewFilePath: String)] = attachments.map { attachment in
-            (filePath: core.filePath(for: attachment) ?? "", previewFilePath: core.previewFilePath(for: attachment) ?? "")
-        }
-        for filePair in filePairs {
-            try? core.removeFileAtPath(filePair.filePath)
-            try? core.removeFileAtPath(filePair.previewFilePath)
+        for attachment in attachments {
+            if let filePath = core.filePath(for: attachment) {
+                try? core.removeFileAtPath(filePath)
+            }
+            // Image previews are named {id}-preview.{fileType}, video thumbnails {id}-preview.jpg
+            for previewName in Set([attachment.previewFileName, attachment.videoPreviewFileName].compactMap({ $0 })) {
+                try? core.removeFileAtPath(core.uploadPath(for: previewName))
+            }
         }
     }
 }

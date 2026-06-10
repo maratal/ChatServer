@@ -93,6 +93,12 @@ extension MediaResource {
     
     var previewFileName: String? {
         guard let fileName = self.id else { return nil }
+        return "\(fileName)-preview.\(fileType)"
+    }
+
+    /// Video preview thumbnails are uploaded as {id}-preview.jpg regardless of the source file type.
+    var videoPreviewFileName: String? {
+        guard let fileName = self.id else { return nil }
         return "\(fileName)-preview.jpg"
     }
 }
@@ -146,17 +152,18 @@ extension CoreService {
         try FileManager.default.removeItem(atPath: filePath)
     }
     
-    func removePreview(for resource: MediaResource) throws {
-        guard let filePath = previewFilePath(for: resource) else { return }
-        try FileManager.default.removeItem(atPath: filePath)
-    }
-    
     func removeFiles(for resource: MediaResource) throws {
         try removeFile(for: resource)
-        do {
-            try removePreview(for: resource)
-        } catch {
-            logger.debug("Failed to remove preview for \(resource): \(error)")
+        // Image previews are named {id}-preview.{fileType}, video thumbnails {id}-preview.jpg
+        let previewNames = Set([resource.previewFileName, resource.videoPreviewFileName].compactMap { $0 })
+        for previewName in previewNames {
+            let previewPath = uploadPath(for: previewName)
+            guard FileManager.default.fileExists(atPath: previewPath) else { continue }
+            do {
+                try removeFileAtPath(previewPath)
+            } catch {
+                logger.debug("Failed to remove preview '\(previewName)' for \(resource): \(error)")
+            }
         }
     }
     

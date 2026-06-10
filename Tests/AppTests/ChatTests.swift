@@ -985,7 +985,7 @@ final class ChatTests: AppTestCase {
         let users = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")
         let chat = try await service.makeChat(ownerId: current.id!, users: users.map { $0.id! }, isPersonal: true)
         try await service.makeMessages(for: chat.id!, authorId: current.id!, count: 1)
-        let longText = String(repeating: "A", count: 2049)
+        let longText = String(repeating: "A", count: ChatService.maxMessageLength + 1)
         
         try await asyncTest(.POST, "api/chats/\(chat.id!)/messages", headers: .none, beforeRequest: { req in
             try req.content.encode(
