@@ -659,9 +659,10 @@ function createPersonalNote(message) {
         ? `<span class="personal-note-pinned-icon" title="Pinned">${pinIcon}</span>`
         : '';
 
-    const statusIconsHTML = publishedIconHTML || pinnedIconHTML
-        ? `<span class="personal-note-status-icons">${publishedIconHTML}${pinnedIconHTML}</span>`
-        : '';
+    const statusIconsHTML = [publishedIconHTML, pinnedIconHTML]
+        .filter(Boolean)
+        .map(icon => `<span class="personal-note-status-icons">${icon}</span>`)
+        .join('');
 
     noteDiv.innerHTML = `
         <div class="personal-note-date-header">

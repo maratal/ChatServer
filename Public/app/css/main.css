@@ -3746,16 +3746,16 @@ input[type="text"]:disabled, textarea:disabled {
     color: hsl(var(--muted-foreground));
     margin-top: 25px;
     margin-bottom: 10px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     user-select: none;
 }
 
 .personal-note-status-icons {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
     margin-left: 4px;
-    vertical-align: top;
 }
 
 .personal-note-published-icon {
@@ -3770,6 +3770,11 @@ input[type="text"]:disabled, textarea:disabled {
     display: inline-flex;
     align-items: center;
     color: hsl(var(--primary));
+}
+
+.personal-note-pinned-icon svg {
+    width: 12px;
+    height: 12px;
 }
 
 .personal-note-published-icon:hover {
