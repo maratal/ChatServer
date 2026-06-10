@@ -53,6 +53,7 @@ final class User: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
         self.passwordHash = passwordHash
         self.accountKeyHash = accountKeyHash
         self.about = nil
+        self.language = nil
     }
 }
 
