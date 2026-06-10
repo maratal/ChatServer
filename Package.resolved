@@ -312,8 +312,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/twostraws/SwiftGD.git",
       "state" : {
-        "revision" : "1960998971b453101e740f25bc6d9fb01e0ba225",
-        "version" : "2.5.0"
+        "revision" : "ed65cf513453c1a046289e4d127a9697c81e02f3",
+        "version" : "2.6.0"
       }
     },
     {
