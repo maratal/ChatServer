@@ -83,6 +83,10 @@ const JOURNAL_SIZES = [
 const DEFAULT_JOURNAL_FONT_ID = 'default';
 const DEFAULT_JOURNAL_SIZE_ID = '15';
 
+const DEFAULT_JOURNAL_LANGUAGES = [
+    { code: 'EN', name: 'English', nativeName: 'English' }
+];
+
 // Read journal settings from the chat's settings field (or pageNotesSettings on notes page)
 function getJournalSettings() {
     if (typeof pageNotesSettings !== 'undefined' && pageNotesSettings) {
@@ -104,6 +108,25 @@ function getJournalFontSetting() {
 function getJournalSizeSetting() {
     return getJournalSettings().size || DEFAULT_JOURNAL_SIZE_ID;
 }
+
+function getJournalLanguagesSetting() {
+    const languages = getJournalSettings().languages;
+    return Array.isArray(languages) && languages.length > 0 ? languages : DEFAULT_JOURNAL_LANGUAGES;
+}
+
+// The journal's default language code; substitutes the viewer setting until they pick their own
+function getJournalLanguageSetting() {
+    return getJournalSettings().language || '';
+}
+
+const Language = {
+    // Human-readable name, e.g. "Español (Spanish)", or just "English" when both names match
+    displayedName(language) {
+        if (!language) return '';
+        return language.nativeName === language.name ? language.name : `${language.nativeName} (${language.name})`;
+    }
+};
+
 
 function saveJournalSettings(settings) {
     if (typeof chats === 'undefined') return;
@@ -408,6 +431,98 @@ function updateJournalSizeSelection(sizeId) {
     if (select) select.value = sizeId;
 }
 
+// ── Journal default language ───────────────────────────────────────
+
+function buildJournalLanguageOptions() {
+    const select = document.getElementById('settingsJournalLanguageSelect');
+    if (!select) return;
+
+    const savedCode = getJournalLanguageSetting();
+    select.innerHTML = '';
+
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = '—';
+    select.appendChild(noneOption);
+
+    for (const language of getJournalLanguagesSetting()) {
+        const option = document.createElement('option');
+        option.value = language.code;
+        option.textContent = Language.displayedName(language);
+        option.selected = language.code === savedCode;
+        select.appendChild(option);
+    }
+}
+
+function selectJournalLanguage(code) {
+    const settings = getJournalSettings();
+    if (code) {
+        settings.language = code;
+    } else {
+        delete settings.language;
+    }
+    saveJournalSettings(settings);
+}
+
+// ── Journal languages (raw JSON, validated server-side) ───────────
+
+let journalLanguagesEditorValue = '';
+
+function buildJournalLanguagesEditor() {
+    const textarea = document.getElementById('settingsJournalLanguages');
+    if (!textarea) return;
+    // Displayed without the outer array brackets; they are re-added on save
+    textarea.value = getJournalLanguagesSetting()
+        .map(language => JSON.stringify(language, null, 2))
+        .join(',\n');
+    journalLanguagesEditorValue = textarea.value;
+
+    // Saves on focus loss or Enter; Shift+Enter inserts a new line
+    if (!textarea.dataset.saveWired) {
+        textarea.dataset.saveWired = 'true';
+        textarea.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                textarea.blur();
+            }
+        });
+        textarea.addEventListener('blur', () => {
+            if (textarea.value !== journalLanguagesEditorValue) {
+                saveJournalLanguages();
+            }
+        });
+    }
+}
+
+async function saveJournalLanguages() {
+    const textarea = document.getElementById('settingsJournalLanguages');
+    if (!textarea || typeof chats === 'undefined') return;
+    const notesChat = chats.find(chat => isPersonalNotes(chat));
+    if (!notesChat) return;
+
+    // Wrap in array brackets when absent, then pass the user's JSON through as-is;
+    // the server validates it and raises an error for wrong JSON
+    let rawText = textarea.value.trim();
+    if (!rawText.startsWith('[')) {
+        rawText = `[${rawText}]`;
+    }
+    let languages;
+    try { languages = JSON.parse(rawText); } catch (_) { languages = rawText; }
+
+    const settings = getJournalSettings();
+    settings.languages = languages;
+    const settingsJson = JSON.stringify(settings);
+    try {
+        await apiUpdateChat(notesChat.id, { settings: settingsJson });
+        notesChat.settings = settingsJson;
+        buildJournalLanguagesEditor();
+        buildJournalLanguageOptions(); // the default-language choices depend on the supported list
+    } catch (error) {
+        console.error('Failed to save journal languages:', error);
+        alert(apiErrorReason(error));
+    }
+}
+
 // ── Init ──────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -416,12 +531,16 @@ document.addEventListener('DOMContentLoaded', () => {
     buildColorSwatches();
     buildJournalFontOptions();
     buildJournalSizeOptions();
+    buildJournalLanguagesEditor();
+    buildJournalLanguageOptions();
 });
 
 // ── Server Settings (admin only) ──────────────────────────────────
 
 function openSettings() {
     const modal = document.getElementById('settingsModal');
+    buildJournalLanguagesEditor(); // refresh from chats, which load after DOMContentLoaded
+    buildJournalLanguageOptions();
     modal.style.display = 'block';
     modal.offsetHeight;
     requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('show')));

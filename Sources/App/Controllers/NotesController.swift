@@ -151,7 +151,8 @@ struct NotesController: RouteCollection {
         let before: NoteID? = req.query["before"]
         let count = req.countFromQuery(default: 20)
         let pinned = req.query["pinned"] ?? false
-        return try await service.notes(for: userId, before: before, count: count, pinned: pinned)
+        let language: String? = req.query["language"]
+        return try await service.notes(for: userId, before: before, count: count, pinned: pinned, languageCode: language)
     }
 }
 

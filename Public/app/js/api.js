@@ -559,23 +559,27 @@ async function apiGetMessages(chatId, count = 50, before = null) {
     return await handleResponse(response);
 }
 
-async function apiSendMessage(chatId, localId, text, attachments = null, replyTo = null) {
+async function apiSendMessage(chatId, localId, text, attachments = null, replyTo = null, language = null) {
     const accessToken = getAccessToken();
     if (!accessToken) {
         throw new Error('No access token available');
     }
-    
+
     const requestBody = {
         localId: localId,
         text: text || null
     };
-    
+
     if (attachments && attachments.length > 0) {
         requestBody.attachments = attachments;
     }
-    
+
     if (replyTo) {
         requestBody.replyTo = replyTo;
+    }
+
+    if (language) {
+        requestBody.language = language;
     }
     
     const response = await fetch(`/api/chats/${chatId}/messages`, {
@@ -800,10 +804,13 @@ async function apiGetNoteStatus(messageId) {
     return await handleResponse(response);
 }
 
-async function apiGetUserNotes(userId, { count = 20, before = null, pinned = false } = {}) {
+async function apiGetUserNotes(userId, { count = 20, before = null, pinned = false, language = null } = {}) {
     let url = `/api/users/${userId}/notes?count=${count}&pinned=${pinned ? 'true' : 'false'}`;
     if (before) {
         url += `&before=${before}`;
+    }
+    if (language) {
+        url += `&language=${encodeURIComponent(language)}`;
     }
     const response = await fetch(url);
     return await handleResponse(response);

@@ -12,7 +12,11 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
     
     @Field(key: "text")
     var text: String?
-    
+
+    /// Language code (e.g. "EN") used for filtering journal posts by language.
+    @Field(key: "language")
+    var language: String?
+
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     
@@ -57,6 +61,7 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
         authorId: UserID,
         chatId: ChatID,
         text: String?,
+        language: String? = nil,
         isVisible: Bool = true
     ) {
         self.id = id
@@ -64,6 +69,7 @@ final class Message: RepositoryItem, @unchecked Sendable /* https://blog.vapor.c
         self.$author.id = authorId
         self.$chat.id = chatId
         self.text = text
+        self.language = language
         self.editedAt = nil
         self.deletedAt = nil
         self.isVisible = isVisible
@@ -78,6 +84,7 @@ extension Message {
         var chatId: ChatID?
         var author: UserInfo?
         var text: String?
+        var language: String?
         var createdAt: Date?
         var updatedAt: Date?
         var editedAt: Date?
@@ -98,6 +105,7 @@ extension Message {
                 self.author = UserInfo(id: message.$author.id)
             }
             self.text = message.text
+            self.language = message.language
             self.createdAt = message.createdAt
             self.updatedAt = message.updatedAt
             self.editedAt = message.editedAt

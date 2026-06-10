@@ -3781,6 +3781,40 @@ input[type="text"]:disabled, textarea:disabled {
     color: hsl(var(--primary));
 }
 
+/* ── Note language selectors ── */
+
+.language-button {
+    background-color: hsl(var(--sidebar-accent)); /* always tinted, like other toolbar buttons on hover */
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.message-input-right-controls {
+    gap: 8px;
+}
+
+/* Collapse the send slot while the send button is hidden so it doesn't double the row gap */
+.message-input-action-slot:has(> #sendButton.hidden) {
+    display: none;
+}
+
+.settings-json-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-family: Menlo, Monaco, Consolas, monospace;
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    resize: vertical;
+}
+
+.settings-json-input:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+}
+
 .personal-note-content {
     width: 100%;
     display: flex;

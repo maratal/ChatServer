@@ -572,6 +572,7 @@ async function selectChat(chatId, addToHistory = true) {
         `;
     } else {
         messageInputContainer.style.display = 'flex';
+        updateComposeLanguageControl(chat);
         await loadMessagesAndPrepareInputForChat(chatId);
     }
 }

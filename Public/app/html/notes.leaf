@@ -36,6 +36,7 @@
                     <div class="notes-header-title" id="notesHeaderTitle"></div>
                     <div class="notes-header-subtitle" id="notesHeaderSubtitle"></div>
                 </div>
+                <button class="inline-button language-button" id="notesLanguageButton" type="button" title="Language" onclick="showViewerLanguageMenu(event)">A</button>
             </header>
 
             <!-- Notes Container -->

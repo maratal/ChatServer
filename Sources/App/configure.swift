@@ -48,6 +48,9 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(CreateMessageToMedia())
     app.migrations.add(CreateNote())
     app.migrations.add(CreateServerSetting())
+    app.migrations.add(AddIsPinnedToNote())
+    app.migrations.add(AddLanguageToMessage())
+    app.migrations.add(AddLanguageToUser())
     
     try app.createUploadsDirectory()
     

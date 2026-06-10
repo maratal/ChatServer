@@ -169,6 +169,18 @@ actor UserService: UserServiceProtocol {
         if let about = info.about {
             user.about = about
         }
+        if let language = info.language {
+            // Empty string clears the preference
+            let code = language.trim()
+            if code.isEmpty {
+                user.language = nil
+            } else {
+                guard Language.isValidCode(code) else {
+                    throw ServiceError(.badRequest, reason: "Invalid language code.")
+                }
+                user.language = code
+            }
+        }
         try await repo.save(user)
         return user.fullInfo()
     }

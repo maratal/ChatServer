@@ -5,6 +5,8 @@ var currentUser = null;
 
 const NOTES_PAGE_SIZE = 20;
 const MAX_PINNED_NOTES = 7; // Keep in sync with NotesService.maxPinnedNotes
+const STORAGE_VIEWER_LANGUAGE = 'chatserver_viewer_language';
+let notesViewerLanguage = null; // selected language code, or null for posts without language
 let notesOldestId = null;
 let isLoadingNotes = false;
 let allNotesLoaded = false;
@@ -55,6 +57,7 @@ function handleInitialNoteNavigation(options = {}) {
 
 document.addEventListener('DOMContentLoaded', () => {
     detectOwnership();
+    initializeLanguageSelector();
     initializeSidebarNotesInfo();
     initializeHeader();
     setupSidebarModal();
@@ -85,14 +88,92 @@ function detectOwnership() {
         const stored = localStorage.getItem('currentUser');
         if (stored) {
             const parsed = JSON.parse(stored);
-            if (parsed && parsed.info && parsed.info.id === pageUserId && parsed.session && parsed.session.accessToken) {
-                notesPageIsOwner = true;
+            if (parsed && parsed.info && parsed.session && parsed.session.accessToken) {
+                // Any logged-in account (for API auth and account language); owner gets extra controls
                 currentUser = parsed;
+                notesPageIsOwner = parsed.info.id === pageUserId;
             }
         }
     } catch (error) {
         // Not logged in or invalid data
     }
+}
+
+// ── Viewer language ─────────────────────────────────────────────────────────
+
+// Account language setting for logged-in users, browser storage for guests,
+// then the journal's default language, then browser (system) language
+function resolveViewerLanguageCode() {
+    const codes = getJournalLanguagesSetting().map(language => language.code);
+
+    if (currentUser) {
+        const accountCode = currentUser.info?.language;
+        if (accountCode && codes.includes(accountCode)) return accountCode;
+    } else {
+        const stored = localStorage.getItem(STORAGE_VIEWER_LANGUAGE);
+        if (stored && codes.includes(stored)) return stored;
+    }
+
+    const journalCode = getJournalLanguageSetting();
+    if (journalCode && codes.includes(journalCode)) return journalCode;
+
+    const systemCode = (navigator.language || '').split('-')[0].toUpperCase();
+    return codes.find(code => code.toUpperCase() === systemCode) ?? null;
+}
+
+function initializeLanguageSelector() {
+    const button = document.getElementById('notesLanguageButton');
+    if (!button) return;
+    notesViewerLanguage = resolveViewerLanguageCode();
+    button.textContent = notesViewerLanguage ?? 'A';
+}
+
+function showViewerLanguageMenu(event) {
+    event.stopPropagation();
+    const button = document.getElementById('notesLanguageButton');
+    if (!button) return;
+
+    const items = [
+        { id: 'none', label: '—', icon: !notesViewerLanguage ? checkIcon : blankIcon },
+        ...getJournalLanguagesSetting().map(language => ({
+            id: language.code,
+            label: Language.displayedName(language),
+            icon: language.code === notesViewerLanguage ? checkIcon : blankIcon
+        }))
+    ];
+
+    const rect = button.getBoundingClientRect();
+    showContextMenu({
+        items,
+        x: rect.left,
+        y: rect.bottom + 6,
+        highlightElement: button,
+        onAction: (action) => {
+            const code = action === 'none' ? '' : action;
+            button.textContent = code || 'A';
+            handleViewerLanguageChange(code);
+        }
+    });
+}
+
+async function handleViewerLanguageChange(code) {
+    notesViewerLanguage = code || null;
+
+    if (currentUser?.session?.accessToken) {
+        try {
+            await apiUpdateCurrentUser({ language: code || '' });
+            currentUser.info.language = code || null;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        } catch (error) {
+            console.error('Failed to save account language:', error);
+        }
+    } else if (code) {
+        localStorage.setItem(STORAGE_VIEWER_LANGUAGE, code);
+    } else {
+        localStorage.removeItem(STORAGE_VIEWER_LANGUAGE);
+    }
+
+    await reloadNotesList();
 }
 
 function initializeSidebarNotesInfo() {
@@ -214,11 +295,11 @@ async function loadNotes() {
 
         if (!notesOldestId) {
             [pinnedNotes, notes] = await Promise.all([
-                apiGetUserNotes(pageUserId, { count: MAX_PINNED_NOTES, pinned: true }),
-                apiGetUserNotes(pageUserId, { count: NOTES_PAGE_SIZE, pinned: false })
+                apiGetUserNotes(pageUserId, { count: MAX_PINNED_NOTES, pinned: true, language: notesViewerLanguage }),
+                apiGetUserNotes(pageUserId, { count: NOTES_PAGE_SIZE, pinned: false, language: notesViewerLanguage })
             ]);
         } else {
-            notes = await apiGetUserNotes(pageUserId, { count: NOTES_PAGE_SIZE, before: notesOldestId, pinned: false });
+            notes = await apiGetUserNotes(pageUserId, { count: NOTES_PAGE_SIZE, before: notesOldestId, pinned: false, language: notesViewerLanguage });
         }
 
         if (pinnedNotes.length === 0 && notes.length === 0) {

@@ -163,6 +163,7 @@ actor ChatService: ChatServiceProtocol {
             chat.description = description
         }
         if let settings = update.settings {
+            try Self.validateChatSettings(settings)
             chat.settings = settings
         }
         try await repo.save(chat)
@@ -171,6 +172,23 @@ actor ChatService: ChatServiceProtocol {
         return info
     }
     
+    /// Validates the chat settings JSON string. The `languages` key, when present, must be a non-empty array
+    /// of languages; the `language` key (journal default), when present, must be a valid language code.
+    private static func validateChatSettings(_ settings: String) throws {
+        guard let data = settings.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ServiceError(.badRequest, reason: "Chat settings must be a valid JSON object.")
+        }
+        if let languages = object["languages"] {
+            try Language.validateList(languages)
+        }
+        if let language = object["language"] {
+            guard let code = language as? String, Language.isValidCode(code) else {
+                throw ServiceError(.badRequest, reason: "Invalid journal language code.")
+            }
+        }
+    }
+
     func updateChatSettings(_ id: ChatID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {
         guard let relation = try await repo.findRelation(of: id, userId: userId) else {
             throw ServiceError(.forbidden)
@@ -419,10 +437,19 @@ actor ChatService: ChatServiceProtocol {
             }
         }
         
+        var language: String? = nil
+        if let code = info.language?.trim(), !code.isEmpty {
+            guard Language.isValidCode(code) else {
+                throw ServiceError(.badRequest, reason: "Invalid language code.")
+            }
+            language = code
+        }
+
         let message = Message(localId: localId,
                               authorId: userId,
                               chatId: chatId,
                               text: info.text,
+                              language: language,
                               isVisible: info.isVisible ?? true)
         
         if let replyToId = info.replyTo {

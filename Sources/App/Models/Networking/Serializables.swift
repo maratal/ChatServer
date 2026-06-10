@@ -32,6 +32,7 @@ struct CreateChatRequest: Serializable {
 struct UpdateUserRequest: Serializable {
     var name: String?
     var about: String?
+    var language: String?
     var photo: MediaInfo?
 }
 
@@ -58,6 +59,7 @@ struct UpdateChatUsersRequest: Serializable {
 struct PostMessageRequest: Serializable {
     var localId: String?
     var text: String?
+    var language: String?
     var isVisible: Bool?
     var replyTo: MessageID?
     var attachments: [MediaInfo]?

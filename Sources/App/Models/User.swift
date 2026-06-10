@@ -15,7 +15,11 @@ final class User: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     
     @Field(key: "about")
     var about: String?
-    
+
+    /// Preferred language code (e.g. "EN") used as the default journal language filter.
+    @Field(key: "language")
+    var language: String?
+
     @Field(key: "password_hash")
     var passwordHash: String
     
@@ -59,14 +63,16 @@ extension User {
         var name: String?
         var username: String?
         var about: String?
+        var language: String?
         var lastSeen: Date?
         var createdAt: Date?
         var photos: [MediaInfo]?
-        
+
         init(id: UserID?,
              name: String? = nil,
              username: String? = nil,
              about: String? = nil,
+             language: String? = nil,
              lastSeen: Date? = nil,
              createdAt: Date? = nil,
              photos: [MediaInfo]? = nil) {
@@ -74,6 +80,7 @@ extension User {
             self.name = name
             self.username = username
             self.about = about
+            self.language = language
             self.lastSeen = lastSeen
             self.createdAt = createdAt
             self.photos = photos
@@ -92,6 +99,7 @@ extension User {
             }
             if fullInfo {
                 self.about = user.about
+                self.language = user.language
                 // Calculate lastSeen from device sessions' updatedAt
                 if user.$deviceSessions.value != nil && !user.deviceSessions.isEmpty {
                     self.lastSeen = user.deviceSessions.map { $0.updatedAt ?? Date.distantPast }.max()

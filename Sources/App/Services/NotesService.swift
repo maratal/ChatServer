@@ -24,8 +24,9 @@ protocol NotesServiceProtocol: LoggedIn {
     /// Returns a single published note for a particular journal owner. Public access (no auth required).
     func note(_ id: NoteID, for userId: UserID) async throws -> NoteInfo
     
-    /// Returns paginated published notes for a given user. Public access (no auth required).
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool) async throws -> [NoteInfo]
+    /// Returns paginated published notes for a given user, filtered by language code. Public access (no auth required).
+    /// A nil language returns all notes regardless of their language.
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool, languageCode: String?) async throws -> [NoteInfo]
 }
 
 actor NotesService: NotesServiceProtocol {
@@ -94,8 +95,11 @@ actor NotesService: NotesServiceProtocol {
         return note.info()
     }
     
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool) async throws -> [NoteInfo] {
-        let notes = try await repo.notes(for: userId, before: noteId, count: count, pinned: pinned)
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool, languageCode: String?) async throws -> [NoteInfo] {
+        if let languageCode, !Language.isValidCode(languageCode) {
+            throw ServiceError(.badRequest, reason: "Invalid language code.")
+        }
+        let notes = try await repo.notes(for: userId, before: noteId, count: count, pinned: pinned, languageCode: languageCode)
         return notes.map { $0.info() }
     }
 

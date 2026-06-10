@@ -128,7 +128,7 @@
                             </svg>
                         </button>
                     </div>
-                    <div class="message-input-action-slot relative">
+                    <div class="message-input-action-slot relative message-input-right-controls">
                         <button class="inline-button" id="emojiButton" onclick="toggleEmojiPicker()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smile">
                                 <circle cx="12" cy="12" r="10"></circle>
@@ -137,7 +137,8 @@
                                 <line x1="15" x2="15.01" y1="9" y2="9"></line>
                             </svg>
                         </button>
-                        
+                        <button class="inline-button language-button" id="messageLanguageButton" type="button" style="display: none;" title="Post language" onclick="showComposeLanguageMenu(event)">A</button>
+
                         <!-- Emoji Picker Popup -->
                         <div class="emoji-picker" id="emojiPicker" style="display: none;">
                             <div class="emoji-picker-header">
@@ -308,6 +309,16 @@
                         <select class="settings-dropdown" id="settingsJournalSizeSelect" onchange="selectJournalSize(this.value)">
                             <!-- Populated by settings.js -->
                         </select>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-label">Default Language</div>
+                        <select class="settings-dropdown" id="settingsJournalLanguageSelect" onchange="selectJournalLanguage(this.value)">
+                            <!-- Populated by settings.js -->
+                        </select>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-label">Languages</div>
+                        <textarea class="settings-json-input" id="settingsJournalLanguages" rows="8" spellcheck="false" placeholder='{"code":"EN","name":"English","nativeName":"English"}'></textarea>
                     </div>
                 </div>
             </div>

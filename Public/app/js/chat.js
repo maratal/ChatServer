@@ -1722,6 +1722,66 @@ function initializeMessageInput() {
 }
 
 // Send message
+// ── Personal note language ──────────────────────────────────────────────────
+
+let composeLanguageCode = null; // initialized from the journal default language on first use, resets on refresh
+
+// Shows the language toolbar button for personal notes; hides it for other chats
+function updateComposeLanguageControl(chat) {
+    const button = document.getElementById('messageLanguageButton');
+    if (!button) return;
+    if (!chat || !isPersonalNotes(chat)) {
+        button.style.display = 'none';
+        return;
+    }
+    button.textContent = getSavedComposeLanguageCode() || 'A';
+    button.style.display = '';
+}
+
+// Returns the selected compose language code if it is among the journal's supported languages
+function getSavedComposeLanguageCode() {
+    if (composeLanguageCode === null) {
+        composeLanguageCode = getJournalLanguageSetting();
+    }
+    return getJournalLanguagesSetting().some(language => language.code === composeLanguageCode) ? composeLanguageCode : '';
+}
+
+function showComposeLanguageMenu(event) {
+    event.stopPropagation();
+    const button = document.getElementById('messageLanguageButton');
+    if (!button) return;
+
+    const selectedCode = getSavedComposeLanguageCode();
+    const items = [
+        { id: 'none', label: '—', icon: selectedCode === '' ? checkIcon : blankIcon },
+        ...getJournalLanguagesSetting().map(language => ({
+            id: language.code,
+            label: Language.displayedName(language),
+            icon: language.code === selectedCode ? checkIcon : blankIcon
+        }))
+    ];
+
+    const rect = button.getBoundingClientRect();
+    showContextMenu({
+        items,
+        x: rect.left,
+        y: rect.top - 6,
+        anchor: 'bottom-left',
+        highlightElement: button,
+        onAction: (action) => {
+            composeLanguageCode = action === 'none' ? '' : action;
+            button.textContent = composeLanguageCode || 'A';
+        }
+    });
+}
+
+// Returns the selected compose language code for the current chat, or null (regular chats are language agnostic)
+function getComposeLanguage() {
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat || !isPersonalNotes(chat)) return null;
+    return getSavedComposeLanguageCode() || null;
+}
+
 async function sendMessage(textOverride = null) {
     const messageInput = getMessageInputElement();
     const text = textOverride !== null ? textOverride.trim() : messageInput.value.trim();
@@ -1787,7 +1847,12 @@ async function sendMessage(textOverride = null) {
         readMarks: [],
         isPending: true
     };
-    
+
+    const composeLanguage = getComposeLanguage();
+    if (composeLanguage) {
+        message.language = composeLanguage;
+    }
+
     // Add replyTo if replying to a message
     if (replyingToMessage) {
         message.replyTo = replyingToMessage.id;
@@ -2471,7 +2536,8 @@ async function sendMessageToServer(message) {
             message.localId,
             message.text || null,
             attachments,
-            message.replyTo || null
+            message.replyTo || null,
+            message.language || null
         );
         
         message.isPending = false;
