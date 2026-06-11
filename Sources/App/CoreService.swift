@@ -153,7 +153,12 @@ extension CoreService {
     }
     
     func removeFiles(for resource: MediaResource) throws {
-        try removeFile(for: resource)
+        // The file may already be gone (failed upload or earlier cleanup) — deleting the record should not get stuck on it
+        if let filePath = filePath(for: resource), FileManager.default.fileExists(atPath: filePath) {
+            try removeFileAtPath(filePath)
+        } else {
+            logger.warning("File for resource \(resource.id?.uuidString ?? "?") not found, removing anyway.")
+        }
         // Image previews are named {id}-preview.{fileType}, video thumbnails {id}-preview.jpg
         let previewNames = Set([resource.previewFileName, resource.videoPreviewFileName].compactMap { $0 })
         for previewName in previewNames {

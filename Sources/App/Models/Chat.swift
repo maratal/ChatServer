@@ -65,7 +65,12 @@ final class Chat: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
 }
 
 extension Chat {
-    
+
+    /// Chat images sorted newest first, so the first one is the current avatar everywhere.
+    var sortedImages: [MediaResource] {
+        images.sorted { ($0.uploadedAt ?? .distantPast) > ($1.uploadedAt ?? .distantPast) }
+    }
+
     func setLatestMessage(_ message: Message?) throws {
         self.$lastMessage.id = try message?.requireID()
     }
@@ -102,7 +107,7 @@ extension Chat {
                 self.lastMessage = lastMessage.info()
             }
             if chat.$images.value != nil {
-                self.images = chat.images.map { $0.info() }
+                self.images = chat.sortedImages.map { $0.info() }
             }
             self.updatedAt = chat.updatedAt ?? Date()
             self.createdAt = chat.createdAt ?? Date()
@@ -127,7 +132,7 @@ extension Chat {
                 self.lastMessage = lastMessage.info()
             }
             if chat.$images.value != nil {
-                self.images = chat.images.map { $0.info() }
+                self.images = chat.sortedImages.map { $0.info() }
             }
             self.updatedAt = chat.updatedAt ?? Date()
             self.createdAt = chat.createdAt ?? Date()
@@ -149,7 +154,7 @@ extension Chat {
                 self.lastMessage = lastMessage.info()
             }
             if chat.$images.value != nil {
-                self.images = chat.images.map { $0.info() }
+                self.images = chat.sortedImages.map { $0.info() }
             }
             self.updatedAt = chat.updatedAt ?? Date()
             self.createdAt = chat.createdAt ?? Date()

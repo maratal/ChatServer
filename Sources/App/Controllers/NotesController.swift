@@ -82,7 +82,7 @@ struct NotesController: RouteCollection {
             title: chat?.title,
             description: chat?.description,
             settings: chat?.settings,
-            images: chat?.images.map { $0.info() },
+            images: chat?.sortedImages.map { $0.info() },
             createdAt: chat?.createdAt
         )
         

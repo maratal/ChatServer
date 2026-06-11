@@ -316,6 +316,56 @@ final class ChatTests: AppTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: previewPath))
     }
     
+    func test_18a_addAndDeleteJournalImage() async throws {
+        let current = try await service.seedCurrentUser()
+        let chat = try await service.makeChat(ownerId: current.id!, users: [current.id!], isPersonal: true)
+
+        let fileId = UUID()
+        let fileName = fileId.uuidString
+        let fileType = "test"
+
+        let uploadPath = try service.makeFakeUpload(fileName: fileName + "." + fileType, fileSize: 1)
+        let previewPath = try service.makeFakeUpload(fileName: fileName + "-preview." + fileType, fileSize: 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: uploadPath))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: previewPath))
+
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/images", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatRequest(image: MediaInfo(id: fileId, fileType: fileType, fileSize: 1)))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/images/\(fileId)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: uploadPath))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: previewPath))
+    }
+
+    func test_18b_deleteJournalImageWithMissingFile() async throws {
+        let current = try await service.seedCurrentUser()
+        let chat = try await service.makeChat(ownerId: current.id!, users: [current.id!], isPersonal: true)
+
+        // No files are uploaded for this image — deletion should still remove the record
+        let fileId = UUID()
+        try await asyncTest(.POST, "api/chats/\(chat.id!)/images", headers: .none, beforeRequest: { req in
+            try req.content.encode(UpdateChatRequest(image: MediaInfo(id: fileId, fileType: "test", fileSize: 1)))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+
+        try await asyncTest(.DELETE, "api/chats/\(chat.id!)/images/\(fileId)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+
+        try await asyncTest(.GET, "api/chats/\(chat.id!)", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let chatInfo = try res.content.decode(ChatInfo.self)
+            XCTAssertEqual(chatInfo.images?.count ?? 0, 0)
+        })
+    }
+    
     func test_19_addUsersToChat() async throws {
         let current = try await service.seedCurrentUser()
         let users = try await service.seedUsers(count: 3, namePrefix: "User", usernamePrefix: "user")

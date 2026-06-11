@@ -331,7 +331,7 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
     func reloadChatImages(for chat: Chat) async throws {
         let images = try await MediaResource.query(on: database)
             .filter(\.$imageOf.$id == chat.id)
-            .sort(\.$uploadedAt, .ascending)
+            .sort(\.$uploadedAt, .descending)
             .all()
         chat.$images.value = images
     }
