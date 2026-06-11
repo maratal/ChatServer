@@ -123,6 +123,12 @@ function resolveViewerLanguageCode() {
 function initializeLanguageSelector() {
     const button = document.getElementById('notesLanguageButton');
     if (!button) return;
+    if (!getJournalMultilingualSetting()) {
+        // Languages disabled for this journal: no button, no filtering
+        button.style.display = 'none';
+        notesViewerLanguage = null;
+        return;
+    }
     notesViewerLanguage = resolveViewerLanguageCode();
     button.textContent = notesViewerLanguage ?? 'A';
 }

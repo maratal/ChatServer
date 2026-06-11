@@ -311,6 +311,13 @@
                         </select>
                     </div>
                     <div class="settings-section">
+                        <div class="settings-label">Multilingual</div>
+                        <select class="settings-dropdown" id="settingsJournalMultilingualSelect" onchange="selectJournalMultilingual(this.value)">
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="settings-section">
                         <div class="settings-label">Default Language</div>
                         <select class="settings-dropdown" id="settingsJournalLanguageSelect" onchange="selectJournalLanguage(this.value)">
                             <!-- Populated by settings.js -->

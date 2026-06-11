@@ -189,6 +189,11 @@ actor ChatService: ChatServiceProtocol {
                 throw ServiceError(.badRequest, reason: "Invalid journal language code.")
             }
         }
+        if let multilingual = object["multilingual"] {
+            guard multilingual is Bool else {
+                throw ServiceError(.badRequest, reason: "Invalid multilingual setting, expected a boolean.")
+            }
+        }
     }
 
     func updateChatSettings(_ id: ChatID, with update: UpdateChatRequest, by userId: UserID) async throws -> ChatInfo {

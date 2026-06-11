@@ -1730,7 +1730,7 @@ let composeLanguageCode = null; // initialized from the journal default language
 function updateComposeLanguageControl(chat) {
     const button = document.getElementById('messageLanguageButton');
     if (!button) return;
-    if (!chat || !isPersonalNotes(chat)) {
+    if (!chat || !isPersonalNotes(chat) || !getJournalMultilingualSetting()) {
         button.style.display = 'none';
         return;
     }

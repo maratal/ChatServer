@@ -119,6 +119,11 @@ function getJournalLanguageSetting() {
     return getJournalSettings().language || '';
 }
 
+// Whether the journal uses languages at all; when off, all language buttons are hidden
+function getJournalMultilingualSetting() {
+    return getJournalSettings().multilingual === true;
+}
+
 const Language = {
     // Human-readable name, e.g. "Español (Spanish)", or just "English" when both names match
     displayedName(language) {
@@ -431,6 +436,27 @@ function updateJournalSizeSelection(sizeId) {
     if (select) select.value = sizeId;
 }
 
+// ── Journal multilingual ──────────────────────────────────────────
+
+function buildJournalMultilingualOption() {
+    const select = document.getElementById('settingsJournalMultilingualSelect');
+    if (select) select.value = getJournalMultilingualSetting() ? 'yes' : 'no';
+}
+
+function selectJournalMultilingual(value) {
+    const settings = getJournalSettings();
+    if (value === 'yes') {
+        settings.multilingual = true;
+    } else {
+        delete settings.multilingual;
+    }
+    saveJournalSettings(settings);
+    // Refresh the compose language button for the currently open chat
+    if (typeof updateComposeLanguageControl === 'function' && typeof chats !== 'undefined' && typeof currentChatId !== 'undefined') {
+        updateComposeLanguageControl(chats.find(c => c.id === currentChatId));
+    }
+}
+
 // ── Journal default language ───────────────────────────────────────
 
 function buildJournalLanguageOptions() {
@@ -533,6 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildJournalSizeOptions();
     buildJournalLanguagesEditor();
     buildJournalLanguageOptions();
+    buildJournalMultilingualOption();
 });
 
 // ── Server Settings (admin only) ──────────────────────────────────
@@ -541,6 +568,7 @@ function openSettings() {
     const modal = document.getElementById('settingsModal');
     buildJournalLanguagesEditor(); // refresh from chats, which load after DOMContentLoaded
     buildJournalLanguageOptions();
+    buildJournalMultilingualOption();
     modal.style.display = 'block';
     modal.offsetHeight;
     requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('show')));
