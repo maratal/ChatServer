@@ -17,6 +17,12 @@ log()  { printf '\n\033[1;34m→ %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
+# 0 (success) only if every named apt package is already installed.
+pkgs_installed() {
+    local p
+    for p in "$@"; do dpkg -s "$p" &>/dev/null || return 1; done
+}
+
 [[ "$(id -u)" -eq 0 ]] || fail "This script must be run as root"
 [[ -f /etc/os-release ]] && . /etc/os-release
 [[ "${ID:-}" == "ubuntu" ]] || fail "This script is intended for Ubuntu"
@@ -24,8 +30,10 @@ fail() { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 # ── Firewall ─────────────────────────────────────────────────────────────────
 
 log "Configuring firewall (UFW)"
-apt-get -qq update
-apt-get -qq install -y ufw > /dev/null
+if ! command -v ufw &>/dev/null; then
+    apt-get -qq update
+    apt-get -qq install -y ufw > /dev/null
+fi
 
 ufw default deny incoming
 ufw default allow outgoing
@@ -40,16 +48,15 @@ ok "Firewall configured (SSH + HTTP + HTTPS)"
 log "Installing system dependencies"
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get -qq dist-upgrade -y > /dev/null
-apt-get -qq install -y \
-    ca-certificates \
-    curl \
-    git \
-    gnupg \
-    libgd-dev \
-    tzdata \
-    > /dev/null
-ok "System packages installed"
+SYS_PKGS=(ca-certificates curl git gnupg libgd-dev tzdata)
+if pkgs_installed "${SYS_PKGS[@]}"; then
+    ok "System packages already installed"
+else
+    apt-get -qq update
+    apt-get -qq dist-upgrade -y > /dev/null
+    apt-get -qq install -y "${SYS_PKGS[@]}" > /dev/null
+    ok "System packages installed"
+fi
 
 # ── Swift ────────────────────────────────────────────────────────────────────
 
@@ -239,12 +246,64 @@ fi
 
 cd "$INSTALL_DIR"
 
-log "Building application (this may take several minutes)"
-swift build -c release -v 2>&1 | grep -E "^(Compiling|Linking|Build complete)|warning:|error:"
+# Prebuilt-binary cache. The binary is named by OS + arch + Swift version + the
+# app's own version (Sources/App/info.swift), so a download is only used when it
+# matches this exact platform and release; otherwise we build from source and
+# cache the result under the same name (so it can be uploaded for next time).
+PLATFORM=$(dpkg --print-architecture)
+OS_ID=$(. /etc/os-release && echo "${ID}${VERSION_ID}" | tr -d '.')
+APP_VERSION=$(grep -oE 'version = "[0-9]+\.[0-9]+\.[0-9]+"' "$INSTALL_DIR/Sources/App/info.swift" 2>/dev/null | grep -oE '"[^"]*"' | tr -d '"' || true)
+APP_VERSION="${APP_VERSION:-unknown}"
+BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
+CACHED_BIN="$INSTALL_DIR/$BIN_NAME"
 
-BIN_PATH=$(swift build -c release --show-bin-path)
-cp "$BIN_PATH/App" "$INSTALL_DIR/App"
-ok "Build complete"
+# Base URL of a prebuilt-binary server (override/disable via the PREBUILD_SRC env).
+PREBUILD_SRC="${PREBUILD_SRC:-https://159.65.31.5/prebuilds}"
+
+PREBUILD_DOWNLOADED=false
+if [[ -n "$PREBUILD_SRC" ]]; then
+    log "Attempting to download pre-built binary ($BIN_NAME)"
+    # -k: the prebuild server uses a self-signed cert; integrity comes from the
+    # version/arch/swift-pinned filename, not transport.
+    if curl -fsSLk --max-time 30 "${PREBUILD_SRC%/}/${BIN_NAME}" -o "$CACHED_BIN"; then
+        PREBUILD_DOWNLOADED=true
+    else
+        log "First attempt failed, retrying in 10s..."
+        sleep 10
+        if curl -fsSLk --max-time 30 "${PREBUILD_SRC%/}/${BIN_NAME}" -o "$CACHED_BIN"; then
+            PREBUILD_DOWNLOADED=true
+        else
+            log "Both download attempts failed — falling back to build"
+        fi
+    fi
+fi
+
+if [[ "$PREBUILD_DOWNLOADED" == true && -s "$CACHED_BIN" ]]; then
+    cp "$CACHED_BIN" "$INSTALL_DIR/App"
+    chmod +x "$INSTALL_DIR/App"
+    ok "Using prebuilt binary $BIN_NAME"
+else
+    rm -f "$CACHED_BIN"
+
+    # Swift's compiler is memory-hungry; on small droplets the build OOMs/hangs
+    # without swap. Add a 2G swapfile if no swap is active (best-effort).
+    if ! swapon --show 2>/dev/null | grep -q .; then
+        log "Adding 2G swap for the build"
+        if [[ ! -f /swapfile ]]; then
+            fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null || true
+            chmod 600 /swapfile 2>/dev/null || true
+            mkswap /swapfile >/dev/null 2>&1 || true
+        fi
+        swapon /swapfile 2>/dev/null || true
+    fi
+
+    log "Building application (this may take several minutes)"
+    swift build -c release -v 2>&1 | grep -E "^(Compiling|Linking|Build complete)|warning:|error:"
+    BIN_PATH=$(swift build -c release --show-bin-path)
+    cp "$BIN_PATH/App" "$CACHED_BIN"
+    cp "$CACHED_BIN" "$INSTALL_DIR/App"
+    ok "Build complete — cached as $BIN_NAME"
+fi
 
 # Set ownership
 chown -R $APP_USER:$APP_USER "$INSTALL_DIR"
