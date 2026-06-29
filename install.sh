@@ -29,19 +29,23 @@ pkgs_installed() {
 
 # ── Firewall ─────────────────────────────────────────────────────────────────
 
-log "Configuring firewall (UFW)"
-if ! command -v ufw &>/dev/null; then
-    apt-get -qq update
-    apt-get -qq install -y ufw > /dev/null
-fi
+if [[ -n "${P5AGENT:-}" ]]; then
+    ok "Firewall managed by p5agent — skipping"
+else
+    log "Configuring firewall (UFW)"
+    if ! command -v ufw &>/dev/null; then
+        apt-get -qq update
+        apt-get -qq install -y ufw > /dev/null
+    fi
 
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp comment "SSH"
-ufw allow 80/tcp comment "HTTP"
-ufw allow 443/tcp comment "HTTPS"
-ufw --force enable
-ok "Firewall configured (SSH + HTTP + HTTPS)"
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow 22/tcp comment "SSH"
+    ufw allow 80/tcp comment "HTTP"
+    ufw allow 443/tcp comment "HTTPS"
+    ufw --force enable
+    ok "Firewall configured (SSH + HTTP + HTTPS)"
+fi
 
 # ── System dependencies ──────────────────────────────────────────────────────
 
@@ -53,7 +57,9 @@ if pkgs_installed "${SYS_PKGS[@]}"; then
     ok "System packages already installed"
 else
     apt-get -qq update
-    apt-get -qq dist-upgrade -y > /dev/null
+    # A full dist-upgrade is slow (and triggers needrestart service restarts).
+    # Under p5agent the box is already provisioned, so just install what's missing.
+    [[ -z "${P5AGENT:-}" ]] && apt-get -qq dist-upgrade -y > /dev/null
     apt-get -qq install -y "${SYS_PKGS[@]}" > /dev/null
     ok "System packages installed"
 fi
