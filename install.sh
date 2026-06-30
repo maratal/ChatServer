@@ -264,7 +264,7 @@ BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
 CACHED_BIN="$INSTALL_DIR/$BIN_NAME"
 
 # Base URL of a prebuilt-binary server (override/disable via the PREBUILD_SRC env).
-PREBUILD_SRC="${PREBUILD_SRC:-https://159.65.31.5/prebuilds}"
+PREBUILD_SRC="${PREBUILD_SRC:-https://157.245.47.23/prebuilds}"
 
 PREBUILD_DOWNLOADED=false
 if [[ -n "$PREBUILD_SRC" ]]; then

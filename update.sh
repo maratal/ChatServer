@@ -44,7 +44,7 @@ APP_VERSION="${APP_VERSION:-unknown}"
 BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
 BIN_FILE="$INSTALL_DIR/$BIN_NAME"
 
-PREBUILD_SRC="${PREBUILD_SRC:-https://159.65.31.5/prebuilds}"
+PREBUILD_SRC="${PREBUILD_SRC:-https://157.245.47.23/prebuilds}"
 log "Attempting to download pre-built binary from $PREBUILD_SRC"
 if curl -fsSLk --max-time 30 "${PREBUILD_SRC}/${BIN_NAME}" -o "$BIN_FILE"; then
     ok "App downloaded as $BIN_NAME"
