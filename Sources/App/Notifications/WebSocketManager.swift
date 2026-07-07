@@ -42,7 +42,9 @@ actor WebSocketManager: WebSocketServer, WebSocketSender {
         session.ipAddress = clientAddress
         try await core.saveItem(session)
         setClient(ws, for: channel)
+        Task { await VTeleCenter.shared.wsOpened() }
         ws.onClose { [weak self] _ in
+            Task { await VTeleCenter.shared.wsClosed() }
             guard let self else { return }
             Task {
                 await self.setClient(nil, for: channel)
@@ -65,6 +67,7 @@ actor WebSocketManager: WebSocketServer, WebSocketSender {
         do {
             try await ws.send(data: notification.jsonObject().data())
             core.logger.info("--- Message '\(notification.event)' sent to channel '\(channel)' with source '\(notification.source)' and data: \(String(describing: notification.payload))")
+            Task { await VTeleCenter.shared.countWsMessage() }
             return true
         } catch {
             core.logger.info("--- Message '\(notification.event)' send failed on channel '\(channel)': \(error)")

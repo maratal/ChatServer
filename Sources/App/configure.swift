@@ -64,9 +64,18 @@ func configure(_ app: Application, service: inout CoreService) throws {
     try app.register(collection: SettingsController(service: service.settings))
     try app.register(collection: DashboardController())
     
+    // Telemetry: count every REST request (registered before the file
+    // middleware below so static files count too).
+    app.middleware.use(VTeleMiddleware())
+
     // Use custom FileMiddleware that only handles GET/HEAD requests
     app.middleware.use(ReadOnlyFileMiddleware(publicDirectory: app.directory.publicDirectory))
 
+    // Telemetry: expose `/vtele` REST and wss endpoints
+    // to count connections and sent messages
+    vteleRoutes(app)
+    
+    // App routes
     routes(app, settingsService: service.settings)
 }
 
