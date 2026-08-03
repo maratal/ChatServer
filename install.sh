@@ -301,10 +301,13 @@ else
             mkswap /swapfile >/dev/null 2>&1 || true
         fi
         swapon /swapfile 2>/dev/null || true
+        # Persist across reboots so later runs of update.sh still have swap.
+        grep -q '^/swapfile ' /etc/fstab 2>/dev/null || \
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
     fi
 
     log "Building application (this may take several minutes)"
-    swift build -c release -v 2>&1 | grep -E "^(Compiling|Linking|Build complete)|warning:|error:"
+    swift build -c release -j 1 2>&1 | grep -E "Compiling|Linking|Build complete|error:"
     BIN_PATH=$(swift build -c release --show-bin-path)
     cp "$BIN_PATH/App" "$CACHED_BIN"
     cp "$CACHED_BIN" "$INSTALL_DIR/App"
