@@ -80,28 +80,46 @@ struct VTeleMiddleware: AsyncMiddleware {
 /// into `wscc` themselves (they are real connections), and anything they send
 /// counts into `wsmc`.
 func vteleRoutes(_ app: Application) {
-    app.get("vtele") { _ async -> VTeleSnapshot in
-        await VTeleCenter.shared.snapshot()
-    }
+    // Both endpoints live on GET /vtele. They cannot be registered as two
+    // separate routes: Vapor's `webSocket(_:)` is `on(.GET, path)` internally,
+    // so a second registration silently overwrites the JSON route in the
+    // router trie and every plain GET gets a bodiless 101 instead. One route,
+    // branching on the Upgrade header, serves both.
+    app.on(.GET, "vtele") { request async throws -> Response in
+        let wantsUpgrade = request.headers.first(name: .upgrade)?
+            .lowercased().contains("websocket") ?? false
 
-    app.webSocket("vtele") { _, socket async in
-        await VTeleCenter.shared.wsOpened()
-        socket.onClose.whenComplete { _ in
-            Task { await VTeleCenter.shared.wsClosed() }
+        guard wantsUpgrade else {
+            return try await VTeleCenter.shared.snapshot().encodeResponse(for: request)
         }
-        socket.onText { _, _ in
-            Task { await VTeleCenter.shared.countWsMessage() }
+
+        let response = Response(status: .switchingProtocols)
+        response.upgrader = WebSocketUpgrader(
+            maxFrameSize: .default,
+            shouldUpgrade: { request.eventLoop.makeSucceededFuture([:]) },
+            onUpgrade: { socket in Task { await runVteleSocket(socket) } }
+        )
+        return response
+    }
+}
+
+/// Snapshot on connect, then every 5 seconds until the socket closes.
+private func runVteleSocket(_ socket: WebSocket) async {
+    await VTeleCenter.shared.wsOpened()
+    socket.onClose.whenComplete { _ in
+        Task { await VTeleCenter.shared.wsClosed() }
+    }
+    socket.onText { _, _ in
+        Task { await VTeleCenter.shared.countWsMessage() }
+    }
+    socket.onBinary { _, _ in
+        Task { await VTeleCenter.shared.countWsMessage() }
+    }
+    let encoder = JSONEncoder()
+    while !socket.isClosed {
+        if let data = try? encoder.encode(await VTeleCenter.shared.snapshot()) {
+            try? await socket.send(String(decoding: data, as: UTF8.self))
         }
-        socket.onBinary { _, _ in
-            Task { await VTeleCenter.shared.countWsMessage() }
-        }
-        // Push a snapshot on connect, then every 2 seconds until closed.
-        let encoder = JSONEncoder()
-        while !socket.isClosed {
-            if let data = try? encoder.encode(await VTeleCenter.shared.snapshot()) {
-                try? await socket.send(String(decoding: data, as: UTF8.self))
-            }
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-        }
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
     }
 }
