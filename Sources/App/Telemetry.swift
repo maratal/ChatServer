@@ -2,8 +2,8 @@ import Vapor
 
 /// Visual telemetry — live request/connection/message counters exposed at:
 ///
-///     GET https://<app>/vtele            one-shot JSON snapshot
-///     WSS wss://<app>/vtele              snapshot on connect, then every 5s
+///     GET https://<app>/telemetry            one-shot JSON snapshot
+///     WSS wss://<app>/telemetry              snapshot on connect, then every 5s
 ///
 /// Snapshot shape: { rrc, wscc, wsmc }
 ///   rrc   REST request counts:        [[unix_ts, cumulative_count], ...]
@@ -13,7 +13,7 @@ import Vapor
 /// The count series is a dict<unix_ts, counter-since-launch> capped at 20
 /// entries (newest added, oldest evicted); a hit within an already-present
 /// second just bumps that second's counter snapshot.
-struct VTeleSnapshot: Content {
+struct TelemetrySnapshot: Content {
     let rrc: [[Int]]
     let wscc: Int
     let wsmc: [[Int]]
@@ -22,8 +22,8 @@ struct VTeleSnapshot: Content {
 /// All mutable telemetry state lives in this actor — reads and writes are
 /// serialized by the actor executor, which is the thread synchronization for
 /// concurrent request/websocket handlers.
-actor VTeleCenter {
-    static let shared = VTeleCenter()
+actor TelemetryCenter {
+    static let shared = TelemetryCenter()
 
     private static let maxPoints = 20
 
@@ -63,61 +63,61 @@ actor VTeleCenter {
         wsConnections = max(0, wsConnections - 1)
     }
 
-    func snapshot() -> VTeleSnapshot {
-        VTeleSnapshot(rrc: restPoints, wscc: wsConnections, wsmc: wsMsgPoints)
+    func snapshot() -> TelemetrySnapshot {
+        TelemetrySnapshot(rrc: restPoints, wscc: wsConnections, wsmc: wsMsgPoints)
     }
 }
 
 /// Counts every REST request.
-struct VTeleMiddleware: AsyncMiddleware {
+struct TelemetryMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
-        Task { await VTeleCenter.shared.countRequest() }
+        Task { await TelemetryCenter.shared.countRequest() }
         return try await next.respond(to: request)
     }
 }
 
-/// The `/vtele` endpoints. Public, like `/api/info`. Telemetry websockets count
+/// The `/telemetry` endpoints. Public, like `/api/info`. Telemetry websockets count
 /// into `wscc` themselves (they are real connections), and anything they send
 /// counts into `wsmc`.
-func vteleRoutes(_ app: Application) {
-    // Both endpoints live on GET /vtele. They cannot be registered as two
+func telemetryRoutes(_ app: Application) {
+    // Both endpoints live on GET /telemetry. They cannot be registered as two
     // separate routes: Vapor's `webSocket(_:)` is `on(.GET, path)` internally,
     // so a second registration silently overwrites the JSON route in the
     // router trie and every plain GET gets a bodiless 101 instead. One route,
     // branching on the Upgrade header, serves both.
-    app.on(.GET, "vtele") { request async throws -> Response in
+    app.on(.GET, "telemetry") { request async throws -> Response in
         let wantsUpgrade = request.headers.first(name: .upgrade)?
             .lowercased().contains("websocket") ?? false
 
         guard wantsUpgrade else {
-            return try await VTeleCenter.shared.snapshot().encodeResponse(for: request)
+            return try await TelemetryCenter.shared.snapshot().encodeResponse(for: request)
         }
 
         let response = Response(status: .switchingProtocols)
         response.upgrader = WebSocketUpgrader(
             maxFrameSize: .default,
             shouldUpgrade: { request.eventLoop.makeSucceededFuture([:]) },
-            onUpgrade: { socket in Task { await runVteleSocket(socket) } }
+            onUpgrade: { socket in Task { await runTelemetrySocket(socket) } }
         )
         return response
     }
 }
 
 /// Snapshot on connect, then every 5 seconds until the socket closes.
-private func runVteleSocket(_ socket: WebSocket) async {
-    await VTeleCenter.shared.wsOpened()
+private func runTelemetrySocket(_ socket: WebSocket) async {
+    await TelemetryCenter.shared.wsOpened()
     socket.onClose.whenComplete { _ in
-        Task { await VTeleCenter.shared.wsClosed() }
+        Task { await TelemetryCenter.shared.wsClosed() }
     }
     socket.onText { _, _ in
-        Task { await VTeleCenter.shared.countWsMessage() }
+        Task { await TelemetryCenter.shared.countWsMessage() }
     }
     socket.onBinary { _, _ in
-        Task { await VTeleCenter.shared.countWsMessage() }
+        Task { await TelemetryCenter.shared.countWsMessage() }
     }
     let encoder = JSONEncoder()
     while !socket.isClosed {
-        if let data = try? encoder.encode(await VTeleCenter.shared.snapshot()) {
+        if let data = try? encoder.encode(await TelemetryCenter.shared.snapshot()) {
             try? await socket.send(String(decoding: data, as: UTF8.self))
         }
         try? await Task.sleep(nanoseconds: 5_000_000_000)
