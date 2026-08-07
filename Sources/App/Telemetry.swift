@@ -2,13 +2,12 @@ import Vapor
 
 /// Visual telemetry — live request/connection/message counters exposed at:
 ///
-///     GET https://<app>/telemetry            one-shot JSON snapshot
-///     WSS wss://<app>/telemetry              snapshot on connect, then every 5s
+///     GET https://<app>/telemetry
 ///
 /// Snapshot shape: { rrc, wscc, wsmc }
-///   rrc   REST request counts:        [[unix_ts, cumulative_count], ...]
-///   wscc  open websocket connections: number
-///   wsmc  incoming ws message counts: [[unix_ts, cumulative_count], ...]
+///   rrc: REST request counts ([[unix_ts, cumulative_count], ...])
+///   wscc: open websocket connections (number)
+///   wsmc: incoming ws message counts ([[unix_ts, cumulative_count], ...])
 ///
 /// The count series is a dict<unix_ts, counter-since-launch> capped at 20
 /// entries (newest added, oldest evicted); a hit within an already-present
@@ -76,50 +75,10 @@ struct TelemetryMiddleware: AsyncMiddleware {
     }
 }
 
-/// The `/telemetry` endpoints. Public, like `/api/info`. Telemetry websockets count
-/// into `wscc` themselves (they are real connections), and anything they send
-/// counts into `wsmc`.
+/// The `/telemetry` endpoint. Public, like `/api/info`.
+/// The dashboard polls it on its status tick.
 func telemetryRoutes(_ app: Application) {
-    // Both endpoints live on GET /telemetry. They cannot be registered as two
-    // separate routes: Vapor's `webSocket(_:)` is `on(.GET, path)` internally,
-    // so a second registration silently overwrites the JSON route in the
-    // router trie and every plain GET gets a bodiless 101 instead. One route,
-    // branching on the Upgrade header, serves both.
-    app.on(.GET, "telemetry") { request async throws -> Response in
-        let wantsUpgrade = request.headers.first(name: .upgrade)?
-            .lowercased().contains("websocket") ?? false
-
-        guard wantsUpgrade else {
-            return try await TelemetryCenter.shared.snapshot().encodeResponse(for: request)
-        }
-
-        let response = Response(status: .switchingProtocols)
-        response.upgrader = WebSocketUpgrader(
-            maxFrameSize: .default,
-            shouldUpgrade: { request.eventLoop.makeSucceededFuture([:]) },
-            onUpgrade: { socket in Task { await runTelemetrySocket(socket) } }
-        )
-        return response
-    }
-}
-
-/// Snapshot on connect, then every 5 seconds until the socket closes.
-private func runTelemetrySocket(_ socket: WebSocket) async {
-    await TelemetryCenter.shared.wsOpened()
-    socket.onClose.whenComplete { _ in
-        Task { await TelemetryCenter.shared.wsClosed() }
-    }
-    socket.onText { _, _ in
-        Task { await TelemetryCenter.shared.countWsMessage() }
-    }
-    socket.onBinary { _, _ in
-        Task { await TelemetryCenter.shared.countWsMessage() }
-    }
-    let encoder = JSONEncoder()
-    while !socket.isClosed {
-        if let data = try? encoder.encode(await TelemetryCenter.shared.snapshot()) {
-            try? await socket.send(String(decoding: data, as: UTF8.self))
-        }
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
+    app.get("telemetry") { request async throws -> Response in
+        try await TelemetryCenter.shared.snapshot().encodeResponse(for: request)
     }
 }
