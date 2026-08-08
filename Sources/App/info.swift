@@ -2,7 +2,7 @@ import Foundation
 
 struct ProductInfo: Serializable {
     var productName = "Chat Server"
-    var version = "0.9.13"
+    var version = "0.9.14"
     var apiVersion = "0.9"
 }
 
