@@ -4,18 +4,20 @@ import Vapor
 ///
 ///     GET https://<app>/telemetry
 ///
-/// Snapshot shape: { rrc, wscc, wsmc }
-///   rrc: REST request counts ([[unix_ts, cumulative_count], ...])
-///   wscc: open websocket connections (number)
-///   wsmc: incoming ws message counts ([[unix_ts, cumulative_count], ...])
+/// Snapshot shape: { rrc, wscc, wsmc } — three bare numbers.
+///   rrc: REST requests since launch (cumulative counter)
+///   wscc: open websocket connections (current level)
+///   wsmc: incoming ws messages since launch (cumulative counter)
 ///
-/// The count series is a dict<unix_ts, counter-since-launch> capped at 20
-/// entries (newest added, oldest evicted); a hit within an already-present
-/// second just bumps that second's counter snapshot.
+/// The app keeps no history at all: it reports the counters as they stand and
+/// the dashboard does the rest. Each poll it stores (timestamp, counter)
+/// locally and derives a rate by differencing consecutive samples — so the
+/// sampling interval is whatever the dashboard's poll interval happens to be,
+/// and the app never has to guess how the numbers will be charted.
 struct TelemetrySnapshot: Content {
-    let rrc: [[Int]]
+    let rrc: Int
     let wscc: Int
-    let wsmc: [[Int]]
+    let wsmc: Int
 }
 
 /// All mutable telemetry state lives in this actor — reads and writes are
@@ -24,34 +26,16 @@ struct TelemetrySnapshot: Content {
 actor TelemetryCenter {
     static let shared = TelemetryCenter()
 
-    private static let maxPoints = 20
-
     private var restTotal = 0
-    private var restPoints: [[Int]] = []      // [unix_ts, counter since launch]
     private var wsMsgTotal = 0
-    private var wsMsgPoints: [[Int]] = []
     private var wsConnections = 0
-
-    private func hit(_ points: inout [[Int]], total: Int) {
-        let ts = Int(Date().timeIntervalSince1970)
-        if let last = points.last, last[0] == ts {
-            points[points.count - 1][1] = total
-        } else {
-            points.append([ts, total])
-            if points.count > Self.maxPoints {
-                points.removeFirst(points.count - Self.maxPoints)
-            }
-        }
-    }
 
     func countRequest() {
         restTotal += 1
-        hit(&restPoints, total: restTotal)
     }
 
     func countWsMessage() {
         wsMsgTotal += 1
-        hit(&wsMsgPoints, total: wsMsgTotal)
     }
 
     func wsOpened() {
@@ -63,7 +47,7 @@ actor TelemetryCenter {
     }
 
     func snapshot() -> TelemetrySnapshot {
-        TelemetrySnapshot(rrc: restPoints, wscc: wsConnections, wsmc: wsMsgPoints)
+        TelemetrySnapshot(rrc: restTotal, wscc: wsConnections, wsmc: wsMsgTotal)
     }
 }
 
