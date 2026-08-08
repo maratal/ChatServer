@@ -5,7 +5,7 @@ import Vapor
 ///     GET https://<app>/telemetry
 ///
 /// Snapshot shape:
-///   rps            [[unix_ts, requests in that second], ...] — newest last, 20 max
+///   rps            [[unix_ts, requests per second], ...] — newest last, 20 max
 ///   mps            the same for messages users posted
 ///   wscc           open websocket connections right now (a level, no history)
 ///   peakRps        highest requests/s in the current 24h window
@@ -15,14 +15,15 @@ import Vapor
 ///
 /// The app owns the maths: a detached task samples the counters every 5s and
 /// divides by the elapsed time, so the browser renders what it is given rather
-/// than differencing counters itself. Peaks and totals are persisted to the
+/// than differencing counters itself. Rates are fractional — under 1/s is the
+/// normal case for a quiet app, and rounding would erase it. Peaks and totals are persisted to the
 /// `stat_records` table once a minute and reloaded at launch — see TelemetryStore.
 struct TelemetrySnapshot: Content {
-    let rps: [[Int]]
-    let mps: [[Int]]
+    let rps: [[Double]]
+    let mps: [[Double]]
     let wscc: Int
-    let peakRps: Int
-    let peakMps: Int
+    let peakRps: Double
+    let peakMps: Double
     let totalRequests: Int
     let totalMessages: Int
 }
@@ -52,11 +53,14 @@ actor TelemetryCenter {
     private var lastMessagesTotal = 0
     private var lastSampleAt: Date?
 
-    private var requestsPerSecond: [[Int]] = []      // [unix_ts, requests per second at unix ts]
-    private var messagesPerSecond: [[Int]] = []
+    /// Fractional on purpose: at a 5s sampling interval, integer division would
+    /// floor anything under 1/s to zero, so a quiet app that is plainly serving
+    /// requests would report a flat line of nothing.
+    private var requestsPerSecond: [[Double]] = []   // [unix_ts, requests per second at unix ts]
+    private var messagesPerSecond: [[Double]] = []
 
-    private(set) var peakRequestsPerSecond = 0
-    private(set) var peakMessagesPerSecond = 0
+    private(set) var peakRequestsPerSecond = 0.0
+    private(set) var peakMessagesPerSecond = 0.0
 
     // MARK: - Counting
 
@@ -93,11 +97,11 @@ actor TelemetryCenter {
         }
         guard let previous = lastSampleAt else { return }
 
-        let elapsed = max(1, Int(now.timeIntervalSince(previous).rounded()))
-        let ts = Int(now.timeIntervalSince1970)
+        let elapsed = max(1.0, now.timeIntervalSince(previous).rounded())
+        let ts = now.timeIntervalSince1970.rounded(.down)
 
-        let requests = max(0, requestsTotal - lastRequestsTotal) / elapsed
-        let messages = max(0, messagesTotal - lastMessagesTotal) / elapsed
+        let requests = Double(max(0, requestsTotal - lastRequestsTotal)) / elapsed
+        let messages = Double(max(0, messagesTotal - lastMessagesTotal)) / elapsed
 
         append(&requestsPerSecond, point: [ts, requests])
         append(&messagesPerSecond, point: [ts, messages])
@@ -106,7 +110,7 @@ actor TelemetryCenter {
         peakMessagesPerSecond = max(peakMessagesPerSecond, messages)
     }
 
-    private func append(_ points: inout [[Int]], point: [Int]) {
+    private func append(_ points: inout [[Double]], point: [Double]) {
         points.append(point)
         if points.count > Self.maxPoints {
             points.removeFirst(points.count - Self.maxPoints)
@@ -117,7 +121,7 @@ actor TelemetryCenter {
 
     /// Seed from the newest stats row at launch: totals always, since they are
     /// lifetime, and peaks only while that row's 24h window is still open.
-    func restore(totalRequests: Int, totalMessages: Int, peakRps: Int, peakMps: Int) {
+    func restore(totalRequests: Int, totalMessages: Int, peakRps: Double, peakMps: Double) {
         requestsTotal = totalRequests
         messagesTotal = totalMessages
         lastRequestsTotal = totalRequests
@@ -133,8 +137,9 @@ actor TelemetryCenter {
         peakMessagesPerSecond = messagesPerSecond.last?[1] ?? 0
     }
 
-    /// What the minute task writes to the database.
-    func persistable() -> (totalRequests: Int, totalMessages: Int, peakRps: Int, peakMps: Int) {
+    /// What the minute task writes to the database. The peaks go over as
+    /// measured — the columns are doubles, so nothing has to be rounded to fit.
+    func persistable() -> (totalRequests: Int, totalMessages: Int, peakRps: Double, peakMps: Double) {
         (requestsTotal, messagesTotal, peakRequestsPerSecond, peakMessagesPerSecond)
     }
 

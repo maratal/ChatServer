@@ -16,19 +16,21 @@ final class StatRecord: RepositoryItem, @unchecked Sendable {
     @ID(key: .id)
     var id: StatRecordID?
 
-    /// Highest requests-per-second seen during this window.
+    /// Highest requests-per-second seen during this window. Fractional, because
+    /// a rate under 1/s is ordinary for a quiet app and storing it as a whole
+    /// number would round it to either nothing or a spike it never had.
     @Field(key: "max_requests_per_second")
-    var maxRequestsPerSecond: Int
+    var maxRequestsPerSecond: Double
 
-    /// Highest incoming-websocket-messages-per-second seen during this window.
+    /// Highest messages-per-second seen during this window, same reasoning.
     @Field(key: "max_messages_per_second")
-    var maxMessagesPerSecond: Int
+    var maxMessagesPerSecond: Double
 
     /// Lifetime request count, not per window.
     @Field(key: "total_requests")
     var totalRequests: Int
 
-    /// Lifetime incoming websocket message count, not per window.
+    /// Lifetime count of messages users posted, not per window.
     @Field(key: "total_messages")
     var totalMessages: Int
 
@@ -42,8 +44,8 @@ final class StatRecord: RepositoryItem, @unchecked Sendable {
     init() {}
 
     init(
-        maxRequestsPerSecond: Int = 0,
-        maxMessagesPerSecond: Int = 0,
+        maxRequestsPerSecond: Double = 0,
+        maxMessagesPerSecond: Double = 0,
         totalRequests: Int = 0,
         totalMessages: Int = 0
     ) {

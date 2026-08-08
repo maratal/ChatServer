@@ -52,6 +52,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(AddIsPinnedToNote())
     app.migrations.add(AddLanguageToMessage())
     app.migrations.add(AddLanguageToUser())
+    app.migrations.add(AlterStatRecordPeaksToDouble())
     
     try app.createUploadsDirectory()
     
