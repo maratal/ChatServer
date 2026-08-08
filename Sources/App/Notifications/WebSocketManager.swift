@@ -67,7 +67,6 @@ actor WebSocketManager: WebSocketServer, WebSocketSender {
         do {
             try await ws.send(data: notification.jsonObject().data())
             core.logger.info("--- Message '\(notification.event)' sent to channel '\(channel)' with source '\(notification.source)' and data: \(String(describing: notification.payload))")
-            Task { await TelemetryCenter.shared.countWsMessage() }
             return true
         } catch {
             core.logger.info("--- Message '\(notification.event)' send failed on channel '\(channel)': \(error)")

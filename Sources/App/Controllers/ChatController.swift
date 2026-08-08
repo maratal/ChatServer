@@ -161,9 +161,11 @@ struct ChatController: RouteCollection {
     
     func postMessage(_ req: Request) async throws -> MessageInfo {
         let currentUser = try await req.requireCurrentUser()
-        return try await service.with(currentUser).postMessage(to: req.objectUUID(),
-                                                               with: req.content.decode(PostMessageRequest.self),
-                                                               by: currentUser.requireID())
+        let message = try await service.with(currentUser).postMessage(to: req.objectUUID(),
+                                                                      with: req.content.decode(PostMessageRequest.self),
+                                                                      by: currentUser.requireID())
+        Task { await TelemetryCenter.shared.countMessage() }
+        return message
     }
     
     func updateMessage(_ req: Request) async throws -> MessageInfo {

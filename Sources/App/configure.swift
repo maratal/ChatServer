@@ -48,6 +48,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(CreateMessageToMedia())
     app.migrations.add(CreateNote())
     app.migrations.add(CreateServerSetting())
+    app.migrations.add(CreateStatRecord())
     app.migrations.add(AddIsPinnedToNote())
     app.migrations.add(AddLanguageToMessage())
     app.migrations.add(AddLanguageToUser())
@@ -71,8 +72,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     // Use custom FileMiddleware that only handles GET/HEAD requests
     app.middleware.use(ReadOnlyFileMiddleware(publicDirectory: app.directory.publicDirectory))
 
-    // Telemetry: expose `/telemetry` REST and wss endpoints
-    // to count connections and sent messages
+    // Telemetry: expose `/telemetry`
     telemetryRoutes(app)
     
     // App routes
