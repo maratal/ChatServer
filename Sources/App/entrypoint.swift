@@ -25,8 +25,8 @@ enum Entrypoint {
             try app.autoMigrate().wait()
 
             // After migrating, so the stats table exists: seed the in-memory
-            // telemetry counters from the newest row, then start the sampler and
-            // the persistence loop. main() is synchronous, hence the bridge.
+            // telemetry counters from the stored params, then start the
+            // measurement cycle. main() is synchronous, hence the bridge.
             try app.eventLoopGroup.next().makeFutureWithTask {
                 try await TelemetryStore.restore(on: app.db)
             }.wait()

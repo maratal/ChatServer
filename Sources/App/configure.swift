@@ -53,6 +53,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(AddLanguageToMessage())
     app.migrations.add(AddLanguageToUser())
     app.migrations.add(AlterStatRecordPeaksToDouble())
+    app.migrations.add(RebuildStatRecordsAsParams())
     
     try app.createUploadsDirectory()
     
@@ -67,7 +68,9 @@ func configure(_ app: Application, service: inout CoreService) throws {
     try app.register(collection: DashboardController())
     
     // Telemetry: count every REST request (registered before the file
-    // middleware below so static files count too).
+    // middleware below so static files count too). The middleware also marks
+    // the `/telemetry` poll itself, which is counted in the total but kept out
+    // of the user figures.
     app.middleware.use(TelemetryMiddleware())
 
     // Use custom FileMiddleware that only handles GET/HEAD requests

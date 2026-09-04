@@ -27,7 +27,7 @@ Tests use a live PostgreSQL connection — ensure the DB is reachable with the e
 ## Architecture
 
 See [Architecture notes](memories/repo/ChatServer-architecture.md) for a full breakdown.  
-API reference: [Users](Docs/APIREF-Users.md) · [Chats](Docs/APIREF-Chats.md) · [Contacts](Docs/APIREF-Contacts.md) · [Files](Docs/APIREF-Files.md) · [WebSocket](Docs/APIREF-WebSocket.md) · [JSON schemas](Docs/APIREF-JSON.md)
+API reference: [Users](Docs/APIREF-Users.md) · [Chats](Docs/APIREF-Chats.md) · [Contacts](Docs/APIREF-Contacts.md) · [Files](Docs/APIREF-Files.md) · [WebSocket](Docs/APIREF-WebSocket.md) · [JSON schemas](Docs/APIREF-JSON.md) · [Telemetry](Docs/APIREF-Telemetry.md)
 
 **Layer responsibilities** (never mix):
 - **Controllers** (`Sources/App/Controllers/`): extract request params → call service → encode response. No DB access.
@@ -40,6 +40,8 @@ API reference: [Users](Docs/APIREF-Users.md) · [Chats](Docs/APIREF-Chats.md) ·
 - `Sources/App/Misc/Aliases.swift` — `ServiceError = Abort`, `UserID = Int`, `ChatID = UUID`, etc.
 - `Sources/App/Misc/Utils.swift` — custom `JSONEncoder`/`JSONDecoder` that use **UNIX timestamps** (not ISO-8601)
 - `Sources/App/Misc/JSON.swift` — `JSON` type alias (`[String: Sendable]`), `JSONSerializable` protocol
+- `Sources/App/Telemetry.swift` — `TelemetryCenter` actor (counters, sample cache, peaks) + the `/telemetry` route
+- `Sources/App/TelemetryStore.swift` — `StatStore` actor (the only reader/writer of `stat_records`) + the measurement cycle
 
 ## Conventions
 
