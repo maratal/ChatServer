@@ -7,8 +7,10 @@ import Vapor
 /// The server measures; the dashboard divides. One cycle (5s by default) reads
 /// the counters, works out what happened since the previous pass, and pushes the
 /// result onto a short cache — roughly ten seconds of it. The dashboard polls
-/// that cache every ten seconds and replays it one column per second, so a
-/// ten-second round trip still reads as a live per-second feed.
+/// that cache every five seconds and replays it one column per second, so a
+/// five-second round trip still reads as a live per-second feed. The cache runs
+/// longer than the poll gap on purpose: responses overlap, so a dropped one is
+/// made good by the next.
 ///
 /// Snapshot shape:
 ///   cycle                       seconds per measurement
@@ -292,7 +294,7 @@ struct TelemetryMiddleware: AsyncMiddleware {
 }
 
 /// The `/telemetry` endpoint: one JSON snapshot per request. Public, like
-/// `/api/info`. The dashboard polls it every 10s and replays the cache.
+/// `/api/info`. The dashboard polls it every 5s and replays the cache.
 func telemetryRoutes(_ app: Application) {
     app.get("telemetry") { request async throws -> Response in
         let response = try await TelemetryCenter.shared.snapshot().encodeResponse(for: request)

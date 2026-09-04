@@ -6,8 +6,11 @@
 The server measures, the client divides. A single cycle (5s by default) reads the
 counters, works out what happened since the previous pass, and pushes the result
 onto a short cache — about ten seconds of it. A dashboard polls that cache every
-ten seconds and replays it one step per second, so a ten-second round trip still
-reads as a live per-second feed.
+five seconds and replays it one step per second, so a five-second round trip
+still reads as a live per-second feed. The cache runs longer than the poll gap
+on purpose: consecutive responses overlap, so a dropped poll is made good by the
+next one rather than leaving a hole in the replay. Samples are identified by
+`ts`, so a client can discard what it has already seen.
 
 ## Response
 
