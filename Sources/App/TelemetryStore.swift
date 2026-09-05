@@ -13,21 +13,29 @@ actor StatStore {
     /// One row per param, loaded at launch and mutated in place from then on.
     private var rows: [TelemetryParam: StatRecord] = [:]
 
-    /// Read every stored param.
+    /// Read every stored param, with the date each one was last written.
     ///
     /// Daily peaks come back as zero when their row was last written on an
     /// earlier day: the row is a record of that day, and reporting it as today's
     /// high would carry yesterday's spike into a morning with no traffic in it.
-    func restore(on database: Database, now: Date = Date()) async throws -> [TelemetryParam: Double] {
+    func restore(
+        on database: Database,
+        now: Date = Date()
+    ) async throws -> (values: [TelemetryParam: Double], recordedAt: [TelemetryParam: Date]) {
         let stored = try await StatRecord.query(on: database).all()
         rows = [:]
         var values: [TelemetryParam: Double] = [:]
+        var recordedAt: [TelemetryParam: Date] = [:]
         for row in stored {
             guard let param = row.param else { continue }   // a param this build no longer knows
             rows[param] = row
-            values[param] = (param.isDaily && !row.isFromToday(now)) ? 0 : row.value
+            let stale = param.isDaily && !row.isFromToday(now)
+            values[param] = stale ? 0 : row.value
+            if !stale, row.value > 0, let stamp = row.updatedAt ?? row.createdAt {
+                recordedAt[param] = stamp
+            }
         }
-        return values
+        return (values, recordedAt)
     }
 
     /// Write what the cycle reported, under each param's own rule.
@@ -91,8 +99,8 @@ enum TelemetryStore {
 
     /// Seed the in-memory counters from the stored params.
     static func restore(on database: Database) async throws {
-        let values = try await StatStore.shared.restore(on: database)
-        await TelemetryCenter.shared.restore(values)
+        let (values, recordedAt) = try await StatStore.shared.restore(on: database)
+        await TelemetryCenter.shared.restore(values, recordedAt: recordedAt)
     }
 
     // MARK: - The cycle

@@ -26,8 +26,11 @@ import Vapor
 ///   userRequestsCount           lifetime requests, monitor polling excluded
 ///   totalMessagesCount          lifetime messages users posted
 ///   maxRequestsPerSecond        all-time high of user requests/s
+///   maxRequestsPerSecondAt      unix seconds, when that high was set (absent
+///                               until one is)
 ///   dailyPeakRequestsPerSecond  today's high of user requests/s
 ///   maxMessagesPerSecond        all-time high of messages/s
+///   maxMessagesPerSecondAt      the same, for messages
 ///   dailyPeakMessagesPerSecond  today's high of messages/s
 ///
 /// Counts are sent raw rather than as rates: a rate is one number the client
@@ -45,8 +48,10 @@ struct TelemetrySnapshot: Content {
     let userRequestsCount: Int
     let totalMessagesCount: Int
     let maxRequestsPerSecond: Double
+    let maxRequestsPerSecondAt: Double?
     let dailyPeakRequestsPerSecond: Double
     let maxMessagesPerSecond: Double
+    let maxMessagesPerSecondAt: Double?
     let dailyPeakMessagesPerSecond: Double
 }
 
@@ -126,6 +131,9 @@ actor TelemetryCenter {
     private var maxMessagesPerSecond = 0.0
     private var dailyPeakMessagesPerSecond = 0.0
 
+    private var maxRequestsPerSecondAt: Date?
+    private var maxMessagesPerSecondAt: Date?
+
     /// The UTC day the daily peaks describe. When the cycle finds it stale the
     /// daily highs start over, so one spike cannot pin them forever.
     private var dailyPeakDay: Date?
@@ -200,6 +208,7 @@ actor TelemetryCenter {
         var changed = counts()
         if requestRate > maxRequestsPerSecond {
             maxRequestsPerSecond = requestRate
+            maxRequestsPerSecondAt = now
             changed[.maxRequestsPerSecond] = requestRate
         }
         if requestRate > dailyPeakRequestsPerSecond {
@@ -208,6 +217,7 @@ actor TelemetryCenter {
         }
         if messageRate > maxMessagesPerSecond {
             maxMessagesPerSecond = messageRate
+            maxMessagesPerSecondAt = now
             changed[.maxMessagesPerSecond] = messageRate
         }
         if messageRate > dailyPeakMessagesPerSecond {
@@ -249,7 +259,11 @@ actor TelemetryCenter {
     /// Seed from the stored params at launch. Counts are lifetime figures, so a
     /// restart that started them at zero would make the dashboard's total fall
     /// backwards; peaks arrive already filtered for staleness by `StatStore`.
-    func restore(_ values: [TelemetryParam: Double], at now: Date = Date()) {
+    func restore(
+        _ values: [TelemetryParam: Double],
+        recordedAt: [TelemetryParam: Date] = [:],
+        at now: Date = Date()
+    ) {
         totalRequests = Int(values[.totalRequestsCount] ?? 0)
         userRequests = Int(values[.userRequestsCount] ?? 0)
         totalMessages = Int(values[.totalMessagesCount] ?? 0)
@@ -261,6 +275,8 @@ actor TelemetryCenter {
         dailyPeakRequestsPerSecond = values[.dailyPeakRequestsPerSecond] ?? 0
         maxMessagesPerSecond = values[.maxMessagesPerSecond] ?? 0
         dailyPeakMessagesPerSecond = values[.dailyPeakMessagesPerSecond] ?? 0
+        maxRequestsPerSecondAt = recordedAt[.maxRequestsPerSecond]
+        maxMessagesPerSecondAt = recordedAt[.maxMessagesPerSecond]
         dailyPeakDay = Calendar.utc.startOfDay(for: now)
     }
 
@@ -274,8 +290,10 @@ actor TelemetryCenter {
             userRequestsCount: userRequests,
             totalMessagesCount: totalMessages,
             maxRequestsPerSecond: maxRequestsPerSecond,
+            maxRequestsPerSecondAt: maxRequestsPerSecondAt?.timeIntervalSince1970.rounded(.down),
             dailyPeakRequestsPerSecond: dailyPeakRequestsPerSecond,
             maxMessagesPerSecond: maxMessagesPerSecond,
+            maxMessagesPerSecondAt: maxMessagesPerSecondAt?.timeIntervalSince1970.rounded(.down),
             dailyPeakMessagesPerSecond: dailyPeakMessagesPerSecond
         )
     }
