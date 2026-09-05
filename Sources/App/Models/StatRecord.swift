@@ -19,7 +19,7 @@ typealias StatRecordID = UUID
 ///     the reader treats it as zero and the next high overwrites it.
 ///
 /// Peaks measure **user** requests, not total ones: everything the dashboard
-/// labels a peak is meant to describe real traffic, and telemetry polling is a
+/// labels a peak is meant to describe real traffic, and a monitor's polling is a
 /// fixed background drip that would otherwise set the floor.
 enum TelemetryParam: String, CaseIterable, Sendable {
     /// All-time high of user requests per second.

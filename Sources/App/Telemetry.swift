@@ -18,12 +18,12 @@ import Vapor
 ///   samples                     oldest first, one entry per cycle:
 ///     ts                        unix seconds when the measurement was taken
 ///     seconds                   seconds it covers — divide the counts by this
-///     totalRequestsCount        requests in that span, `/telemetry` included
-///     clientRequestsCount       the same with `/telemetry` polling excluded
+///     totalRequestsCount        requests in that span, monitor polling included
+///     clientRequestsCount       the same with monitor polling excluded
 ///     messagesCount             messages users posted in that span
 ///   wsConnectionsCount          websocket connections open right now (a level)
-///   totalRequestsCount          lifetime requests, `/telemetry` included
-///   userRequestsCount           lifetime requests, `/telemetry` excluded
+///   totalRequestsCount          lifetime requests, monitor polling included
+///   userRequestsCount           lifetime requests, monitor polling excluded
 ///   totalMessagesCount          lifetime messages users posted
 ///   maxRequestsPerSecond        all-time high of user requests/s
 ///   dailyPeakRequestsPerSecond  today's high of user requests/s
@@ -32,8 +32,8 @@ import Vapor
 ///
 /// Counts are sent raw rather than as rates: a rate is one number the client
 /// cannot take apart, and the dashboard needs the split — the grid and the big
-/// digit include telemetry polling so a quiet server does not look dead, while
-/// every figure labelled a total or a peak describes real users. Peaks and
+/// digit include that polling so a quiet server does not look dead, while every
+/// figure labelled a total or a peak describes real users. Peaks and
 /// counts are persisted to `stat_records`, one row per param — see
 /// `TelemetryParam` and `StatStore`.
 struct TelemetrySnapshot: Content {
@@ -93,10 +93,10 @@ actor TelemetryCenter {
 
     // MARK: - Lifetime counters
 
-    /// Every REST request the app serves, `/telemetry` included: polling it is
-    /// real load and is reported as such.
+    /// Every REST request the app serves, a dashboard's polling included:
+    /// polling is real load and is reported as such.
     private var totalRequests = 0
-    /// The same, minus telemetry polling — what actual users asked for.
+    /// The same, minus that polling — what actual users asked for.
     private var userRequests = 0
     /// Chat messages users typed and sent, one per posted message.
     private var totalMessages = 0
@@ -118,9 +118,9 @@ actor TelemetryCenter {
 
     // MARK: - Peaks
 
-    /// Peaks describe user traffic, not total: telemetry polling is a steady
+    /// Peaks describe user traffic, not total: a dashboard's polling is a steady
     /// background drip, and letting it set the floor would make every peak a
-    /// measure of how often the dashboard is open.
+    /// measure of how often that dashboard is open.
     private var maxRequestsPerSecond = 0.0
     private var dailyPeakRequestsPerSecond = 0.0
     private var maxMessagesPerSecond = 0.0
@@ -132,11 +132,12 @@ actor TelemetryCenter {
 
     // MARK: - Counting
 
-    /// - Parameter telemetry: whether this request was the `/telemetry` poll
-    ///   itself. Counted in the total either way, excluded from the user figure.
-    func countRequest(telemetry: Bool) {
+    /// - Parameter monitoring: whether a dashboard made this request to watch
+    ///   the app rather than to use it. Counted in the total either way —
+    ///   polling is real load — and excluded from the user figure.
+    func countRequest(monitoring: Bool) {
         totalRequests += 1
-        if !telemetry {
+        if !monitoring {
             userRequests += 1
         }
     }
@@ -280,15 +281,23 @@ actor TelemetryCenter {
     }
 }
 
-/// Counts every REST request, and separates the telemetry poll from the rest.
+/// Counts every REST request, and separates a monitor's polling from real use.
 struct TelemetryMiddleware: AsyncMiddleware {
-    /// The one path the dashboard polls. Matched here rather than by route,
-    /// because middleware runs before routing has picked one.
+    /// The telemetry endpoint, matched here rather than by route because
+    /// middleware runs before routing has picked one. Never a page a person
+    /// opens, so it counts as polling whether or not it is marked.
     static let path = "/telemetry"
 
+    /// How a dashboard declares its own polling. `/api/info` is the reason this
+    /// exists: a status poll and a user opening the app hit the same route, so
+    /// the path cannot tell them apart, and a list of paths would rot the next
+    /// time one is renamed. The proxy in front of the app passes it on.
+    static let monitorHeader = "X-Monitor"
+
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
-        let telemetry = request.url.path == Self.path
-        Task { await TelemetryCenter.shared.countRequest(telemetry: telemetry) }
+        let monitoring = request.url.path == Self.path
+            || request.headers.first(name: Self.monitorHeader) != nil
+        Task { await TelemetryCenter.shared.countRequest(monitoring: monitoring) }
         return try await next.respond(to: request)
     }
 }
