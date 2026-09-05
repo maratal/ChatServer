@@ -176,65 +176,6 @@ EOF
 chmod 440 "$SUDOERS_FILE"
 ok "Sudoers configured for $APP_USER"
 
-# ── TLS certificates ─────────────────────────────────────────────────────────
-
-CERT_DIR="/etc/$APP_NAME/certs"
-mkdir -p "$CERT_DIR"
-
-if [[ -n "$DOMAIN" ]]; then
-    # Domain provided — use Let's Encrypt
-    log "Setting up HTTPS with Let's Encrypt for $DOMAIN"
-    apt-get -qq install -y certbot > /dev/null
-
-    LE_DIR="/etc/letsencrypt/live/$DOMAIN"
-    if [[ -d "$LE_DIR" ]]; then
-        ok "Certificate for $DOMAIN already exists"
-    else
-        certbot certonly --standalone --non-interactive --agree-tos \
-            --register-unsafely-without-email -d "$DOMAIN"
-        ok "Certificate obtained for $DOMAIN"
-    fi
-
-    TLS_CERT="$LE_DIR/fullchain.pem"
-    TLS_KEY="$LE_DIR/privkey.pem"
-
-    # Allow the app user to read certificates
-    chmod 750 /etc/letsencrypt/live /etc/letsencrypt/archive
-    chgrp $APP_USER /etc/letsencrypt/live /etc/letsencrypt/archive
-
-    # Set up auto-renewal with service restart
-    mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-    cat > /etc/letsencrypt/renewal-hooks/deploy/restart-chatserver.sh <<'HOOK'
-#!/bin/bash
-systemctl restart chatserver
-HOOK
-    chmod +x /etc/letsencrypt/renewal-hooks/deploy/restart-chatserver.sh
-    ok "Auto-renewal configured"
-else
-    # No domain — generate self-signed certificate for the IP
-    SERVER_IP=$(hostname -I | awk '{print $1}')
-    log "Generating self-signed certificate for $SERVER_IP"
-
-    TLS_CERT="$CERT_DIR/cert.pem"
-    TLS_KEY="$CERT_DIR/key.pem"
-
-    openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
-        -keyout "$TLS_KEY" -out "$TLS_CERT" \
-        -subj "/CN=$SERVER_IP" \
-        -addext "subjectAltName=IP:$SERVER_IP"
-
-    chown $APP_USER:$APP_USER "$CERT_DIR"/*.pem
-    ok "Self-signed certificate created for $SERVER_IP"
-fi
-
-# Add TLS paths to environment
-cat >> "$ENV_FILE" <<EOF
-TLS_CERT_PATH=$TLS_CERT
-TLS_KEY_PATH=$TLS_KEY
-EOF
-
-chmod 600 "$ENV_FILE"
-ok "Environment saved to $ENV_FILE"
 
 # ── Clone & build ────────────────────────────────────────────────────────────
 
@@ -251,6 +192,27 @@ else
 fi
 
 cd "$INSTALL_DIR"
+
+# ── TLS certificates ─────────────────────────────────────────────────────────
+# certs.sh is the only place this project makes certificates — see it for the
+# shared certaccess group, the renewal hook and the timer. It runs here rather
+# than alongside the rest of the configuration because it lives in the repo,
+# which has only just been cloned.
+CERT_DIR="/etc/$APP_NAME/certs"
+
+if [[ -n "$DOMAIN" ]]; then
+    log "Setting up HTTPS with Let's Encrypt for $DOMAIN"
+    bash "$INSTALL_DIR/certs.sh" domain "$DOMAIN" \
+        --env "$ENV_FILE" --owner "$APP_USER" --restart "$APP_NAME" > /dev/null \
+        || fail "Certificate setup failed for $DOMAIN"
+else
+    log "No domain given — using a self-signed certificate for this host's IP"
+    bash "$INSTALL_DIR/certs.sh" self-signed \
+        --cert "$CERT_DIR/cert.pem" --key "$CERT_DIR/key.pem" \
+        --env "$ENV_FILE" --owner "$APP_USER" > /dev/null \
+        || fail "Certificate setup failed"
+fi
+ok "Environment saved to $ENV_FILE"
 
 # Prebuilt-binary cache. The binary is named by OS + arch + Swift version + the
 # app's own version (Sources/App/info.swift), so a download is only used when it
