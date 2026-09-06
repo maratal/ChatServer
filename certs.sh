@@ -94,13 +94,39 @@ write_env() {
     ok "TLS paths written to $file"
 }
 
-# The private key lives under archive/ and live/ holds symlinks into it, so both
-# directories have to be traversable by whoever runs the app.
+# Make the certificate readable by the group — the key itself, not just the path
+# to it.
+#
+# certbot writes privkey as 0600 root:root, and a group on a parent directory
+# grants traversal, never read on a file inside: the app walks the whole way to
+# the key and is refused at the last step. Both the directories and the key need
+# doing, and the key is the part that actually matters.
+#
+# A renewal inherits the mode and ownership of the key it replaces, so this holds
+# from here on rather than needing to be reapplied. That is also why a host whose
+# certificate predates this can look fine while a freshly issued one fails — the
+# old key carried old permissions forward.
 grant_cert_access() {
-    local owner="$1"
+    local domain="$1" owner="$2"
     getent group "$CERT_GROUP" > /dev/null || groupadd --system "$CERT_GROUP"
+
     chgrp "$CERT_GROUP" /etc/letsencrypt/live /etc/letsencrypt/archive
     chmod 750 /etc/letsencrypt/live /etc/letsencrypt/archive
+
+    local live="/etc/letsencrypt/live/$domain" arch="/etc/letsencrypt/archive/$domain"
+    for dir in "$live" "$arch"; do
+        [[ -d "$dir" ]] || continue
+        chgrp "$CERT_GROUP" "$dir"
+        chmod 750 "$dir"          # group needs x to reach the files inside
+    done
+    if compgen -G "$arch/privkey*.pem" > /dev/null; then
+        chgrp "$CERT_GROUP" "$arch"/privkey*.pem
+        chmod 640 "$arch"/privkey*.pem
+        ok "Private key readable by the $CERT_GROUP group"
+    else
+        log "No private key found under $arch"
+    fi
+
     if [[ -n "$owner" ]] && id "$owner" &> /dev/null; then
         usermod -aG "$CERT_GROUP" "$owner"
         ok "Certificate access granted to $owner via the $CERT_GROUP group"
@@ -203,7 +229,7 @@ CERT="$LE_DIR/fullchain.pem"
 KEY="$LE_DIR/privkey.pem"
 [[ -f "$CERT" && -f "$KEY" ]] || fail "certbot reported success but $LE_DIR is not readable"
 
-grant_cert_access "$OWNER"
+grant_cert_access "$DOMAIN" "$OWNER"
 enable_renewal_timer
 write_env "$ENV_FILE" "$CERT" "$KEY" "$OWNER"
 printf 'TLS_CERT_PATH=%s\nTLS_KEY_PATH=%s\n' "$CERT" "$KEY"
