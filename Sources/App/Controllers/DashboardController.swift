@@ -2,7 +2,7 @@
  * Dashboard controller — server management.
  *
  * The same operations answer on two prefixes, because two kinds of caller reach
- * them. `/dashboard/api/*` is this server's own web dashboard. `/api/*` is the
+ * them. `/dashboard/api` is this server's own web dashboard. `/api` is the
  * shape a control panel expects of any app it manages, so this server is
  * updatable from one without the panel needing to know it is this server.
  *
