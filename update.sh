@@ -112,6 +112,7 @@ systemctl disable --now "$APP_NAME"
 # Moved, not copied: nothing keeps the versioned name on this droplet now, and
 # leaving it would put back the file the sweep above just removed.
 mv "$BIN_FILE" "$INSTALL_DIR/App"
+chmod 755 "$INSTALL_DIR/App"
 chown $APP_USER:$APP_USER "$INSTALL_DIR/App"
 setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/App"
 ok "Binary updated"
