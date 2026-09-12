@@ -31,6 +31,7 @@ next one rather than leaving a hole in the replay. Samples are identified by
 
   "totalRequestsCount": 91234,         // lifetime, monitor polling included
   "userRequestsCount": 40122,          // lifetime, monitor polling excluded
+  "todayRequestsCount": 512,           // user requests so far today
   "totalMessagesCount": 5120,          // lifetime messages users posted
 
   "maxRequestsPerSecond": 42.0,        // all-time high of user requests/s
@@ -83,6 +84,10 @@ cache is never shorter than one cycle.
 Peaks and lifetime counts survive restarts in `stat_records` — one row per
 parameter (`telemetry_param`, `value`, `created_at`, `updated_at`), listed in
 `TelemetryParam`. Adding a figure is a new case there and nothing else.
+
+`todayRequestsCount` is dated the same way the daily peak is: a row last written
+on an earlier day is not today's, so it reads as zero and the day's first write
+replaces it. No scheduled reset, and a restart mid-day keeps the day's figure.
 
 Counts are rewritten whenever they move. Peaks are only written when a record is
 set, so the same cycle that measures also persists without costing a write per

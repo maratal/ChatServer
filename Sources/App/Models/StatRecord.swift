@@ -30,6 +30,9 @@ enum TelemetryParam: String, CaseIterable, Sendable {
     case totalRequestsCount
     /// Lifetime requests with `/telemetry` polling excluded.
     case userRequestsCount
+    /// Today's user requests. A count rather than a rate, and daily like the
+    /// peaks: a row last written on an earlier day is not today's.
+    case todayRequestsCount
     /// All-time high of messages posted per second.
     case maxMessagesPerSecond
     /// Today's high of messages posted per second.
@@ -44,15 +47,22 @@ enum TelemetryParam: String, CaseIterable, Sendable {
         case .maxRequestsPerSecond, .dailyPeakRequestsPerSecond,
              .maxMessagesPerSecond, .dailyPeakMessagesPerSecond:
             return true
-        case .totalRequestsCount, .userRequestsCount, .totalMessagesCount:
+        case .totalRequestsCount, .userRequestsCount, .todayRequestsCount,
+             .totalMessagesCount:
             return false
         }
     }
 
-    /// A daily peak belongs to the calendar day it was last written on; an
-    /// all-time peak belongs to no window at all.
+    /// A daily figure belongs to the calendar day it was last written on; a
+    /// lifetime one belongs to no window at all. Being daily decides staleness,
+    /// not how the value moves — `todayRequestsCount` is daily and a count.
     var isDaily: Bool {
-        self == .dailyPeakRequestsPerSecond || self == .dailyPeakMessagesPerSecond
+        switch self {
+        case .dailyPeakRequestsPerSecond, .dailyPeakMessagesPerSecond, .todayRequestsCount:
+            return true
+        default:
+            return false
+        }
     }
 }
 

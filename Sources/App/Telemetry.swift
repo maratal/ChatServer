@@ -24,6 +24,7 @@ import Vapor
 ///   wsConnectionsCount          websocket connections open right now (a level)
 ///   totalRequestsCount          lifetime requests, monitor polling included
 ///   userRequestsCount           lifetime requests, monitor polling excluded
+///   todayRequestsCount          user requests so far today
 ///   totalMessagesCount          lifetime messages users posted
 ///   maxRequestsPerSecond        all-time high of user requests/s
 ///   maxRequestsPerSecondAt      unix seconds, when that high was set (absent
@@ -46,6 +47,7 @@ struct TelemetrySnapshot: Content {
     let wsConnectionsCount: Int
     let totalRequestsCount: Int
     let userRequestsCount: Int
+    let todayRequestsCount: Int
     let totalMessagesCount: Int
     let maxRequestsPerSecond: Double
     let maxRequestsPerSecondAt: Double?
@@ -103,6 +105,9 @@ actor TelemetryCenter {
     private var totalRequests = 0
     /// The same, minus that polling — what actual users asked for.
     private var userRequests = 0
+    /// User requests since today began. Reset with the daily peaks, restored
+    /// from its row only when that row belongs to today.
+    private var todayRequests = 0
     /// Chat messages users typed and sent, one per posted message.
     private var totalMessages = 0
     /// Websocket connections open right now, not a running total: it rises and
@@ -190,6 +195,7 @@ actor TelemetryCenter {
         let requestDelta = max(0, totalRequests - lastTotalRequests)
         let userDelta = max(0, userRequests - lastUserRequests)
         let messageDelta = max(0, totalMessages - lastTotalMessages)
+        todayRequests += userDelta
 
         append(TelemetrySample(
             ts: now.timeIntervalSince1970.rounded(.down),
@@ -231,6 +237,7 @@ actor TelemetryCenter {
         [
             .totalRequestsCount: Double(totalRequests),
             .userRequestsCount: Double(userRequests),
+            .todayRequestsCount: Double(todayRequests),
             .totalMessagesCount: Double(totalMessages),
         ]
     }
@@ -244,6 +251,7 @@ actor TelemetryCenter {
         dailyPeakDay = today
         dailyPeakRequestsPerSecond = 0
         dailyPeakMessagesPerSecond = 0
+        todayRequests = 0
     }
 
     private func append(_ sample: TelemetrySample) {
@@ -267,6 +275,7 @@ actor TelemetryCenter {
         totalRequests = Int(values[.totalRequestsCount] ?? 0)
         userRequests = Int(values[.userRequestsCount] ?? 0)
         totalMessages = Int(values[.totalMessagesCount] ?? 0)
+        todayRequests = Int(values[.todayRequestsCount] ?? 0)
         lastTotalRequests = totalRequests
         lastUserRequests = userRequests
         lastTotalMessages = totalMessages
@@ -288,6 +297,7 @@ actor TelemetryCenter {
             wsConnectionsCount: wsConnections,
             totalRequestsCount: totalRequests,
             userRequestsCount: userRequests,
+            todayRequestsCount: todayRequests,
             totalMessagesCount: totalMessages,
             maxRequestsPerSecond: maxRequestsPerSecond,
             maxRequestsPerSecondAt: maxRequestsPerSecondAt?.timeIntervalSince1970.rounded(.down),
