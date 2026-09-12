@@ -232,10 +232,19 @@ async function dashboardUpdate() {
     refreshButton.disabled = true;
     button.textContent = 'Updating...';
     hideDashboardLog();
+    let fetched = '';
     try {
+        // Fetch first so the update that runs is the new update.sh. Without
+        // this the old one runs and fetches itself, rewriting the file bash is
+        // still reading.
+        showDashboardLog('Fetching latest code...', false);
+        const refreshed = await apiDashboardRefresh();
+        fetched = refreshed && refreshed.output ? String(refreshed.output).replace(/\s+$/, '') : '';
+        if (fetched) showDashboardLog(fetched, false);
+
         await apiDashboardUpdate();
-        showDashboardLog('Update started...', false);
-        pollUpdateLog(button);
+        showDashboardLog(fetched ? fetched + '\n\nUpdate started...' : 'Update started...', false);
+        pollUpdateLog(button, fetched);
     } catch (error) {
         button.textContent = 'Failed';
         showDashboardLog(error, true);
@@ -247,8 +256,11 @@ async function dashboardUpdate() {
     }
 }
 
-function pollUpdateLog(button) {
+// `fetched` is the refresh transcript, kept in front of the update log: the log
+// is replaced wholesale on every tick, so anything not carried along is lost.
+function pollUpdateLog(button, fetched) {
     const log = document.getElementById('dashboardLog');
+    const head = fetched ? fetched + '\n\n' : '';
     let previousLength = 0;
     let lastText = '';
     const interval = setInterval(async () => {
@@ -258,12 +270,12 @@ function pollUpdateLog(button) {
             if (text.length > previousLength) {
                 previousLength = text.length;
                 lastText = text;
-                showDashboardLog(text, false);
+                showDashboardLog(head + text, false);
                 log.scrollTop = log.scrollHeight;
             }
             if (text.includes('Build complete!')) {
                 clearInterval(interval);
-                showDashboardLog(text + '\nRestarting...', false, true);
+                showDashboardLog(head + text + '\nRestarting...', false, true);
                 log.scrollTop = log.scrollHeight;
                 pollServerReady();
             }
@@ -271,7 +283,7 @@ function pollUpdateLog(button) {
             // Server stopped — show last known log text and poll for restart
             clearInterval(interval);
             if (lastText) {
-                showDashboardLog(lastText + '\nRestarting...', false, lastText.includes('Build complete!'));
+                showDashboardLog(head + lastText + '\nRestarting...', false, lastText.includes('Build complete!'));
                 log.scrollTop = log.scrollHeight;
             }
             pollServerReady();
