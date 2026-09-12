@@ -26,4 +26,5 @@ if ! git merge --ff-only origin/main 2>/dev/null; then
     log "Fast-forward failed, resetting to origin/main"
     git reset --hard origin/main
 fi
+log "Last commit: $(git log -1 --pretty='%h %s')"
 ok "Repository updated"
