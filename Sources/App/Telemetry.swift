@@ -26,6 +26,7 @@ import Vapor
 ///   userRequestsCount           lifetime requests, monitor polling excluded
 ///   todayRequestsCount          user requests so far today
 ///   totalMessagesCount          lifetime messages users posted
+///   todayMessagesCount          messages posted so far today
 ///   maxRequestsPerSecond        all-time high of user requests/s
 ///   maxRequestsPerSecondAt      unix seconds, when that high was set (absent
 ///                               until one is)
@@ -34,6 +35,7 @@ import Vapor
 ///   maxMessagesPerSecond        all-time high of messages/s
 ///   maxMessagesPerSecondAt      the same, for messages
 ///   dailyPeakMessagesPerSecond  today's high of messages/s
+///   dailyPeakMessagesPerSecondAt  unix seconds, when today's high was set
 ///
 /// Counts are sent raw rather than as rates: a rate is one number the client
 /// cannot take apart, and the dashboard needs the split — the grid and the big
@@ -49,6 +51,7 @@ struct TelemetrySnapshot: Content {
     let totalRequestsCount: Int
     let userRequestsCount: Int
     let todayRequestsCount: Int
+    let todayMessagesCount: Int
     let totalMessagesCount: Int
     let maxRequestsPerSecond: Double
     let maxRequestsPerSecondAt: Double?
@@ -57,6 +60,7 @@ struct TelemetrySnapshot: Content {
     let maxMessagesPerSecond: Double
     let maxMessagesPerSecondAt: Double?
     let dailyPeakMessagesPerSecond: Double
+    let dailyPeakMessagesPerSecondAt: Double?
 }
 
 /// One cycle's worth of measurement. Counts, not rates — `seconds` is the
@@ -110,6 +114,7 @@ actor TelemetryCenter {
     /// User requests since today began. Reset with the daily peaks, restored
     /// from its row only when that row belongs to today.
     private var todayRequests = 0
+    private var todayMessages = 0
     /// Chat messages users typed and sent, one per posted message.
     private var totalMessages = 0
     /// Websocket connections open right now, not a running total: it rises and
@@ -141,6 +146,7 @@ actor TelemetryCenter {
     private var maxRequestsPerSecondAt: Date?
     private var maxMessagesPerSecondAt: Date?
     private var dailyPeakRequestsPerSecondAt: Date?
+    private var dailyPeakMessagesPerSecondAt: Date?
 
     /// The UTC day the daily peaks describe. When the cycle finds it stale the
     /// daily highs start over, so one spike cannot pin them forever.
@@ -199,6 +205,7 @@ actor TelemetryCenter {
         let userDelta = max(0, userRequests - lastUserRequests)
         let messageDelta = max(0, totalMessages - lastTotalMessages)
         todayRequests += userDelta
+        todayMessages += messageDelta
 
         append(TelemetrySample(
             ts: now.timeIntervalSince1970.rounded(.down),
@@ -232,6 +239,7 @@ actor TelemetryCenter {
         }
         if messageRate > dailyPeakMessagesPerSecond {
             dailyPeakMessagesPerSecond = messageRate
+            dailyPeakMessagesPerSecondAt = now
             changed[.dailyPeakMessagesPerSecond] = messageRate
         }
         return changed
@@ -242,6 +250,7 @@ actor TelemetryCenter {
             .totalRequestsCount: Double(totalRequests),
             .userRequestsCount: Double(userRequests),
             .todayRequestsCount: Double(todayRequests),
+            .todayMessagesCount: Double(todayMessages),
             .totalMessagesCount: Double(totalMessages),
         ]
     }
@@ -256,7 +265,9 @@ actor TelemetryCenter {
         dailyPeakRequestsPerSecond = 0
         dailyPeakRequestsPerSecondAt = nil
         dailyPeakMessagesPerSecond = 0
+        dailyPeakMessagesPerSecondAt = nil
         todayRequests = 0
+        todayMessages = 0
     }
 
     private func append(_ sample: TelemetrySample) {
@@ -281,6 +292,7 @@ actor TelemetryCenter {
         userRequests = Int(values[.userRequestsCount] ?? 0)
         totalMessages = Int(values[.totalMessagesCount] ?? 0)
         todayRequests = Int(values[.todayRequestsCount] ?? 0)
+        todayMessages = Int(values[.todayMessagesCount] ?? 0)
         lastTotalRequests = totalRequests
         lastUserRequests = userRequests
         lastTotalMessages = totalMessages
@@ -292,6 +304,7 @@ actor TelemetryCenter {
         maxRequestsPerSecondAt = recordedAt[.maxRequestsPerSecond]
         maxMessagesPerSecondAt = recordedAt[.maxMessagesPerSecond]
         dailyPeakRequestsPerSecondAt = recordedAt[.dailyPeakRequestsPerSecond]
+        dailyPeakMessagesPerSecondAt = recordedAt[.dailyPeakMessagesPerSecond]
         dailyPeakDay = Calendar.utc.startOfDay(for: now)
     }
 
@@ -304,6 +317,7 @@ actor TelemetryCenter {
             totalRequestsCount: totalRequests,
             userRequestsCount: userRequests,
             todayRequestsCount: todayRequests,
+            todayMessagesCount: todayMessages,
             totalMessagesCount: totalMessages,
             maxRequestsPerSecond: maxRequestsPerSecond,
             maxRequestsPerSecondAt: maxRequestsPerSecondAt?.timeIntervalSince1970.rounded(.down),
@@ -311,7 +325,8 @@ actor TelemetryCenter {
             dailyPeakRequestsPerSecondAt: dailyPeakRequestsPerSecondAt?.timeIntervalSince1970.rounded(.down),
             maxMessagesPerSecond: maxMessagesPerSecond,
             maxMessagesPerSecondAt: maxMessagesPerSecondAt?.timeIntervalSince1970.rounded(.down),
-            dailyPeakMessagesPerSecond: dailyPeakMessagesPerSecond
+            dailyPeakMessagesPerSecond: dailyPeakMessagesPerSecond,
+            dailyPeakMessagesPerSecondAt: dailyPeakMessagesPerSecondAt?.timeIntervalSince1970.rounded(.down)
         )
     }
 }

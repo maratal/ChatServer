@@ -33,6 +33,7 @@ next one rather than leaving a hole in the replay. Samples are identified by
   "userRequestsCount": 40122,          // lifetime, monitor polling excluded
   "todayRequestsCount": 512,           // user requests so far today
   "totalMessagesCount": 5120,          // lifetime messages users posted
+  "todayMessagesCount": 64,            // messages posted so far today
 
   "maxRequestsPerSecond": 42.0,        // all-time high of user requests/s
   "maxRequestsPerSecondAt": 1757000000,// unix seconds, when that high was set
@@ -40,7 +41,8 @@ next one rather than leaving a hole in the replay. Samples are identified by
   "dailyPeakRequestsPerSecondAt": 1757000000, // unix seconds, when it was set
   "maxMessagesPerSecond": 8.0,
   "maxMessagesPerSecondAt": 1756900000,
-  "dailyPeakMessagesPerSecond": 3.0
+  "dailyPeakMessagesPerSecond": 3.0,
+  "dailyPeakMessagesPerSecondAt": 1757000000
 }
 ```
 
@@ -86,9 +88,10 @@ Peaks and lifetime counts survive restarts in `stat_records` — one row per
 parameter (`telemetry_param`, `value`, `created_at`, `updated_at`), listed in
 `TelemetryParam`. Adding a figure is a new case there and nothing else.
 
-`todayRequestsCount` is dated the same way the daily peak is: a row last written
-on an earlier day is not today's, so it reads as zero and the day's first write
-replaces it. No scheduled reset, and a restart mid-day keeps the day's figure.
+`todayRequestsCount` and `todayMessagesCount` are dated the same way the daily
+peaks are: a row last written on an earlier day is not today's, so it reads as
+zero and the day's first write replaces it. No scheduled reset, and a restart
+mid-day keeps the day's figure.
 
 Counts are rewritten whenever they move. Peaks are only written when a record is
 set, so the same cycle that measures also persists without costing a write per

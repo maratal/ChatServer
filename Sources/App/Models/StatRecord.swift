@@ -39,6 +39,8 @@ enum TelemetryParam: String, CaseIterable, Sendable {
     case dailyPeakMessagesPerSecond
     /// Lifetime count of messages users posted.
     case totalMessagesCount
+    /// Today's messages. Daily like todayRequestsCount, and a count like it.
+    case todayMessagesCount
 
     /// Highs only move up, and only within their window; counts are rewritten
     /// whenever they change.
@@ -48,7 +50,7 @@ enum TelemetryParam: String, CaseIterable, Sendable {
              .maxMessagesPerSecond, .dailyPeakMessagesPerSecond:
             return true
         case .totalRequestsCount, .userRequestsCount, .todayRequestsCount,
-             .totalMessagesCount:
+             .totalMessagesCount, .todayMessagesCount:
             return false
         }
     }
@@ -58,7 +60,8 @@ enum TelemetryParam: String, CaseIterable, Sendable {
     /// not how the value moves — `todayRequestsCount` is daily and a count.
     var isDaily: Bool {
         switch self {
-        case .dailyPeakRequestsPerSecond, .dailyPeakMessagesPerSecond, .todayRequestsCount:
+        case .dailyPeakRequestsPerSecond, .dailyPeakMessagesPerSecond,
+             .todayRequestsCount, .todayMessagesCount:
             return true
         default:
             return false
