@@ -37,6 +37,7 @@ next one rather than leaving a hole in the replay. Samples are identified by
   "maxRequestsPerSecond": 42.0,        // all-time high of user requests/s
   "maxRequestsPerSecondAt": 1757000000,// unix seconds, when that high was set
   "dailyPeakRequestsPerSecond": 12.5,  // today's high of user requests/s
+  "dailyPeakRequestsPerSecondAt": 1757000000, // unix seconds, when it was set
   "maxMessagesPerSecond": 8.0,
   "maxMessagesPerSecondAt": 1756900000,
   "dailyPeakMessagesPerSecond": 3.0

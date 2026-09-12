@@ -30,6 +30,7 @@ import Vapor
 ///   maxRequestsPerSecondAt      unix seconds, when that high was set (absent
 ///                               until one is)
 ///   dailyPeakRequestsPerSecond  today's high of user requests/s
+///   dailyPeakRequestsPerSecondAt  unix seconds, when today's high was set
 ///   maxMessagesPerSecond        all-time high of messages/s
 ///   maxMessagesPerSecondAt      the same, for messages
 ///   dailyPeakMessagesPerSecond  today's high of messages/s
@@ -52,6 +53,7 @@ struct TelemetrySnapshot: Content {
     let maxRequestsPerSecond: Double
     let maxRequestsPerSecondAt: Double?
     let dailyPeakRequestsPerSecond: Double
+    let dailyPeakRequestsPerSecondAt: Double?
     let maxMessagesPerSecond: Double
     let maxMessagesPerSecondAt: Double?
     let dailyPeakMessagesPerSecond: Double
@@ -138,6 +140,7 @@ actor TelemetryCenter {
 
     private var maxRequestsPerSecondAt: Date?
     private var maxMessagesPerSecondAt: Date?
+    private var dailyPeakRequestsPerSecondAt: Date?
 
     /// The UTC day the daily peaks describe. When the cycle finds it stale the
     /// daily highs start over, so one spike cannot pin them forever.
@@ -219,6 +222,7 @@ actor TelemetryCenter {
         }
         if requestRate > dailyPeakRequestsPerSecond {
             dailyPeakRequestsPerSecond = requestRate
+            dailyPeakRequestsPerSecondAt = now
             changed[.dailyPeakRequestsPerSecond] = requestRate
         }
         if messageRate > maxMessagesPerSecond {
@@ -250,6 +254,7 @@ actor TelemetryCenter {
         guard dailyPeakDay != today else { return }
         dailyPeakDay = today
         dailyPeakRequestsPerSecond = 0
+        dailyPeakRequestsPerSecondAt = nil
         dailyPeakMessagesPerSecond = 0
         todayRequests = 0
     }
@@ -286,6 +291,7 @@ actor TelemetryCenter {
         dailyPeakMessagesPerSecond = values[.dailyPeakMessagesPerSecond] ?? 0
         maxRequestsPerSecondAt = recordedAt[.maxRequestsPerSecond]
         maxMessagesPerSecondAt = recordedAt[.maxMessagesPerSecond]
+        dailyPeakRequestsPerSecondAt = recordedAt[.dailyPeakRequestsPerSecond]
         dailyPeakDay = Calendar.utc.startOfDay(for: now)
     }
 
@@ -302,6 +308,7 @@ actor TelemetryCenter {
             maxRequestsPerSecond: maxRequestsPerSecond,
             maxRequestsPerSecondAt: maxRequestsPerSecondAt?.timeIntervalSince1970.rounded(.down),
             dailyPeakRequestsPerSecond: dailyPeakRequestsPerSecond,
+            dailyPeakRequestsPerSecondAt: dailyPeakRequestsPerSecondAt?.timeIntervalSince1970.rounded(.down),
             maxMessagesPerSecond: maxMessagesPerSecond,
             maxMessagesPerSecondAt: maxMessagesPerSecondAt?.timeIntervalSince1970.rounded(.down),
             dailyPeakMessagesPerSecond: dailyPeakMessagesPerSecond
