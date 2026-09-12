@@ -48,6 +48,24 @@ APP_VERSION="${APP_VERSION:-unknown}"
 BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
 BIN_FILE="$INSTALL_DIR/$BIN_NAME"
 
+# Clear every App-* file, then keep exactly one: a copy of what is running.
+#
+# These are release binaries of some hundreds of megabytes and one accumulated
+# per version, which fills a small droplet's disk quietly. App-backup is taken
+# from the live binary rather than kept from the last download, so it is always
+# the thing being replaced — and it matches App-* itself, so the sweep above
+# retires the previous one before this makes the new one. Rollback is
+# `mv App-backup App` and a restart.
+log "Clearing old binaries"
+rm -f "$INSTALL_DIR"/App-*
+if [[ -f "$INSTALL_DIR/App" ]]; then
+    cp "$INSTALL_DIR/App" "$INSTALL_DIR/App-backup"
+    chown "$APP_USER:$APP_USER" "$INSTALL_DIR/App-backup" 2>/dev/null || true
+    ok "Current binary backed up as App-backup"
+else
+    ok "No current binary to back up"
+fi
+
 PREBUILD_SRC="${PREBUILD_SRC:-https://157.245.47.23/prebuilds}"
 log "Attempting to download pre-built binary from $PREBUILD_SRC"
 if curl -fsSLk --max-time 30 "${PREBUILD_SRC}/${BIN_NAME}" -o "$BIN_FILE"; then
@@ -91,8 +109,10 @@ log "Stopping service"
 # Delay so client could read the "Stopping service" message before the service is stopped and the connection is lost
 sleep 2
 systemctl disable --now "$APP_NAME"
-cp "$BIN_FILE" "$INSTALL_DIR/App"
-chown $APP_USER:$APP_USER "$BIN_FILE" "$INSTALL_DIR/App"
+# Moved, not copied: nothing keeps the versioned name on this droplet now, and
+# leaving it would put back the file the sweep above just removed.
+mv "$BIN_FILE" "$INSTALL_DIR/App"
+chown $APP_USER:$APP_USER "$INSTALL_DIR/App"
 setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/App"
 ok "Binary updated"
 
