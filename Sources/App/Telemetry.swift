@@ -1,4 +1,5 @@
 import Vapor
+import FluentKit
 
 /// Visual telemetry — live request/connection/message figures exposed at:
 ///
@@ -44,7 +45,7 @@ import Vapor
 /// digit include that polling so a quiet server does not look dead, while every
 /// figure labelled a total or a peak describes real users. Peaks and
 /// counts are persisted to `stat_records`, one row per param — see
-/// `TelemetryParam` and `StatStore`.
+/// `TelemetryParam` and `TelemetryStore`.
 struct TelemetrySnapshot: Content {
     let cycle: Int
     let cache: Int
@@ -100,30 +101,13 @@ enum TelemetryConfig {
     static var cacheCapacity: Int {
         max(1, Int((Double(cacheSeconds) / Double(cycleSeconds)).rounded(.up)))
     }
-
-    /// Seconds between database writes. `TELEMETRY_PERSIST_SECONDS` overrides.
-    ///
-    /// Separate from the cycle because they answer different questions: the
-    /// cycle is the dashboard's resolution, and this is how much a crash costs —
-    /// at most this many seconds of counts, and a record high set inside the
-    /// window. Longer than the cycle because the install writes scale with how
-    /// many people are using the app, and a cycle's worth of one browser's hits
-    /// coalesces into a single update.
-    static let persistSeconds: Int =
-        max(cycleSeconds, Environment.get("TELEMETRY_PERSIST_SECONDS").flatMap(Int.init(_:)) ?? 30)
-
-    /// Cycles per write, so persistence rides the measurement loop instead of
-    /// running a second timer that drifts against it.
-    static var persistEveryCycles: Int {
-        max(1, Int((Double(persistSeconds) / Double(cycleSeconds)).rounded()))
-    }
 }
 
 /// All mutable telemetry state lives in this actor — reads and writes are
 /// serialized by the actor executor, which is the thread synchronization for
 /// concurrent request and websocket handlers.
-actor TelemetryCenter {
-    static let shared = TelemetryCenter()
+actor TelemetryRecorder {
+    static let shared = TelemetryRecorder()
 
     // MARK: - Lifetime counters
 
@@ -153,6 +137,16 @@ actor TelemetryCenter {
 
     /// The rolling cache the dashboard reads, oldest first.
     private var samples: [TelemetrySample] = []
+
+    /// What the cycles since the last flush measured, latest value per param.
+    /// Latest rather than largest: a count that reset at midnight has to be able
+    /// to move down, and a peak only appears here when it was beaten.
+    private var pending: [TelemetryParam: Double] = [:]
+
+    /// The table as of the last read or write. Kept so the flush can tell which
+    /// params actually moved without asking the database — which is what keeps
+    /// a quiet app from writing anything at all.
+    private var lastWritten: [TelemetryParam: StoredParam] = [:]
 
     // MARK: - Peaks
 
@@ -200,17 +194,42 @@ actor TelemetryCenter {
 
     // MARK: - The cycle
 
-    /// Take one measurement and report every param worth writing.
+    /// The measurement loop.
     ///
-    /// The returned dictionary always carries the lifetime counts — they move
-    /// with every request — and carries a peak only when this cycle set a new
-    /// record. `StatStore` decides what actually reaches the database.
+    /// Every `cycleSeconds` it takes one reading and hands whatever moved to
+    /// `TelemetryStore`, which holds it until the flush. No database
+    /// here at all — measuring is a memory operation, and writing runs on its
+    /// own cycle in `InMemoryDataManager`, through `TelemetryStore`. The two
+    /// periods are deliberately
+    /// unrelated: this one is the dashboard's resolution, that one is how much
+    /// a crash costs.
+    ///
+    /// Detached so it outlives the caller, and unstructured on purpose: it
+    /// should run for the process's lifetime.
+    static func start() {
+        Task.detached(priority: .background) {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(TelemetryConfig.cycleSeconds))
+                await shared.record()
+            }
+        }
+    }
+
+    /// Take one measurement and keep every param worth writing.
+    ///
+    /// The clock is read here rather than passed in: a measurement is of now, by
+    /// definition, and the only caller is the loop.
+    ///
+    /// What is kept always carries the lifetime counts — they move with every
+    /// request — and carries a peak only when this cycle set a new record. What
+    /// of it actually reaches the database is `TelemetryStore`'s decision, at
+    /// the flush.
     ///
     /// The first pass after launch only establishes a baseline: there is no
     /// earlier reading to measure against, and dividing lifetime totals by the
     /// uptime would report a long-run average dressed up as a live rate.
-    @discardableResult
-    func tick(at now: Date = Date()) -> [TelemetryParam: Double] {
+    func record() {
+        let now = Date()
         defer {
             lastTotalRequests = totalRequests
             lastUserRequests = userRequests
@@ -219,7 +238,10 @@ actor TelemetryCenter {
         }
         rollDailyWindow(at: now)
 
-        guard let previous = lastTickAt else { return counts() }
+        guard let previous = lastTickAt else {
+            accumulate(counts())
+            return
+        }
 
         let elapsed = max(1.0, now.timeIntervalSince(previous))
         let requestDelta = max(0, totalRequests - lastTotalRequests)
@@ -263,7 +285,11 @@ actor TelemetryCenter {
             dailyPeakMessagesPerSecondAt = now
             changed[.dailyPeakMessagesPerSecond] = messageRate
         }
-        return changed
+        accumulate(changed)
+    }
+
+    private func accumulate(_ changed: [TelemetryParam: Double]) {
+        pending.merge(changed) { _, latest in latest }
     }
 
     private func counts() -> [TelemetryParam: Double] {
@@ -299,12 +325,64 @@ actor TelemetryCenter {
         }
     }
 
-    // MARK: - Persistence hand-off
+    // MARK: - InMemoryData
 
     /// Seed from the stored params at launch. Counts are lifetime figures, so a
     /// restart that started them at zero would make the dashboard's total fall
-    /// backwards; peaks arrive already filtered for staleness by `StatStore`.
-    func restore(
+    /// backwards; peaks arrive already filtered for staleness by the store.
+    func restore(on database: any Database, now: Date = Date()) async throws {
+        lastWritten = try await TelemetryStore.shared.load(on: database, now: now)
+
+        // A daily param last written on an earlier day is a record of that day:
+        // reporting it as today's would carry yesterday's spike into a morning
+        // with no traffic in it.
+        var values: [TelemetryParam: Double] = [:]
+        var recordedAt: [TelemetryParam: Date] = [:]
+        for (param, row) in lastWritten {
+            let stale = param.isDaily && !Calendar.utc.isDate(row.writtenAt, inSameDayAs: now)
+            values[param] = stale ? 0 : row.value
+            if !stale, row.value > 0 {
+                recordedAt[param] = row.writtenAt
+            }
+        }
+        apply(values, recordedAt: recordedAt, at: now)
+    }
+
+    /// Hand the params that moved to the store.
+    ///
+    /// Which ones those are is decided here, against what the store last read or
+    /// wrote, so a quiet app makes no database traffic at all. Figures measured
+    /// while the write was in flight are kept: the flush suspends, so a cycle
+    /// that lands mid-write must not be cleared along with what was saved.
+    func flush(on database: any Database, now: Date = Date()) async throws {
+        var due: [(param: TelemetryParam, value: Double)] = []
+        for param in TelemetryParam.allCases {
+            guard let value = pending[param], shouldWrite(value, for: param, at: now) else { continue }
+            due.append((param: param, value: value))
+        }
+        guard !due.isEmpty else { return }
+
+        try await TelemetryStore.shared.write(due, on: database, now: now)
+
+        for row in due {
+            lastWritten[row.param] = StoredParam(value: row.value, writtenAt: now)
+            if pending[row.param] == row.value {
+                pending[row.param] = nil
+            }
+        }
+    }
+
+    /// Counts are rewritten whenever they move; peaks only when they are beaten.
+    /// The exception is a daily param whose row belongs to an earlier day: the
+    /// day rolled over, so today's first figure replaces it outright — the one
+    /// case where a peak moves downwards.
+    private func shouldWrite(_ value: Double, for param: TelemetryParam, at now: Date) -> Bool {
+        guard let stored = lastWritten[param] else { return true }
+        if param.isDaily, !Calendar.utc.isDate(stored.writtenAt, inSameDayAs: now) { return true }
+        return param.isPeak ? value > stored.value : value != stored.value
+    }
+
+    private func apply(
         _ values: [TelemetryParam: Double],
         recordedAt: [TelemetryParam: Date] = [:],
         at now: Date = Date()
@@ -330,7 +408,7 @@ actor TelemetryCenter {
     }
 
     /// The user figures are passed in rather than held here: they belong to
-    /// `InstallCenter`, and one actor reaching into another to read them would
+    /// `InstallRecorder`, and one actor reaching into another to read them would
     /// make this method async for every caller.
     func snapshot(todayUsers: Int = 0, totalUsers: Int = 0) -> TelemetrySnapshot {
         TelemetrySnapshot(
@@ -382,7 +460,7 @@ struct TelemetryMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
         let monitoring = request.url.path == Self.path
             || request.headers.first(name: Self.monitorHeader) != nil
-        Task { await TelemetryCenter.shared.countRequest(monitoring: monitoring) }
+        Task { await TelemetryRecorder.shared.countRequest(monitoring: monitoring) }
 
         guard !monitoring else { return try await next.respond(to: request) }
 
@@ -393,7 +471,7 @@ struct TelemetryMiddleware: AsyncMiddleware {
         // is counted from the second on.
         let sent = request.cookies[Self.installCookie]?.string
         if let installID = sent.flatMap(Self.accepted) {
-            Task { await InstallCenter.shared.record(installID) }
+            Task { await InstallRecorder.shared.record(installID) }
             return try await next.respond(to: request)
         }
 
@@ -434,8 +512,8 @@ struct TelemetryMiddleware: AsyncMiddleware {
 /// `/api/info`. The dashboard polls it every 5s and replays the cache.
 func telemetryRoutes(_ app: Application) {
     app.get("telemetry") { request async throws -> Response in
-        let users = await InstallCenter.shared.figures()
-        let snapshot = await TelemetryCenter.shared.snapshot(
+        let users = await InstallRecorder.shared.figures()
+        let snapshot = await TelemetryRecorder.shared.snapshot(
             todayUsers: users.today,
             totalUsers: users.total
         )
@@ -446,3 +524,5 @@ func telemetryRoutes(_ app: Application) {
         return response
     }
 }
+
+extension TelemetryRecorder: InMemoryData { }

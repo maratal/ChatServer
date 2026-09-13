@@ -164,7 +164,7 @@ struct ChatController: RouteCollection {
         let message = try await service.with(currentUser).postMessage(to: req.objectUUID(),
                                                                       with: req.content.decode(PostMessageRequest.self),
                                                                       by: currentUser.requireID())
-        Task { await TelemetryCenter.shared.countMessage() }
+        Task { await TelemetryRecorder.shared.countMessage() }
         return message
     }
     

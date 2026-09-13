@@ -42,9 +42,9 @@ actor WebSocketManager: WebSocketServer, WebSocketSender {
         session.ipAddress = clientAddress
         try await core.saveItem(session)
         setClient(ws, for: channel)
-        Task { await TelemetryCenter.shared.wsOpened() }
+        Task { await TelemetryRecorder.shared.wsOpened() }
         ws.onClose { [weak self] _ in
-            Task { await TelemetryCenter.shared.wsClosed() }
+            Task { await TelemetryRecorder.shared.wsClosed() }
             guard let self else { return }
             Task {
                 await self.setClient(nil, for: channel)

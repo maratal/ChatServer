@@ -112,14 +112,6 @@ final class StatRecord: RepositoryItem, @unchecked Sendable {
     var param: TelemetryParam? {
         TelemetryParam(rawValue: telemetryParam)
     }
-
-    /// Whether the stored figure was last written on `now`'s calendar day.
-    /// UTC throughout, matching the UNIX timestamps the API speaks — a server
-    /// and a dashboard in different zones must agree on when "today" started.
-    func isFromToday(_ now: Date = Date()) -> Bool {
-        guard let stamp = updatedAt ?? createdAt else { return false }
-        return Calendar.utc.isDate(stamp, inSameDayAs: now)
-    }
 }
 
 extension Calendar {

@@ -24,13 +24,14 @@ enum Entrypoint {
             try configure(app, service: &service)
             try app.autoMigrate().wait()
 
-            // After migrating, so the stats table exists: seed the in-memory
-            // telemetry counters from the stored params, then start the
-            // measurement cycle. main() is synchronous, hence the bridge.
+            // After migrating, so the tables exist: load every in-memory store
+            // from what the last run left behind, then start the two cycles —
+            // one measures, one writes. main() is synchronous, hence the bridge.
             try app.eventLoopGroup.next().makeFutureWithTask {
-                try await TelemetryStore.restore(on: app.db)
+                try await InMemoryDataManager.restore(on: app.db)
             }.wait()
-            TelemetryStore.startTasks(on: app)
+            TelemetryRecorder.start()
+            InMemoryDataManager.start(on: app)
         }
         catch {
             app.logger.report(error: error)

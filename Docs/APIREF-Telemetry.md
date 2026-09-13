@@ -103,8 +103,8 @@ Monitor polling gets no cookie and is not counted — a dashboard left open woul
 otherwise read as one browser using the app around the clock.
 
 Requests are counted in memory, one entry per cookie, and written to `installs`
-(`install_id`, `request_count`, `created_at`, `updated_at`) on the persistence
-cycle rather than once a request. Entries hold what has not been written yet and
+(`install_id`, `request_count`, `created_at`, `updated_at`) on the flush cycle
+rather than once a request. Entries hold what has not been written yet and
 are added to the stored row, so a restart adds to the lifetime count instead of
 overwriting it.
 
@@ -128,24 +128,45 @@ Peaks and lifetime counts survive restarts in `stat_records` — one row per
 parameter (`telemetry_param`, `value`, `created_at`, `updated_at`), listed in
 `TelemetryParam`. Adding a figure is a new case there and nothing else.
 
-`todayRequestsCount` and `todayMessagesCount` are dated the same way the daily
-peaks are: a row last written on an earlier day is not today's, so it reads as
-zero and the day's first write replaces it. No scheduled reset, and a restart
-mid-day keeps the day's figure.
+Counts are rewritten whenever they move; peaks only when a record is set. Dated
+params — the daily peaks, `todayRequestsCount`, `todayMessagesCount` — are dated
+by their row's `updated_at`: a row last written on an earlier day is not today's,
+so it reads as zero and the day's first write replaces it. No separate day
+column, no scheduled reset, and a restart mid-day keeps the day's figure.
 
-Counts are rewritten whenever they move; peaks only when a record is set. A daily
-peak is dated by its row's `updated_at`: a high last written on an earlier day is
-not today's, so it reads as zero and the day's first record overwrites it — no
-separate day column, and no scheduled reset.
+### Two cycles
 
-Measuring and writing share one loop but not one period. Every cycle measures —
-that is what the dashboard reads, and it never touches the database. Every
-`TELEMETRY_PERSIST_SECONDS` (30 by default, never shorter than a cycle) the same
-pass writes the params and flushes the install map, so the two never interleave
-their queries. The window is what a crash costs: at most that many seconds of
-counts, and a record high set inside it. It is longer than the cycle because the
-install writes scale with how many people are using the app, while a cycle's
-worth of one browser's hits coalesces into a single update.
+Measuring and writing are separate, and unrelated by design.
+
+`TelemetryRecorder.start()` measures every `TELEMETRY_CYCLE_SECONDS` and touches
+nothing but memory — that is what the dashboard reads, and serving `/telemetry`
+reads it too. `InMemoryDataManager.start(on:)` writes every `DATA_FLUSH_SECONDS`
+(30 by default): one statement for the params that moved, one for the installs
+that were seen, and nothing at all when neither did.
+
+The cycle is the dashboard's resolution. The flush is what a crash costs — at
+most that many seconds of counts, and a record set inside the window. It is the
+slower of the two because the install writes scale with how many people are using
+the app, while a window's worth of one browser's hits coalesces into a single
+update.
+
+The two writes commit separately rather than sharing a transaction: each is final
+on its own, so a store that has already dropped what it wrote cannot lose it to a
+rollback caused by the other, and one that throws does not stop the next.
+
+### The shape
+
+Each kind of figure is a pair:
+
+| | in memory | database |
+|---|---|---|
+| telemetry | `TelemetryRecorder` | `TelemetryStore` |
+| installs | `InstallRecorder` | `InstallStore` |
+
+The recorders hold the live figures and conform to `InMemoryData` — restore at
+launch, flush on the cycle — and `InMemoryDataManager` drives them. A recorder
+decides what is worth writing, against what it last read or wrote; a store only
+does the SQL it is handed.
 
 Peaks measure **user** requests. Telemetry polling is a steady background drip,
 and letting it set the floor would turn every peak into a measure of how often a
