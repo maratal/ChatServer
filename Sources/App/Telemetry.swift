@@ -386,14 +386,20 @@ struct TelemetryMiddleware: AsyncMiddleware {
 
         guard !monitoring else { return try await next.respond(to: request) }
 
+        // Only a request that brings the cookie back counts. Issuing one is an
+        // offer, not a visit: a crawler takes a cookie it will never send again,
+        // so counting the first request would file a permanent install for every
+        // client that keeps no cookie jar. A browser costs its first request and
+        // is counted from the second on.
         let sent = request.cookies[Self.installCookie]?.string
-        let installID = sent.flatMap(Self.accepted) ?? UUID().uuidString
-        Task { await InstallCenter.shared.record(installID) }
-
-        let response = try await next.respond(to: request)
-        if sent != installID {
-            response.cookies[Self.installCookie] = Self.installCookieValue(installID, for: request)
+        if let installID = sent.flatMap(Self.accepted) {
+            Task { await InstallCenter.shared.record(installID) }
+            return try await next.respond(to: request)
         }
+
+        let issued = UUID().uuidString
+        let response = try await next.respond(to: request)
+        response.cookies[Self.installCookie] = Self.installCookieValue(issued, for: request)
         return response
     }
 

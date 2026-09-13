@@ -86,13 +86,18 @@ cache is never shorter than one cycle.
 
 ## Users
 
-An app has no login on every page, so a user is a browser: the first request
-that arrives without an `install_id` cookie is issued one, and every request
-after carries it back.
+An app has no login on every page, so a user is a browser: a request that
+arrives without an `install_id` cookie is issued one, and every request after
+carries it back.
 
 ```
 Set-Cookie: install_id=<uuid>; Expires=<+10y>; Path=/; HttpOnly; SameSite=Lax
 ```
+
+Only a request that brings the cookie back is counted. Issuing one is an offer,
+not a visit: a crawler accepts a cookie it will never send again, so counting the
+request that issued it would file a permanent install for every client that keeps
+no cookie jar. A browser is counted from its second request on.
 
 Monitor polling gets no cookie and is not counted — a dashboard left open would
 otherwise read as one browser using the app around the clock.
