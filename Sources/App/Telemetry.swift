@@ -25,6 +25,8 @@ import Vapor
 ///   totalRequestsCount          lifetime requests, monitor polling included
 ///   userRequestsCount           lifetime requests, monitor polling excluded
 ///   todayRequestsCount          user requests so far today
+///   todayUsersCount             installs seen in the last 24 hours
+///   totalUsersCount             installs ever seen
 ///   totalMessagesCount          lifetime messages users posted
 ///   todayMessagesCount          messages posted so far today
 ///   maxRequestsPerSecond        all-time high of user requests/s
@@ -52,6 +54,8 @@ struct TelemetrySnapshot: Content {
     let userRequestsCount: Int
     let todayRequestsCount: Int
     let todayMessagesCount: Int
+    let todayUsersCount: Int
+    let totalUsersCount: Int
     let totalMessagesCount: Int
     let maxRequestsPerSecond: Double
     let maxRequestsPerSecondAt: Double?
@@ -95,6 +99,23 @@ enum TelemetryConfig {
     /// How many samples that works out to: two at 5s/10s, ten at 1s/10s.
     static var cacheCapacity: Int {
         max(1, Int((Double(cacheSeconds) / Double(cycleSeconds)).rounded(.up)))
+    }
+
+    /// Seconds between database writes. `TELEMETRY_PERSIST_SECONDS` overrides.
+    ///
+    /// Separate from the cycle because they answer different questions: the
+    /// cycle is the dashboard's resolution, and this is how much a crash costs —
+    /// at most this many seconds of counts, and a record high set inside the
+    /// window. Longer than the cycle because the install writes scale with how
+    /// many people are using the app, and a cycle's worth of one browser's hits
+    /// coalesces into a single update.
+    static let persistSeconds: Int =
+        max(cycleSeconds, Environment.get("TELEMETRY_PERSIST_SECONDS").flatMap(Int.init(_:)) ?? 30)
+
+    /// Cycles per write, so persistence rides the measurement loop instead of
+    /// running a second timer that drifts against it.
+    static var persistEveryCycles: Int {
+        max(1, Int((Double(persistSeconds) / Double(cycleSeconds)).rounded()))
     }
 }
 
@@ -308,7 +329,10 @@ actor TelemetryCenter {
         dailyPeakDay = Calendar.utc.startOfDay(for: now)
     }
 
-    func snapshot() -> TelemetrySnapshot {
+    /// The user figures are passed in rather than held here: they belong to
+    /// `InstallCenter`, and one actor reaching into another to read them would
+    /// make this method async for every caller.
+    func snapshot(todayUsers: Int = 0, totalUsers: Int = 0) -> TelemetrySnapshot {
         TelemetrySnapshot(
             cycle: TelemetryConfig.cycleSeconds,
             cache: TelemetryConfig.cacheSeconds,
@@ -318,6 +342,8 @@ actor TelemetryCenter {
             userRequestsCount: userRequests,
             todayRequestsCount: todayRequests,
             todayMessagesCount: todayMessages,
+            todayUsersCount: todayUsers,
+            totalUsersCount: totalUsers,
             totalMessagesCount: totalMessages,
             maxRequestsPerSecond: maxRequestsPerSecond,
             maxRequestsPerSecondAt: maxRequestsPerSecondAt?.timeIntervalSince1970.rounded(.down),
@@ -344,11 +370,57 @@ struct TelemetryMiddleware: AsyncMiddleware {
     /// time one is renamed. The proxy in front of the app passes it on.
     static let monitorHeader = "X-Monitor"
 
+    /// Identifies the browser rather than the person: issued on the first user
+    /// request that arrives without one, and sent back on every request after.
+    static let installCookie = "install_id"
+
+    /// Ten years. The cookie is the only thing tying today's visit to the last
+    /// one, so an expiry short enough to lapse would report returning users as
+    /// new ones.
+    static let installCookieLifetime: TimeInterval = 10 * 365 * 24 * 60 * 60
+
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
         let monitoring = request.url.path == Self.path
             || request.headers.first(name: Self.monitorHeader) != nil
         Task { await TelemetryCenter.shared.countRequest(monitoring: monitoring) }
-        return try await next.respond(to: request)
+
+        guard !monitoring else { return try await next.respond(to: request) }
+
+        let sent = request.cookies[Self.installCookie]?.string
+        let installID = sent.flatMap(Self.accepted) ?? UUID().uuidString
+        Task { await InstallCenter.shared.record(installID) }
+
+        let response = try await next.respond(to: request)
+        if sent != installID {
+            response.cookies[Self.installCookie] = Self.installCookieValue(installID, for: request)
+        }
+        return response
+    }
+
+    /// A cookie is text the client supplies, so it is taken only when it looks
+    /// like something this app issued — otherwise a hand-edited header could
+    /// fill the map with junk keys, one per request.
+    private static func accepted(_ value: String) -> String? {
+        UUID(uuidString: value)?.uuidString
+    }
+
+    private static func installCookieValue(_ value: String, for request: Request) -> HTTPCookies.Value {
+        HTTPCookies.Value(
+            string: value,
+            expires: Date().addingTimeInterval(installCookieLifetime),
+            path: "/",
+            isSecure: isSecure(request),
+            isHTTPOnly: true,
+            sameSite: .lax
+        )
+    }
+
+    /// Marked secure only when the app is actually served over TLS: a secure
+    /// cookie on a plain-http install is one the browser silently drops, and the
+    /// app would issue a new id on every request.
+    private static func isSecure(_ request: Request) -> Bool {
+        if request.headers.first(name: "X-Forwarded-Proto")?.lowercased() == "https" { return true }
+        return request.application.http.server.configuration.tlsConfiguration != nil
     }
 }
 
@@ -356,7 +428,12 @@ struct TelemetryMiddleware: AsyncMiddleware {
 /// `/api/info`. The dashboard polls it every 5s and replays the cache.
 func telemetryRoutes(_ app: Application) {
     app.get("telemetry") { request async throws -> Response in
-        let response = try await TelemetryCenter.shared.snapshot().encodeResponse(for: request)
+        let users = await InstallCenter.shared.figures()
+        let snapshot = await TelemetryCenter.shared.snapshot(
+            todayUsers: users.today,
+            totalUsers: users.total
+        )
+        let response = try await snapshot.encodeResponse(for: request)
         // The whole point is freshness; a cached snapshot is a lie by the time
         // it is read.
         response.headers.cacheControl = HTTPHeaders.CacheControl(noStore: true)

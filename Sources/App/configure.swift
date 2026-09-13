@@ -54,6 +54,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(AddLanguageToUser())
     app.migrations.add(AlterStatRecordPeaksToDouble())
     app.migrations.add(RebuildStatRecordsAsParams())
+    app.migrations.add(CreateInstall())
     
     try app.createUploadsDirectory()
     
@@ -70,7 +71,8 @@ func configure(_ app: Application, service: inout CoreService) throws {
     // Telemetry: count every REST request (registered before the file
     // middleware below so static files count too). The middleware also separates
     // a dashboard's polling from real use — counted in the total, kept out of
-    // the user figures.
+    // the user figures — and issues the `install_id` cookie the user figures are
+    // counted by.
     app.middleware.use(TelemetryMiddleware())
 
     // Use custom FileMiddleware that only handles GET/HEAD requests

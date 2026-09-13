@@ -97,30 +97,54 @@ enum TelemetryStore {
 
     // MARK: - Launch
 
-    /// Seed the in-memory counters from the stored params.
+    /// Seed the in-memory counters from the stored params, and the install map
+    /// from the rows seen inside its window.
     static func restore(on database: Database) async throws {
         let (values, recordedAt) = try await StatStore.shared.restore(on: database)
         await TelemetryCenter.shared.restore(values, recordedAt: recordedAt)
+        try await InstallCenter.shared.restore(on: database)
     }
 
     // MARK: - The cycle
 
     /// Detached so it outlives the request that would otherwise own it, and
     /// unstructured on purpose: it should run for the process's lifetime.
+    ///
+    /// One loop, two periods. Every cycle takes a measurement — that is what the
+    /// dashboard reads, and it never touches the database. Every `persistSeconds`
+    /// the same pass writes: the telemetry params, then the install map. They
+    /// share a tick rather than a timer each so the two never interleave their
+    /// queries, and so the write burst lands in one place instead of drifting
+    /// across the minute.
     static func startTasks(on app: Application) {
         let database = app.db
         let logger = app.logger
 
         Task.detached(priority: .background) {
+            /// What the cycles since the last write reported, latest value per
+            /// param. Held here rather than written each cycle: a peak set two
+            /// cycles ago is still in memory, so nothing is lost by batching,
+            /// and a failed write simply leaves this to the next pass.
+            var pending: [TelemetryParam: Double] = [:]
+            var cyclesSinceWrite = 0
+
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(cycleSeconds))
-                let changed = await TelemetryCenter.shared.tick()
+                pending.merge(await TelemetryCenter.shared.tick()) { _, latest in latest }
+
+                cyclesSinceWrite += 1
+                guard cyclesSinceWrite >= TelemetryConfig.persistEveryCycles else { continue }
+                cyclesSinceWrite = 0
+
                 do {
-                    try await StatStore.shared.persist(changed, on: database)
+                    try await StatStore.shared.persist(pending, on: database)
+                    pending = [:]
+                    try await InstallCenter.shared.flush(on: database)
                 } catch {
                     // A failed write must not kill the cycle: counts are
-                    // cumulative and peaks are still held in memory, so the next
-                    // pass carries everything the failed one would have written.
+                    // cumulative, peaks are still held in memory and install
+                    // hits are kept until they are written, so the next pass
+                    // carries everything this one would have.
                     logger.report(error: error)
                 }
             }

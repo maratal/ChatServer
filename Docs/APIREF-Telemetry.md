@@ -34,6 +34,8 @@ next one rather than leaving a hole in the replay. Samples are identified by
   "todayRequestsCount": 512,           // user requests so far today
   "totalMessagesCount": 5120,          // lifetime messages users posted
   "todayMessagesCount": 64,            // messages posted so far today
+  "todayUsersCount": 18,               // installs seen in the last 24 hours
+  "totalUsersCount": 431,              // installs ever seen
 
   "maxRequestsPerSecond": 42.0,        // all-time high of user requests/s
   "maxRequestsPerSecondAt": 1757000000,// unix seconds, when that high was set
@@ -82,6 +84,39 @@ deployment, and rounding would erase it.
 `TELEMETRY_CYCLE_SECONDS` and `TELEMETRY_CACHE_SECONDS` tune the two periods. The
 cache is never shorter than one cycle.
 
+## Users
+
+An app has no login on every page, so a user is a browser: the first request
+that arrives without an `install_id` cookie is issued one, and every request
+after carries it back.
+
+```
+Set-Cookie: install_id=<uuid>; Expires=<+10y>; Path=/; HttpOnly; SameSite=Lax
+```
+
+Monitor polling gets no cookie and is not counted — a dashboard left open would
+otherwise read as one browser using the app around the clock.
+
+Requests are counted in memory, one entry per cookie, and written to `installs`
+(`install_id`, `request_count`, `created_at`, `updated_at`) on the persistence
+cycle rather than once a request. Entries hold what has not been written yet and
+are added to the stored row, so a restart adds to the lifetime count instead of
+overwriting it.
+
+The write is one `INSERT … ON CONFLICT (install_id) DO UPDATE` per pass — 500
+installs per statement — rather than a query per install: the addition is done by
+the database (`installs.request_count + EXCLUDED.request_count`), and `RETURNING
+(xmax = 0)` says which rows were new.
+
+`totalUsersCount` is counted once at launch and incremented when the flush
+inserts a row: a `COUNT(*)` per pass would cost more the longer the app has been
+running, which is backwards for something the cycle does forever.
+
+`todayUsersCount` is the entries seen in the last 24 hours — a rolling window,
+not a calendar day, so a figure read at 00:05 is not an almost empty one. At
+launch the rows inside that window are read back, so a restart does not report a
+day with nobody in it.
+
 ## Persistence
 
 Peaks and lifetime counts survive restarts in `stat_records` — one row per
@@ -93,11 +128,19 @@ peaks are: a row last written on an earlier day is not today's, so it reads as
 zero and the day's first write replaces it. No scheduled reset, and a restart
 mid-day keeps the day's figure.
 
-Counts are rewritten whenever they move. Peaks are only written when a record is
-set, so the same cycle that measures also persists without costing a write per
-pass. A daily peak is dated by its row's `updated_at`: a high last written on an
-earlier day is not today's, so it reads as zero and the day's first record
-overwrites it — no separate day column, and no scheduled reset.
+Counts are rewritten whenever they move; peaks only when a record is set. A daily
+peak is dated by its row's `updated_at`: a high last written on an earlier day is
+not today's, so it reads as zero and the day's first record overwrites it — no
+separate day column, and no scheduled reset.
+
+Measuring and writing share one loop but not one period. Every cycle measures —
+that is what the dashboard reads, and it never touches the database. Every
+`TELEMETRY_PERSIST_SECONDS` (30 by default, never shorter than a cycle) the same
+pass writes the params and flushes the install map, so the two never interleave
+their queries. The window is what a crash costs: at most that many seconds of
+counts, and a record high set inside it. It is longer than the cycle because the
+install writes scale with how many people are using the app, while a cycle's
+worth of one browser's hits coalesces into a single update.
 
 Peaks measure **user** requests. Telemetry polling is a steady background drip,
 and letting it set the floor would turn every peak into a measure of how often a
