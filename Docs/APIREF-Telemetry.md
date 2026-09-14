@@ -31,7 +31,8 @@ next one rather than leaving a hole in the replay. Samples are identified by
 
   "totalRequestsCount": 91234,         // lifetime, monitor polling included
   "userRequestsCount": 40122,          // lifetime, monitor polling excluded
-  "todayRequestsCount": 512,           // requests today from identified installs
+  "todayRequestsCount": 512,           // requests today, monitor polling excluded
+  "todayVisitorRequestsCount": 118,    // the same, minus anything without an install_id
   "totalMessagesCount": 5120,          // lifetime messages users posted
   "todayMessagesCount": 64,            // messages posted so far today
   "todayUsersCount": 18,               // installs seen in the last 24 hours
@@ -99,9 +100,11 @@ not a visit: a crawler accepts a cookie it will never send again, so counting th
 request that issued it would file a permanent install for every client that keeps
 no cookie jar. A browser is counted from its second request on.
 
-`todayRequestsCount` follows that rule too — it counts only requests that carried
-an `install_id`, so a crawl cannot make a quiet day look busy. `userRequestsCount`
-and the peaks still count every non-monitor request, identified or not.
+`todayVisitorRequestsCount` follows that rule too — it counts only requests that
+carried an `install_id`, so a crawl cannot make a quiet day look busy.
+`todayRequestsCount` beside it counts every non-monitor request today, identified
+or not, and so do `userRequestsCount` and the peaks. The pair is the point: one
+says how much the app was asked to do, the other how much of that was a visit.
 
 Monitor polling gets no cookie and is not counted — a dashboard left open would
 otherwise read as one browser using the app around the clock.
@@ -133,7 +136,8 @@ parameter (`telemetry_param`, `value`, `created_at`, `updated_at`), listed in
 `TelemetryParam`. Adding a figure is a new case there and nothing else.
 
 Counts are rewritten whenever they move; peaks only when a record is set. Dated
-params — the daily peaks, `todayRequestsCount`, `todayMessagesCount` — are dated
+params — the daily peaks, `todayRequestsCount`, `todayVisitorRequestsCount`,
+`todayMessagesCount` — are dated
 by their row's `updated_at`: a row last written on an earlier day is not today's,
 so it reads as zero and the day's first write replaces it. No separate day
 column, no scheduled reset, and a restart mid-day keeps the day's figure.

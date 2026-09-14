@@ -25,7 +25,8 @@ import FluentKit
 ///   wsConnectionsCount          websocket connections open right now (a level)
 ///   totalRequestsCount          lifetime requests, monitor polling included
 ///   userRequestsCount           lifetime requests, monitor polling excluded
-///   todayRequestsCount          requests today from identified installs
+///   todayRequestsCount          requests today, monitor polling excluded
+///   todayVisitorRequestsCount   the same, minus anything without an install_id
 ///   todayUsersCount             installs seen in the last 24 hours
 ///   totalUsersCount             installs ever seen
 ///   totalMessagesCount          lifetime messages users posted
@@ -54,6 +55,7 @@ struct TelemetrySnapshot: Content {
     let totalRequestsCount: Int
     let userRequestsCount: Int
     let todayRequestsCount: Int
+    let todayVisitorRequestsCount: Int
     let todayMessagesCount: Int
     let todayUsersCount: Int
     let totalUsersCount: Int
@@ -119,10 +121,12 @@ actor TelemetryRecorder {
     /// The same again, minus everything that did not bring an `install_id`
     /// back. A browser that keeps cookies is in here; a crawler is not.
     private var identifiedRequests = 0
-    /// Requests from identified browsers since today began — today's figure is
-    /// about people using the app, and a crawl is not a visit. Reset with the
-    /// daily peaks, restored from its row only when that row belongs to today.
+    /// Requests since today began, polling excluded. Reset with the daily
+    /// peaks, restored from its row only when that row belongs to today.
     private var todayRequests = 0
+    /// The same, counting only requests that brought an `install_id` back: a
+    /// crawl is load, but it is not a visit, and the two are worth telling apart.
+    private var todayVisitorRequests = 0
     private var todayMessages = 0
     /// Chat messages users typed and sent, one per posted message.
     private var totalMessages = 0
@@ -258,7 +262,8 @@ actor TelemetryRecorder {
         let requestDelta = max(0, totalRequests - lastTotalRequests)
         let userDelta = max(0, userRequests - lastUserRequests)
         let messageDelta = max(0, totalMessages - lastTotalMessages)
-        todayRequests += max(0, identifiedRequests - lastIdentifiedRequests)
+        todayRequests += userDelta
+        todayVisitorRequests += max(0, identifiedRequests - lastIdentifiedRequests)
         todayMessages += messageDelta
 
         append(TelemetrySample(
@@ -308,6 +313,7 @@ actor TelemetryRecorder {
             .totalRequestsCount: Double(totalRequests),
             .userRequestsCount: Double(userRequests),
             .todayRequestsCount: Double(todayRequests),
+            .todayVisitorRequestsCount: Double(todayVisitorRequests),
             .todayMessagesCount: Double(todayMessages),
             .totalMessagesCount: Double(totalMessages),
         ]
@@ -325,6 +331,7 @@ actor TelemetryRecorder {
         dailyPeakMessagesPerSecond = 0
         dailyPeakMessagesPerSecondAt = nil
         todayRequests = 0
+        todayVisitorRequests = 0
         todayMessages = 0
     }
 
@@ -402,6 +409,7 @@ actor TelemetryRecorder {
         userRequests = Int(values[.userRequestsCount] ?? 0)
         totalMessages = Int(values[.totalMessagesCount] ?? 0)
         todayRequests = Int(values[.todayRequestsCount] ?? 0)
+        todayVisitorRequests = Int(values[.todayVisitorRequestsCount] ?? 0)
         todayMessages = Int(values[.todayMessagesCount] ?? 0)
         lastTotalRequests = totalRequests
         lastUserRequests = userRequests
@@ -431,6 +439,7 @@ actor TelemetryRecorder {
             totalRequestsCount: totalRequests,
             userRequestsCount: userRequests,
             todayRequestsCount: todayRequests,
+            todayVisitorRequestsCount: todayVisitorRequests,
             todayMessagesCount: todayMessages,
             todayUsersCount: todayUsers,
             totalUsersCount: totalUsers,
