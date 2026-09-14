@@ -31,7 +31,7 @@ next one rather than leaving a hole in the replay. Samples are identified by
 
   "totalRequestsCount": 91234,         // lifetime, monitor polling included
   "userRequestsCount": 40122,          // lifetime, monitor polling excluded
-  "todayRequestsCount": 512,           // user requests so far today
+  "todayRequestsCount": 512,           // requests today from identified installs
   "totalMessagesCount": 5120,          // lifetime messages users posted
   "todayMessagesCount": 64,            // messages posted so far today
   "todayUsersCount": 18,               // installs seen in the last 24 hours
@@ -98,6 +98,10 @@ Only a request that brings the cookie back is counted. Issuing one is an offer,
 not a visit: a crawler accepts a cookie it will never send again, so counting the
 request that issued it would file a permanent install for every client that keeps
 no cookie jar. A browser is counted from its second request on.
+
+`todayRequestsCount` follows that rule too — it counts only requests that carried
+an `install_id`, so a crawl cannot make a quiet day look busy. `userRequestsCount`
+and the peaks still count every non-monitor request, identified or not.
 
 Monitor polling gets no cookie and is not counted — a dashboard left open would
 otherwise read as one browser using the app around the clock.

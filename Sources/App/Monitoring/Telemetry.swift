@@ -25,7 +25,7 @@ import FluentKit
 ///   wsConnectionsCount          websocket connections open right now (a level)
 ///   totalRequestsCount          lifetime requests, monitor polling included
 ///   userRequestsCount           lifetime requests, monitor polling excluded
-///   todayRequestsCount          user requests so far today
+///   todayRequestsCount          requests today from identified installs
 ///   todayUsersCount             installs seen in the last 24 hours
 ///   totalUsersCount             installs ever seen
 ///   totalMessagesCount          lifetime messages users posted
@@ -116,8 +116,12 @@ actor TelemetryRecorder {
     private var totalRequests = 0
     /// The same, minus that polling — what actual users asked for.
     private var userRequests = 0
-    /// User requests since today began. Reset with the daily peaks, restored
-    /// from its row only when that row belongs to today.
+    /// The same again, minus everything that did not bring an `install_id`
+    /// back. A browser that keeps cookies is in here; a crawler is not.
+    private var identifiedRequests = 0
+    /// Requests from identified browsers since today began — today's figure is
+    /// about people using the app, and a crawl is not a visit. Reset with the
+    /// daily peaks, restored from its row only when that row belongs to today.
     private var todayRequests = 0
     private var todayMessages = 0
     /// Chat messages users typed and sent, one per posted message.
@@ -132,6 +136,7 @@ actor TelemetryRecorder {
     /// measurement is derived from.
     private var lastTotalRequests = 0
     private var lastUserRequests = 0
+    private var lastIdentifiedRequests = 0
     private var lastTotalMessages = 0
     private var lastTickAt: Date?
 
@@ -172,10 +177,15 @@ actor TelemetryRecorder {
     /// - Parameter monitoring: whether a dashboard made this request to watch
     ///   the app rather than to use it. Counted in the total either way —
     ///   polling is real load — and excluded from the user figure.
-    func countRequest(monitoring: Bool) {
+    /// - Parameter identified: whether it arrived with an `install_id` this app
+    ///   issued. Today's figure counts only these, so a crawler cannot make a
+    ///   quiet day look busy.
+    func countRequest(monitoring: Bool, identified: Bool) {
         totalRequests += 1
-        if !monitoring {
-            userRequests += 1
+        guard !monitoring else { return }
+        userRequests += 1
+        if identified {
+            identifiedRequests += 1
         }
     }
 
@@ -233,6 +243,7 @@ actor TelemetryRecorder {
         defer {
             lastTotalRequests = totalRequests
             lastUserRequests = userRequests
+            lastIdentifiedRequests = identifiedRequests
             lastTotalMessages = totalMessages
             lastTickAt = now
         }
@@ -247,7 +258,7 @@ actor TelemetryRecorder {
         let requestDelta = max(0, totalRequests - lastTotalRequests)
         let userDelta = max(0, userRequests - lastUserRequests)
         let messageDelta = max(0, totalMessages - lastTotalMessages)
-        todayRequests += userDelta
+        todayRequests += max(0, identifiedRequests - lastIdentifiedRequests)
         todayMessages += messageDelta
 
         append(TelemetrySample(
@@ -394,6 +405,7 @@ actor TelemetryRecorder {
         todayMessages = Int(values[.todayMessagesCount] ?? 0)
         lastTotalRequests = totalRequests
         lastUserRequests = userRequests
+        lastIdentifiedRequests = identifiedRequests
         lastTotalMessages = totalMessages
 
         maxRequestsPerSecond = values[.maxRequestsPerSecond] ?? 0
@@ -460,17 +472,24 @@ struct TelemetryMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
         let monitoring = request.url.path == Self.path
             || request.headers.first(name: Self.monitorHeader) != nil
-        Task { await TelemetryRecorder.shared.countRequest(monitoring: monitoring) }
+
+        // Only a request that brings the cookie back is a visit. Issuing one is
+        // an offer: a crawler takes a cookie it will never send again, so
+        // counting the request that issued it would file a permanent install —
+        // and a day's worth of traffic — for every client that keeps no cookie
+        // jar. A browser costs its first request and counts from the second on.
+        let sent = request.cookies[Self.installCookie]?.string
+        let installID = sent.flatMap(Self.accepted)
+        Task {
+            await TelemetryRecorder.shared.countRequest(
+                monitoring: monitoring,
+                identified: installID != nil
+            )
+        }
 
         guard !monitoring else { return try await next.respond(to: request) }
 
-        // Only a request that brings the cookie back counts. Issuing one is an
-        // offer, not a visit: a crawler takes a cookie it will never send again,
-        // so counting the first request would file a permanent install for every
-        // client that keeps no cookie jar. A browser costs its first request and
-        // is counted from the second on.
-        let sent = request.cookies[Self.installCookie]?.string
-        if let installID = sent.flatMap(Self.accepted) {
+        if let installID {
             Task { await InstallRecorder.shared.record(installID) }
             return try await next.respond(to: request)
         }
