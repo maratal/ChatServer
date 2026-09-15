@@ -49,13 +49,13 @@ actor InstallRecorder {
         entries[installID] = entry
     }
 
-    /// What `/telemetry` reports. Today's figure is the map; the total is the
-    /// row count, floored by today because an install seen before its first
-    /// flush is real even though the table has not heard of it yet.
-    func figures(at now: Date = Date()) -> (today: Int, total: Int) {
+    /// What `/telemetry` reports. The recent figure is the map; the total is the
+    /// row count, floored by it because an install seen before its first flush
+    /// is real even though the table has not heard of it yet.
+    func figures(at now: Date = Date()) -> (last24h: Int, total: Int) {
         let since = now.addingTimeInterval(-Self.activeWindow)
-        let today = entries.values.filter { $0.lastSeen >= since }.count
-        return (today, max(totalUsers, today))
+        let last24h = entries.values.filter { $0.lastSeen >= since }.count
+        return (last24h, max(totalUsers, last24h))
     }
 
     /// Seed from the table at launch: the row count, and the rows seen inside

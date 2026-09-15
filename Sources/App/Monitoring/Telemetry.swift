@@ -27,7 +27,7 @@ import FluentKit
 ///   userRequestsCount           lifetime requests, monitor polling excluded
 ///   todayRequestsCount          requests today, monitor polling excluded
 ///   todayVisitorRequestsCount   the same, minus anything without an install_id
-///   todayUsersCount             installs seen in the last 24 hours
+///   last24hUsersCount           installs seen in the last 24 hours
 ///   totalUsersCount             installs ever seen
 ///   totalMessagesCount          lifetime messages users posted
 ///   todayMessagesCount          messages posted so far today
@@ -57,7 +57,7 @@ struct TelemetrySnapshot: Content {
     let todayRequestsCount: Int
     let todayVisitorRequestsCount: Int
     let todayMessagesCount: Int
-    let todayUsersCount: Int
+    let last24hUsersCount: Int
     let totalUsersCount: Int
     let totalMessagesCount: Int
     let maxRequestsPerSecond: Double
@@ -430,7 +430,7 @@ actor TelemetryRecorder {
     /// The user figures are passed in rather than held here: they belong to
     /// `InstallRecorder`, and one actor reaching into another to read them would
     /// make this method async for every caller.
-    func snapshot(todayUsers: Int = 0, totalUsers: Int = 0) -> TelemetrySnapshot {
+    func snapshot(last24hUsers: Int = 0, totalUsers: Int = 0) -> TelemetrySnapshot {
         TelemetrySnapshot(
             cycle: TelemetryConfig.cycleSeconds,
             cache: TelemetryConfig.cacheSeconds,
@@ -441,7 +441,7 @@ actor TelemetryRecorder {
             todayRequestsCount: todayRequests,
             todayVisitorRequestsCount: todayVisitorRequests,
             todayMessagesCount: todayMessages,
-            todayUsersCount: todayUsers,
+            last24hUsersCount: last24hUsers,
             totalUsersCount: totalUsers,
             totalMessagesCount: totalMessages,
             maxRequestsPerSecond: maxRequestsPerSecond,
@@ -542,7 +542,7 @@ func telemetryRoutes(_ app: Application) {
     app.get("telemetry") { request async throws -> Response in
         let users = await InstallRecorder.shared.figures()
         let snapshot = await TelemetryRecorder.shared.snapshot(
-            todayUsers: users.today,
+            last24hUsers: users.last24h,
             totalUsers: users.total
         )
         let response = try await snapshot.encodeResponse(for: request)

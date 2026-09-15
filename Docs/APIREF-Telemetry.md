@@ -35,7 +35,7 @@ next one rather than leaving a hole in the replay. Samples are identified by
   "todayVisitorRequestsCount": 118,    // the same, minus anything without an install_id
   "totalMessagesCount": 5120,          // lifetime messages users posted
   "todayMessagesCount": 64,            // messages posted so far today
-  "todayUsersCount": 18,               // installs seen in the last 24 hours
+  "last24hUsersCount": 18,             // installs seen in the last 24 hours
   "totalUsersCount": 431,              // installs ever seen
 
   "maxRequestsPerSecond": 42.0,        // all-time high of user requests/s
@@ -124,10 +124,10 @@ the database (`installs.request_count + EXCLUDED.request_count`), and `RETURNING
 inserts a row: a `COUNT(*)` per pass would cost more the longer the app has been
 running, which is backwards for something the cycle does forever.
 
-`todayUsersCount` is the entries seen in the last 24 hours — a rolling window,
-not a calendar day, so a figure read at 00:05 is not an almost empty one. At
-launch the rows inside that window are read back, so a restart does not report a
-day with nobody in it.
+`last24hUsersCount` is the entries seen in the last 24 hours — a rolling window
+rather than a calendar day, which is why it is not called "today": a figure read
+at 00:05 is not an almost empty one. At launch the rows inside that window are
+read back, so a restart does not report an empty window.
 
 ## Persistence
 
