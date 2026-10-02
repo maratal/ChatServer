@@ -43,10 +43,33 @@ ok "Repository updated"
 # Determine cached binary name (matches install-swift-app naming)
 PLATFORM=$(dpkg --print-architecture)
 OS_ID=$(. /etc/os-release && echo "${ID}${VERSION_ID}" | tr -d '.')
-SWIFT_VERSION=$(swift --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 APP_VERSION=$(grep -oE 'version = "[0-9]+\.[0-9]+\.[0-9]+"' "$INSTALL_DIR/Sources/App/info.swift" 2>/dev/null | grep -oE '"[^"]*"' | tr -d '"')
 APP_VERSION="${APP_VERSION:-unknown}"
-BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
+# `--static` comes from "Build Statically" in the dashboard (update.sh --static).
+STATIC_BUILD=false
+[[ "${1:-}" == "--static" ]] && STATIC_BUILD=true
+
+# Binary names:
+#   App-<os>-<arch>-swift-<swift version>-<app version>   regular build, needs that Swift runtime
+#   App-<os>-<arch>-<app version>                         static build, runs without Swift
+# No Swift on this droplet (e.g. removed after a static build) means updates can
+# only come from static prebuilts.
+BUILD_FLAGS=(-c release)
+if command -v swift &>/dev/null; then
+    SWIFT_INSTALLED=true
+    if [[ "$STATIC_BUILD" == true ]]; then
+        BUILD_FLAGS+=(--static-swift-stdlib)
+        BIN_NAME="App-${OS_ID}-${PLATFORM}-${APP_VERSION}"
+        log "Static build requested (--static-swift-stdlib)"
+    else
+        SWIFT_VERSION=$(swift --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
+    fi
+else
+    SWIFT_INSTALLED=false
+    BIN_NAME="App-${OS_ID}-${PLATFORM}-${APP_VERSION}"
+    log "Swift is not installed — updating from static prebuilt binaries only"
+fi
 BIN_FILE="$INSTALL_DIR/$BIN_NAME"
 
 # Clear every App-* file, then keep exactly one: a copy of what is running.
@@ -68,11 +91,28 @@ else
 fi
 
 PREBUILD_SRC="${PREBUILD_SRC:-https://157.245.47.23/prebuilds}"
-log "Attempting to download pre-built binary from $PREBUILD_SRC"
-if curl -fsSLk --max-time 30 "${PREBUILD_SRC}/${BIN_NAME}" -o "$BIN_FILE"; then
-    ok "App downloaded as $BIN_NAME"
+# "Build Statically" always builds: skip the download.
+if [[ "$STATIC_BUILD" == true && "$SWIFT_INSTALLED" == true ]]; then
+    log "Build Statically ticked — skipping prebuilt download"
+    DOWNLOAD=false
 else
-    log "Download failed — falling back to build"
+    log "Attempting to download pre-built binary from $PREBUILD_SRC"
+    DOWNLOAD=true
+fi
+if [[ "$DOWNLOAD" == true ]] && curl -fsSLk --max-time 30 "${PREBUILD_SRC}/${BIN_NAME}" -o "$BIN_FILE"; then
+    ok "App downloaded as $BIN_NAME"
+    # Without Swift there is no fallback, so make sure the binary can start
+    # (e.g. libgd3 present) while the current one is still running.
+    if [[ "$SWIFT_INSTALLED" == false ]] && ldd "$BIN_FILE" 2>/dev/null | grep -q "not found"; then
+        ldd "$BIN_FILE" | grep "not found" || true
+        rm -f "$BIN_FILE"
+        fail "Prebuilt $BIN_NAME needs libraries that are missing here. Install them, or install Swift to build."
+    fi
+elif [[ "$SWIFT_INSTALLED" == false ]]; then
+    rm -f "$BIN_FILE"
+    fail "No static prebuilt $BIN_NAME at $PREBUILD_SRC, and Swift is not installed to build it. Publish one by updating a droplet that has Swift with Build Statically ticked. Server left running the current version."
+else
+    if [[ "$DOWNLOAD" == true ]]; then log "Download failed — falling back to build"; fi
     rm -f "$BIN_FILE"
 
     # Swift's compiler is memory-hungry; on small droplets the build gets
@@ -94,12 +134,12 @@ else
     log "Building application (this may take several minutes)"
     # -j 1: one compiler frontend at a time keeps peak RSS survivable on a 1G box.
     set +e
-    swift build -c release -j 1 2>&1 | grep -E "Compiling|Linking|Build complete|error:"
+    swift build "${BUILD_FLAGS[@]}" -j 1 2>&1 | grep -E "Compiling|Linking|Build complete|error:"
     BUILD_STATUS=${PIPESTATUS[0]}
     set -e
     [[ "$BUILD_STATUS" -eq 0 ]] || fail "Build failed (exit $BUILD_STATUS). If it was killed, check: journalctl -k | grep -i 'out of memory'"
 
-    BIN_PATH=$(swift build -c release --show-bin-path)
+    BIN_PATH=$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)
     cp "$BIN_PATH/App" "$BIN_FILE"
     mkdir -p "$INSTALL_DIR/Public/prebuilds"
     cp "$BIN_FILE" "$INSTALL_DIR/Public/prebuilds/$BIN_NAME"

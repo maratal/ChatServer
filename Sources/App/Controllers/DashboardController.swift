@@ -41,21 +41,55 @@ struct DashboardController: RouteCollection {
                         body: .init(string: #"{"status":"ok","output":"\#(output.escaped)"}"#))
     }
 
+    /// Optional body of `POST update`. A missing body means a regular build.
+    struct UpdateOptions: Content {
+        /// Build with `--static-swift-stdlib`, so the binary runs without Swift installed.
+        var isStatic: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case isStatic = "static"
+        }
+    }
+
     /// Detached through `systemd-run`: update.sh restarts this service, so a
     /// child of this process would be killed partway through its own update.
+    ///
+    /// sudoers allows `systemd-run --collect …/update.sh` with no arguments or
+    /// with exactly `--static`, nothing else.
     func update(_ req: Request) async throws -> Response {
         try requireManagement(req)
+        let options = (try? req.content.decode(UpdateOptions.self)) ?? UpdateOptions()
+        let isStatic = options.isStatic == true
         let directory = req.application.directory.workingDirectory
         let path = directory + "update.sh"
+        var status = try startUpdate(path, in: directory, isStatic: isStatic)
+        if status != 0 && isStatic {
+            // Most likely a droplet whose sudoers rule predates `--static`.
+            // refresh.sh brings the rule up to date; the copy on disk is the
+            // current one even if the dashboard's own refresh ran an older copy.
+            _ = try await runScript("refresh.sh", on: req, asSudo: true)
+            status = try startUpdate(path, in: directory, isStatic: isStatic)
+        }
+        guard status == 0 else {
+            throw Abort(.internalServerError, reason: "Could not start the update (systemd-run exited with \(status)).")
+        }
+        return Response(status: .ok, headers: ["Content-Type": "application/json"],
+                        body: .init(string: #"{"status":"ok"}"#))
+    }
+
+    /// Starts update.sh as a transient unit and returns sudo's exit status.
+    /// systemd-run returns as soon as the unit is started, so the wait is brief;
+    /// it is how a sudo refusal is noticed instead of silently doing nothing.
+    private func startUpdate(_ path: String, in directory: String, isStatic: Bool) throws -> Int32 {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
-        process.arguments = ["-n", "systemd-run", "--collect", path]
+        process.arguments = ["-n", "systemd-run", "--collect", path] + (isStatic ? ["--static"] : [])
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
         try process.run()
-        return Response(status: .ok, headers: ["Content-Type": "application/json"],
-                        body: .init(string: #"{"status":"ok"}"#))
+        process.waitUntilExit()
+        return process.terminationStatus
     }
 
     func getLog(_ req: Request) async throws -> Response {

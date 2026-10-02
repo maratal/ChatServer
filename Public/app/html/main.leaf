@@ -352,6 +352,10 @@
                     <div class="dashboard-actions">
                         <button class="dashboard-button" id="dashboardRefreshButton" title="Pull latest changes without rebuilding or restarting the server" onclick="dashboardRefresh()">Refresh</button>
                         <button class="dashboard-button dashboard-button-warning" id="dashboardUpdateButton" title="Pull latest code from remote, rebuild and restart the server" onclick="dashboardUpdate()">Update</button>
+                        <label class="dashboard-checkbox" title="Link the Swift runtime into the binary (--static-swift-stdlib), so it runs without Swift installed">
+                            <input type="checkbox" id="dashboardStaticBuild">
+                            <span>Build Statically</span>
+                        </label>
                     </div>
                     <pre class="dashboard-log" id="dashboardLog" style="display:none"></pre>
                 </div>

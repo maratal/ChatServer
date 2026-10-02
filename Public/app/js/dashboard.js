@@ -242,7 +242,8 @@ async function dashboardUpdate() {
         fetched = refreshed && refreshed.output ? String(refreshed.output).replace(/\s+$/, '') : '';
         if (fetched) showDashboardLog(fetched, false);
 
-        await apiDashboardUpdate();
+        const staticCheckbox = document.getElementById('dashboardStaticBuild');
+        await apiDashboardUpdate(!!(staticCheckbox && staticCheckbox.checked));
         showDashboardLog(fetched ? fetched + '\n\nUpdate started...' : 'Update started...', false);
         pollUpdateLog(button, fetched);
     } catch (error) {
@@ -272,6 +273,17 @@ function pollUpdateLog(button, fetched) {
                 lastText = text;
                 showDashboardLog(head + text, false);
                 log.scrollTop = log.scrollHeight;
+            }
+            // update.sh's fail() marks the line with ✗ and exits before the
+            // service is stopped, so the server stays up: stop polling here.
+            if (text.includes('\u2717')) {
+                clearInterval(interval);
+                showDashboardLog(head + text, true);
+                log.scrollTop = log.scrollHeight;
+                button.textContent = 'Update';
+                button.disabled = false;
+                document.getElementById('dashboardRefreshButton').disabled = false;
+                return;
             }
             if (text.includes('Build complete!')) {
                 clearInterval(interval);

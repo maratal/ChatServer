@@ -262,12 +262,13 @@ async function apiDashboardRefresh() {
     return await handleResponse(response);
 }
 
-async function apiDashboardUpdate() {
+async function apiDashboardUpdate(staticBuild = false) {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');
     const response = await fetch('/dashboard/api/update', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ static: staticBuild })
     });
     return await handleResponse(response);
 }
