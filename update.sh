@@ -49,25 +49,30 @@ APP_VERSION="${APP_VERSION:-unknown}"
 STATIC_BUILD=false
 [[ "${1:-}" == "--static" ]] && STATIC_BUILD=true
 
-# Binary names:
-#   App-<os>-<arch>-swift-<swift version>-<app version>   regular build, needs that Swift runtime
+# Binary names (install.sh uses the same):
 #   App-<os>-<arch>-<app version>                         static build, runs without Swift
-# No Swift on this droplet (e.g. removed after a static build) means updates can
-# only come from static prebuilts.
+#   App-<os>-<arch>-swift-<swift version>-<app version>   regular build, needs that Swift runtime
+# A static prebuilt is tried first, Swift or not — as install.sh does. With
+# Swift, the regular prebuilt comes next and a build last; without it (e.g.
+# removed after a static build) updates can only come from static prebuilts.
+# BIN_NAME here is what a build is saved as; a download replaces it below.
+STATIC_NAME="App-${OS_ID}-${PLATFORM}-${APP_VERSION}"
+SWIFT_NAME=""
 BUILD_FLAGS=(-c release)
 if command -v swift &>/dev/null; then
     SWIFT_INSTALLED=true
+    SWIFT_VERSION=$(swift --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    SWIFT_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
     if [[ "$STATIC_BUILD" == true ]]; then
         BUILD_FLAGS+=(--static-swift-stdlib)
-        BIN_NAME="App-${OS_ID}-${PLATFORM}-${APP_VERSION}"
+        BIN_NAME="$STATIC_NAME"
         log "Static build requested (--static-swift-stdlib)"
     else
-        SWIFT_VERSION=$(swift --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-        BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
+        BIN_NAME="$SWIFT_NAME"
     fi
 else
     SWIFT_INSTALLED=false
-    BIN_NAME="App-${OS_ID}-${PLATFORM}-${APP_VERSION}"
+    BIN_NAME="$STATIC_NAME"
     log "Swift is not installed — updating from static prebuilt binaries only"
 fi
 BIN_FILE="$INSTALL_DIR/$BIN_NAME"
@@ -91,28 +96,60 @@ else
 fi
 
 PREBUILD_SRC="${PREBUILD_SRC:-https://157.245.47.23/prebuilds}"
+
+# fetch_prebuilt <name>: download it as $INSTALL_DIR/<name>; fails (leaving
+# nothing behind) when the server does not have it.
+fetch_prebuilt() {
+    log "Attempting to download pre-built binary $1"
+    if curl -fsSLk --max-time 30 "${PREBUILD_SRC%/}/$1" -o "$INSTALL_DIR/$1" && [[ -s "$INSTALL_DIR/$1" ]]; then
+        return 0
+    fi
+    rm -f "$INSTALL_DIR/$1"
+    return 1
+}
+
+# static_runs <file>: a static binary must not need Swift's runtime, nor any
+# library this droplet lacks — checked while the current one still runs.
+static_runs() {
+    local linked
+    linked=$(ldd "$1" 2>/dev/null || true)
+    if grep -q "libswiftCore" <<< "$linked"; then
+        log "$(basename "$1") needs the Swift runtime after all — not using it"
+        return 1
+    fi
+    if grep -q "not found" <<< "$linked"; then
+        grep "not found" <<< "$linked" || true
+        log "$(basename "$1") needs libraries that are missing here — not using it"
+        return 1
+    fi
+    return 0
+}
+
+DOWNLOADED=""
 # "Build Statically" always builds: skip the download.
 if [[ "$STATIC_BUILD" == true && "$SWIFT_INSTALLED" == true ]]; then
     log "Build Statically ticked — skipping prebuilt download"
-    DOWNLOAD=false
 else
-    log "Attempting to download pre-built binary from $PREBUILD_SRC"
-    DOWNLOAD=true
-fi
-if [[ "$DOWNLOAD" == true ]] && curl -fsSLk --max-time 30 "${PREBUILD_SRC}/${BIN_NAME}" -o "$BIN_FILE"; then
-    ok "App downloaded as $BIN_NAME"
-    # Without Swift there is no fallback, so make sure the binary can start
-    # (e.g. libgd3 present) while the current one is still running.
-    if [[ "$SWIFT_INSTALLED" == false ]] && ldd "$BIN_FILE" 2>/dev/null | grep -q "not found"; then
-        ldd "$BIN_FILE" | grep "not found" || true
-        rm -f "$BIN_FILE"
-        fail "Prebuilt $BIN_NAME needs libraries that are missing here. Install them, or install Swift to build."
+    if fetch_prebuilt "$STATIC_NAME"; then
+        if static_runs "$INSTALL_DIR/$STATIC_NAME"; then
+            DOWNLOADED="$STATIC_NAME"
+        else
+            rm -f "$INSTALL_DIR/$STATIC_NAME"
+        fi
     fi
+    if [[ -z "$DOWNLOADED" && "$SWIFT_INSTALLED" == true ]] && fetch_prebuilt "$SWIFT_NAME"; then
+        DOWNLOADED="$SWIFT_NAME"
+    fi
+fi
+
+if [[ -n "$DOWNLOADED" ]]; then
+    BIN_NAME="$DOWNLOADED"
+    BIN_FILE="$INSTALL_DIR/$BIN_NAME"
+    ok "App downloaded as $BIN_NAME"
 elif [[ "$SWIFT_INSTALLED" == false ]]; then
-    rm -f "$BIN_FILE"
-    fail "No static prebuilt $BIN_NAME at $PREBUILD_SRC, and Swift is not installed to build it. Publish one by updating a droplet that has Swift with Build Statically ticked. Server left running the current version."
+    fail "No static prebuilt $STATIC_NAME at $PREBUILD_SRC that runs here, and Swift is not installed to build it. Publish one by updating a droplet that has Swift with Build Statically ticked. Server left running the current version."
 else
-    if [[ "$DOWNLOAD" == true ]]; then log "Download failed — falling back to build"; fi
+    [[ "$STATIC_BUILD" == true ]] || log "No pre-built binary — falling back to build"
     rm -f "$BIN_FILE"
 
     # Swift's compiler is memory-hungry; on small droplets the build gets
