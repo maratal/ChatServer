@@ -65,52 +65,56 @@ else
 fi
 
 # ── Swift ────────────────────────────────────────────────────────────────────
+# Installed only when it is needed — see "Prebuilt binary or build" below: a
+# static prebuilt runs without Swift, so with one there is nothing to install.
 
 SWIFT_VERSION="6.0.3"
 
-log "Installing Swift $SWIFT_VERSION"
-if command -v swift &> /dev/null && swift --version 2>&1 | grep -q "6.0"; then
-    ok "Swift 6.0 already installed"
-else
-    # Determine architecture
-    ARCH=$(dpkg --print-architecture)
-    case "$ARCH" in
-        amd64)
-            SWIFT_ARCH=""
-            PLATFORM_SUFFIX="ubuntu2404"
-            ;;
-        arm64)
-            SWIFT_ARCH="-aarch64"
-            PLATFORM_SUFFIX="ubuntu2404-aarch64"
-            ;;
-        *) fail "Unsupported architecture: $ARCH" ;;
-    esac
+install_swift() {
+    log "Installing Swift $SWIFT_VERSION"
+    if command -v swift &> /dev/null && swift --version 2>&1 | grep -q "6.0"; then
+        ok "Swift 6.0 already installed"
+    else
+        # Determine architecture
+        ARCH=$(dpkg --print-architecture)
+        case "$ARCH" in
+            amd64)
+                SWIFT_ARCH=""
+                PLATFORM_SUFFIX="ubuntu2404"
+                ;;
+            arm64)
+                SWIFT_ARCH="-aarch64"
+                PLATFORM_SUFFIX="ubuntu2404-aarch64"
+                ;;
+            *) fail "Unsupported architecture: $ARCH" ;;
+        esac
 
-    SWIFT_TAG="swift-${SWIFT_VERSION}-RELEASE"
-    SWIFT_TARBALL="${SWIFT_TAG}-ubuntu24.04${SWIFT_ARCH}.tar.gz"
-    SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/${PLATFORM_SUFFIX}/${SWIFT_TAG}/${SWIFT_TARBALL}"
+        SWIFT_TAG="swift-${SWIFT_VERSION}-RELEASE"
+        SWIFT_TARBALL="${SWIFT_TAG}-ubuntu24.04${SWIFT_ARCH}.tar.gz"
+        SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/${PLATFORM_SUFFIX}/${SWIFT_TAG}/${SWIFT_TARBALL}"
 
-    # Install Swift runtime dependencies
-    apt-get -qq install -y \
-        binutils libc6-dev libcurl4-openssl-dev libedit2 \
-        libgcc-13-dev libpython3-dev libsqlite3-0 libstdc++-13-dev \
-        libxml2-dev libncurses-dev libz3-dev pkg-config unzip zlib1g-dev \
-        > /dev/null
+        # Install Swift runtime dependencies
+        apt-get -qq install -y \
+            binutils libc6-dev libcurl4-openssl-dev libedit2 \
+            libgcc-13-dev libpython3-dev libsqlite3-0 libstdc++-13-dev \
+            libxml2-dev libncurses-dev libz3-dev pkg-config unzip zlib1g-dev \
+            > /dev/null
 
-    log "Downloading Swift from $SWIFT_URL"
-    curl -sSL "$SWIFT_URL" -o /tmp/swift.tar.gz
-    mkdir -p /opt/swift
-    tar xzf /tmp/swift.tar.gz -C /opt/swift --strip-components=2
-    rm /tmp/swift.tar.gz
-    ln -sf /opt/swift/bin/swift /usr/local/bin/swift
-    ln -sf /opt/swift/bin/swiftc /usr/local/bin/swiftc
+        log "Downloading Swift from $SWIFT_URL"
+        curl -sSL "$SWIFT_URL" -o /tmp/swift.tar.gz
+        mkdir -p /opt/swift
+        tar xzf /tmp/swift.tar.gz -C /opt/swift --strip-components=2
+        rm /tmp/swift.tar.gz
+        ln -sf /opt/swift/bin/swift /usr/local/bin/swift
+        ln -sf /opt/swift/bin/swiftc /usr/local/bin/swiftc
 
-    # Add to PATH for this session and future shells
-    export PATH="/opt/swift/bin:$PATH"
-    echo 'export PATH="/opt/swift/bin:$PATH"' > /etc/profile.d/swift.sh
+        # Add to PATH for this session and future shells
+        export PATH="/opt/swift/bin:$PATH"
+        echo 'export PATH="/opt/swift/bin:$PATH"' > /etc/profile.d/swift.sh
 
-    ok "Swift $(swift --version 2>&1 | head -1)"
-fi
+        ok "Swift $(swift --version 2>&1 | head -1)"
+    fi
+}
 
 # ── PostgreSQL ───────────────────────────────────────────────────────────────
 
@@ -214,43 +218,84 @@ else
 fi
 ok "Environment saved to $ENV_FILE"
 
-# Prebuilt-binary cache. The binary is named by OS + arch + Swift version + the
-# app's own version (Sources/App/info.swift), so a download is only used when it
-# matches this exact platform and release; otherwise we build from source and
-# cache the result under the same name (so it can be uploaded for next time).
+# ── Prebuilt binary or build ─────────────────────────────────────────────────
+# Prebuilt binaries are named as update.sh names them:
+#   App-<os>-<arch>-<app version>                         static build, runs without Swift
+#   App-<os>-<arch>-swift-<swift version>-<app version>   regular build, needs that Swift runtime
+# A name without "swift-" is a static build: when one is published for this
+# exact platform and release, it is used and Swift is not installed at all —
+# minutes and a few gigabytes saved. Otherwise Swift is installed, and the
+# regular prebuilt is used, or the app is built from source and cached under
+# that name (so it can be uploaded for next time).
 PLATFORM=$(dpkg --print-architecture)
 OS_ID=$(. /etc/os-release && echo "${ID}${VERSION_ID}" | tr -d '.')
 APP_VERSION=$(grep -oE 'version = "[0-9]+\.[0-9]+\.[0-9]+"' "$INSTALL_DIR/Sources/App/info.swift" 2>/dev/null | grep -oE '"[^"]*"' | tr -d '"' || true)
 APP_VERSION="${APP_VERSION:-unknown}"
-BIN_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
-CACHED_BIN="$INSTALL_DIR/$BIN_NAME"
+STATIC_NAME="App-${OS_ID}-${PLATFORM}-${APP_VERSION}"
+SWIFT_NAME="App-${OS_ID}-${PLATFORM}-swift-${SWIFT_VERSION}-${APP_VERSION}"
 
 # Base URL of a prebuilt-binary server (override/disable via the PREBUILD_SRC env).
 PREBUILD_SRC="${PREBUILD_SRC:-https://157.245.47.23/prebuilds}"
 
-PREBUILD_DOWNLOADED=false
-if [[ -n "$PREBUILD_SRC" ]]; then
-    log "Attempting to download pre-built binary ($BIN_NAME)"
-    # -k: the prebuild server uses a self-signed cert; integrity comes from the
-    # version/arch/swift-pinned filename, not transport.
-    if curl -fsSLk --max-time 30 "${PREBUILD_SRC%/}/${BIN_NAME}" -o "$CACHED_BIN"; then
-        PREBUILD_DOWNLOADED=true
-    else
-        log "First attempt failed, retrying in 10s..."
-        sleep 10
-        if curl -fsSLk --max-time 30 "${PREBUILD_SRC%/}/${BIN_NAME}" -o "$CACHED_BIN"; then
-            PREBUILD_DOWNLOADED=true
-        else
-            log "Both download attempts failed — falling back to build"
-        fi
+# fetch_prebuilt <name>: download it into $INSTALL_DIR/<name>. A server that
+# answers "not there" (an HTTP error) is taken at its word; a connection that
+# fails gets a second attempt.
+# -k: the prebuild server uses a self-signed cert; integrity comes from the
+# version/arch/swift-pinned filename, not transport.
+fetch_prebuilt() {
+    local name="$1" dest="$INSTALL_DIR/$1" rc=0
+    [[ -n "$PREBUILD_SRC" ]] || return 1
+    log "Attempting to download pre-built binary ($name)"
+    curl -fsSLk --max-time 30 "${PREBUILD_SRC%/}/${name}" -o "$dest" || rc=$?
+    if [[ "$rc" -eq 0 && -s "$dest" ]]; then
+        return 0
     fi
+    if [[ "$rc" -eq 22 ]]; then
+        rm -f "$dest"
+        return 1
+    fi
+    log "First attempt failed, retrying in 10s..."
+    sleep 10
+    if curl -fsSLk --max-time 30 "${PREBUILD_SRC%/}/${name}" -o "$dest" && [[ -s "$dest" ]]; then
+        return 0
+    fi
+    rm -f "$dest"
+    return 1
+}
+
+BIN_NAME=""
+if fetch_prebuilt "$STATIC_NAME"; then
+    # Static in name — check it is in fact: it must not need Swift's runtime,
+    # nor any library this droplet lacks (it would not start, with no Swift
+    # here to fall back on).
+    LINKED=$(ldd "$INSTALL_DIR/$STATIC_NAME" 2>/dev/null || true)
+    if grep -q "libswiftCore" <<< "$LINKED"; then
+        log "$STATIC_NAME needs the Swift runtime after all — not using it"
+        rm -f "$INSTALL_DIR/$STATIC_NAME"
+    elif grep -q "not found" <<< "$LINKED"; then
+        grep "not found" <<< "$LINKED" || true
+        log "$STATIC_NAME needs libraries that are missing here — not using it"
+        rm -f "$INSTALL_DIR/$STATIC_NAME"
+    else
+        BIN_NAME="$STATIC_NAME"
+        ok "Static pre-built binary — Swift is not needed, so it is not installed"
+    fi
+else
+    log "No static pre-built binary for this release"
 fi
 
-if [[ "$PREBUILD_DOWNLOADED" == true && -s "$CACHED_BIN" ]]; then
+if [[ -z "$BIN_NAME" ]]; then
+    install_swift
+    BIN_NAME="$SWIFT_NAME"
+fi
+CACHED_BIN="$INSTALL_DIR/$BIN_NAME"
+
+if [[ "$BIN_NAME" == "$STATIC_NAME" ]] || fetch_prebuilt "$SWIFT_NAME"; then
     cp "$CACHED_BIN" "$INSTALL_DIR/App"
     chmod +x "$INSTALL_DIR/App"
     ok "Using prebuilt binary $BIN_NAME"
 else
+    log "No pre-built binary — falling back to build"
     rm -f "$CACHED_BIN"
 
     # Swift's compiler is memory-hungry; on small droplets the build OOMs/hangs
