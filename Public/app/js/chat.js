@@ -1675,6 +1675,23 @@ function initializeMessageInput() {
         }
     });
     
+    // This is set when Esc is pressed on long text, and the confirmation is shown once Esc is released.
+    let pendingEscapeDiscardConfirmation = false;
+
+    messageInput.addEventListener('keyup', function(e) {
+        if (e.key !== 'Escape' || !pendingEscapeDiscardConfirmation) return;
+        pendingEscapeDiscardConfirmation = false;
+
+        // The dialog is opened only after the key is released. If it opened while Esc was still held down,
+        // the browser would pass that same key press to the dialog and cancel it immediately.
+        setTimeout(() => {
+            if (this.value.length >= 100 && confirm('Discard the message you are typing?')) {
+                this.value = '';
+                resetMessageInputToDefaultHeight();
+            }
+        }, 0);
+    });
+
     messageInput.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -1682,7 +1699,12 @@ function initializeMessageInput() {
             // Priority 1: Clear text if there's any.
             // Short text is cleared right away, but longer text needs confirmation so it isn't lost by accident.
             if (this.value.trim()) {
-                if (this.value.length >= 100 && !confirm('Discard the message you are typing?')) {
+                if (this.value.length >= 100) {
+                    // Stop other Escape handlers from acting while the confirmation is pending.
+                    e.stopPropagation();
+                    if (!e.repeat) {
+                        pendingEscapeDiscardConfirmation = true;
+                    }
                     return;
                 }
                 this.value = '';
