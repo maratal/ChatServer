@@ -415,6 +415,33 @@ async function openMessageInputRecentMediaPicker(action, anchorElement, selectio
     }
 }
 
+// Insert a Markdown link around the selected text and select the part the user still has to type.
+// If the selection is already a URL, it becomes the link target and the label placeholder is selected.
+// Otherwise the selection becomes the label and the URL placeholder is selected.
+function insertMessageInputMarkdownLink(selectionSnapshot) {
+    const selectionState = getMessageInputSelectionState(selectionSnapshot);
+    if (!selectionState) return;
+
+    const { currentValue, selectionStart, selectionEnd } = selectionState;
+    const selectedText = currentValue.slice(selectionStart, selectionEnd).trim();
+    const selectionIsUrl = /^(https?:\/\/|www\.)\S+$/i.test(selectedText);
+
+    const label = selectionIsUrl || !selectedText ? 'text' : selectedText.replace(/[\[\]]/g, '');
+    const url = selectionIsUrl ? selectedText : 'https://';
+    const markup = `[${label}](${url})`;
+    const nextValue = currentValue.slice(0, selectionStart) + markup + currentValue.slice(selectionEnd);
+
+    if (selectionIsUrl || !selectedText) {
+        // Select the label placeholder so the user can type the link text right away.
+        const labelStart = selectionStart + 1;
+        updateMessageInputSelection(nextValue, labelStart, labelStart + label.length);
+    } else {
+        // Select the URL placeholder so the user can paste or type the address right away.
+        const urlStart = selectionStart + label.length + 3;
+        updateMessageInputSelection(nextValue, urlStart, urlStart + url.length);
+    }
+}
+
 // Open the link action menu and route the chosen mode into the recent-media picker.
 function handleMessageInputLinkButton(event) {
     event.preventDefault();
@@ -441,14 +468,21 @@ function handleMessageInputLinkButton(event) {
 
     showContextMenu({
         items: [
-            { id: 'embed', label: 'Embed', icon: formatEmbedIcon },
-            { id: 'popup', label: 'Popup', icon: formatPopupIcon }
+            { id: 'embed', label: 'Embed Image', icon: formatEmbedIcon },
+            { id: 'popup', label: 'Popup Image', icon: formatPopupIcon },
+            { id: 'link', label: 'Link', icon: formatLinkIcon, separator: true }
         ],
         x: rect.right + 8,
         y: rect.bottom,
         anchor: 'bottom-left',
         highlightElement: button,
-        onAction: (action) => openMessageInputRecentMediaPicker(action, button, selectionSnapshot)
+        onAction: (action) => {
+            if (action === 'link') {
+                insertMessageInputMarkdownLink(selectionSnapshot);
+                return;
+            }
+            openMessageInputRecentMediaPicker(action, button, selectionSnapshot);
+        }
     });
 }
 
