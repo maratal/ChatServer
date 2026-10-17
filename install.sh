@@ -314,7 +314,21 @@ else
     fi
 
     log "Building application (this may take several minutes)"
-    swift build -c release -j 1 2>&1 | grep -E "Compiling|Linking|Build complete|error:"
+    swift build -c release -j 1 2>&1 | awk '
+        # Print one line per module, the first time the compiler starts on it.
+        /Compiling/ {
+            for (i = 1; i < NF; i++) if ($i == "Compiling") { module = $(i + 1); break }
+            if (!(module in seen)) {
+                seen[module] = 1
+                progress = ($1 ~ /^\[/) ? $1 " " : ""
+                print "  " progress "Compiling " module
+                fflush()
+            }
+            next
+        }
+        # Errors, the final link step and the completion message are always shown.
+        /error:|Linking|Build complete/ { print; fflush() }
+    '
     BIN_PATH=$(swift build -c release --show-bin-path)
     cp "$BIN_PATH/App" "$CACHED_BIN"
     cp "$CACHED_BIN" "$INSTALL_DIR/App"

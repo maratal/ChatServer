@@ -171,7 +171,21 @@ else
     log "Building application (this may take several minutes)"
     # -j 1: one compiler frontend at a time keeps peak RSS survivable on a 1G box.
     set +e
-    swift build "${BUILD_FLAGS[@]}" -j 1 2>&1 | grep -E "Compiling|Linking|Build complete|error:"
+    swift build "${BUILD_FLAGS[@]}" -j 1 2>&1 | awk '
+        # Print one line per module, the first time the compiler starts on it.
+        /Compiling/ {
+            for (i = 1; i < NF; i++) if ($i == "Compiling") { module = $(i + 1); break }
+            if (!(module in seen)) {
+                seen[module] = 1
+                progress = ($1 ~ /^\[/) ? $1 " " : ""
+                print "  " progress "Compiling " module
+                fflush()
+            }
+            next
+        }
+        # Errors, the final link step and the completion message are always shown.
+        /error:|Linking|Build complete/ { print; fflush() }
+    '
     BUILD_STATUS=${PIPESTATUS[0]}
     set -e
     [[ "$BUILD_STATUS" -eq 0 ]] || fail "Build failed (exit $BUILD_STATUS). If it was killed, check: journalctl -k | grep -i 'out of memory'"
