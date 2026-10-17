@@ -1679,8 +1679,12 @@ function initializeMessageInput() {
         if (e.key === 'Escape') {
             e.preventDefault();
             
-            // Priority 1: Clear text if there's any
+            // Priority 1: Clear text if there's any.
+            // Short text is cleared right away, but longer text needs confirmation so it isn't lost by accident.
             if (this.value.trim()) {
+                if (this.value.length >= 100 && !confirm('Discard the message you are typing?')) {
+                    return;
+                }
                 this.value = '';
                 resetMessageInputToDefaultHeight();
                 return; // Exit early to avoid clearing attachments or canceling edit/reply if text was present
