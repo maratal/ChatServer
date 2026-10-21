@@ -177,8 +177,9 @@ else
             for (i = 1; i < NF; i++) if ($i == "Compiling") { module = $(i + 1); break }
             if (!(module in seen)) {
                 seen[module] = 1
-                progress = ($1 ~ /^\[/) ? $1 " " : ""
-                print "  " progress "Compiling " module
+                "date +%H:%M:%S" | getline now
+                close("date +%H:%M:%S")
+                print "  [" now "] Compiling " module
                 fflush()
             }
             next
