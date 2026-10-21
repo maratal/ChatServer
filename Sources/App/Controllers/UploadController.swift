@@ -9,7 +9,7 @@ import SwiftGD
 struct UploadController: RouteCollection {
     
     static let maxBytes = 200_000_000
-    static let previewMaxDimension = 350
+    static let previewMaxDimension = 700
     
     func boot(routes: RoutesBuilder) throws {
         let uploads = routes.grouped("api", "uploads").grouped(DeviceSession.authenticator())
