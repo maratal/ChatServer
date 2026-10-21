@@ -381,13 +381,15 @@ function createYouTubeWatchUrl(video) {
     return video.start > 0 ? `https://youtu.be/${video.id}?t=${video.start}` : `https://youtu.be/${video.id}`;
 }
 
-// Build the privacy-enhanced player URL for an embedded or popped-up YouTube video.
+// Build the player URL for an embedded or popped-up YouTube video.
+// This uses youtube.com rather than youtube-nocookie.com: without the viewer's YouTube cookies
+// the player often asks them to sign in to prove they're not a bot.
 function getYouTubePlayerUrl(video, options = {}) {
-    const params = new URLSearchParams({ rel: '0', playsinline: '1' });
+    const params = new URLSearchParams({ rel: '0', playsinline: '1', origin: window.location.origin });
     if (video.start > 0) params.set('start', String(video.start));
     if (options.autoplay) params.set('autoplay', '1');
     if (options.muted) params.set('mute', '1');
-    return `https://www.youtube-nocookie.com/embed/${video.id}?${params.toString()}`;
+    return `https://www.youtube.com/embed/${video.id}?${params.toString()}`;
 }
 
 function createYouTubeIframeHtml(video, className, options = {}) {
