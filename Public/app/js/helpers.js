@@ -1050,7 +1050,7 @@ function buildAttachmentHTML(attachments, messageId, overlayHTML) {
             </button>
             ` : ''}
             ${isImage ? `
-            <img class="message-attachment-image" src="${getPreviewUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment">
+            <img class="message-attachment-image" src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment" decoding="async">
             ` : isVideo ? `
             <div class="message-attachment-video-wrapper" data-video-src="/uploads/${firstAttachment.id.toLowerCase()}.${firstAttachment.fileType}" onmouseleave="stopBalloonVideoPreview(this)">
                 <img class="message-attachment-image" src="${getVideoPreviewUrl(firstAttachment.id)}" alt="Video">
@@ -1124,7 +1124,8 @@ function switchMessageAttachment(messageId, index) {
         if (isImage) {
             const img = document.createElement('img');
             img.className = 'message-attachment-image';
-            img.src = getPreviewUrl(attachment.id, attachment.fileType);
+            img.decoding = 'async';
+            img.src = getUploadUrl(attachment.id, attachment.fileType);
             img.alt = 'Attachment';
             currentMedia.replaceWith(img);
             const overlayBarInfo = img.closest('.message-attachment-container')?.querySelector('.media-overlay-bar .video-info-left');
