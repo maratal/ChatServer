@@ -244,13 +244,121 @@ function getMessageInputPopupLabelFromContent(content) {
 }
 
 // Derive a popup label from the captured selection, with a safe fallback.
-function getMessageInputPopupLabel(selectionSnapshot) {
+function getMessageInputPopupLabel(selectionSnapshot, fallback = 'Media') {
     const rawLabel = (selectionSnapshot?.existingPopupLabel ?? selectionSnapshot?.selectedText ?? '')
         .trim()
         .replace(/\s+/g, ' ')
         .replace(/[\[\]]/g, '');
 
-    return rawLabel || 'Media';
+    // A selected YouTube link is the video itself, not a label for it.
+    if (!rawLabel || parseYouTubeVideo(rawLabel)) return fallback;
+    return rawLabel;
+}
+
+// Create the embed or popup markup for a YouTube video.
+function createMessageInputYouTubeMarkup(action, video, selectionSnapshot) {
+    const url = createYouTubeWatchUrl(video);
+    if (action === 'youtube-embed') {
+        return `<embed>${url}</embed>`;
+    }
+    return `<popup>[${getMessageInputPopupLabel(selectionSnapshot, 'Video')}](${url})</popup>`;
+}
+
+// Find a YouTube link the user already pointed at: the selected text or the tag the cursor is in.
+function getMessageInputSelectedYouTubeVideo(selectionSnapshot) {
+    const selectedVideo = parseYouTubeVideo((selectionSnapshot?.selectedText ?? '').trim());
+    if (selectedVideo) return selectedVideo;
+
+    const existingContent = selectionSnapshot?.existingLinkContent;
+    return existingContent ? (parseInlineMediaReference(existingContent)?.youtube ?? null) : null;
+}
+
+// Insert a YouTube embed or popup. A selected YouTube link is used right away;
+// otherwise a small prompt next to the link button asks for the video URL.
+function openMessageInputYouTubePrompt(action, anchorElement, selectionSnapshot) {
+    closeMessageInputMediaPicker();
+    if (!anchorElement) return;
+
+    const selectedVideo = getMessageInputSelectedYouTubeVideo(selectionSnapshot);
+    if (selectedVideo && !selectionSnapshot?.existingLinkContent) {
+        replaceMessageInputSelection(createMessageInputYouTubeMarkup(action, selectedVideo, selectionSnapshot), selectionSnapshot);
+        return;
+    }
+
+    const popupElement = document.createElement('div');
+    popupElement.className = 'message-input-media-picker message-input-youtube-prompt';
+    popupElement.innerHTML = `
+        <div class="message-input-media-picker-header">${action === 'youtube-embed' ? 'Embed' : 'Popup'} YouTube video</div>
+        <form class="message-input-youtube-form">
+            <input type="url" class="message-input-youtube-input" placeholder="Paste a YouTube link" autocomplete="off" spellcheck="false">
+            <button type="submit" class="message-input-youtube-submit">Insert</button>
+        </form>
+        <div class="message-input-youtube-error" hidden>That doesn't look like a YouTube video link</div>
+    `;
+    document.body.appendChild(popupElement);
+    positionMessageInputMediaPicker(popupElement, anchorElement);
+
+    const form = popupElement.querySelector('.message-input-youtube-form');
+    const input = popupElement.querySelector('.message-input-youtube-input');
+    const errorElement = popupElement.querySelector('.message-input-youtube-error');
+    if (selectedVideo) input.value = createYouTubeWatchUrl(selectedVideo);
+
+    const handleMouseDown = (event) => {
+        if (!popupElement.contains(event.target) && !anchorElement.contains(event.target)) {
+            closeMessageInputMediaPicker();
+        }
+    };
+    const handleResize = () => {
+        if (document.body.contains(popupElement)) {
+            positionMessageInputMediaPicker(popupElement, anchorElement);
+        }
+    };
+    // Escape only closes the prompt, so it must not reach the chat's own Escape handling.
+    const handleKeydown = (event) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeMessageInputMediaPicker();
+        getMessageInputElement()?.focus();
+    };
+    const cleanup = () => {
+        document.removeEventListener('mousedown', handleMouseDown);
+        window.removeEventListener('resize', handleResize);
+        popupElement.removeEventListener('keydown', handleKeydown);
+        if (document.body.contains(popupElement)) {
+            popupElement.remove();
+        }
+    };
+
+    activeMessageInputMediaPickerCleanup = cleanup;
+    setTimeout(() => {
+        if (activeMessageInputMediaPickerCleanup === cleanup) {
+            document.addEventListener('mousedown', handleMouseDown);
+        }
+    }, 0);
+    window.addEventListener('resize', handleResize);
+    popupElement.addEventListener('keydown', handleKeydown);
+
+    input.addEventListener('input', () => {
+        errorElement.hidden = true;
+    });
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const video = parseYouTubeVideo(input.value.trim());
+        if (!video) {
+            errorElement.hidden = false;
+            positionMessageInputMediaPicker(popupElement, anchorElement);
+            input.focus();
+            return;
+        }
+
+        closeMessageInputMediaPicker();
+        replaceMessageInputSelection(createMessageInputYouTubeMarkup(action, video, selectionSnapshot), selectionSnapshot);
+    });
+
+    input.focus();
+    input.select();
 }
 
 // Create the final embed or popup markup for a chosen recent-media item.
@@ -461,6 +569,8 @@ function handleMessageInputLinkButton(event) {
         selectionSnapshot.replacementStart = activeLinkContext.start;
         selectionSnapshot.replacementEnd = activeLinkContext.end;
 
+        selectionSnapshot.existingLinkContent = activeLinkContext.content;
+
         if (activeLinkContext.tagName === 'popup') {
             selectionSnapshot.existingPopupLabel = getMessageInputPopupLabelFromContent(activeLinkContext.content);
         }
@@ -470,6 +580,8 @@ function handleMessageInputLinkButton(event) {
         items: [
             { id: 'embed', label: 'Embed Image', icon: formatEmbedIcon },
             { id: 'popup', label: 'Popup Image', icon: formatPopupIcon },
+            { id: 'youtube-embed', label: 'Embed Youtube', icon: formatYoutubeEmbedIcon, separator: true },
+            { id: 'youtube-popup', label: 'Popup Youtube', icon: formatYoutubePopupIcon },
             { id: 'link', label: 'Link', icon: formatLinkIcon, separator: true }
         ],
         x: rect.right + 8,
@@ -479,6 +591,10 @@ function handleMessageInputLinkButton(event) {
         onAction: (action) => {
             if (action === 'link') {
                 insertMessageInputMarkdownLink(selectionSnapshot);
+                return;
+            }
+            if (action === 'youtube-embed' || action === 'youtube-popup') {
+                openMessageInputYouTubePrompt(action, button, selectionSnapshot);
                 return;
             }
             openMessageInputRecentMediaPicker(action, button, selectionSnapshot);

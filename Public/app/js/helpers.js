@@ -321,9 +321,139 @@ function parseInlineMediaReference(content) {
     }
 
     if (href.toLowerCase().startsWith('www.')) href = 'https://' + href;
+
+    const youtube = parseYouTubeVideo(href);
+    if (youtube) return { label, href, youtube };
+
     if (!isMediaUrl(href)) return null;
 
     return { label, href };
+}
+
+// Recognise a YouTube watch, shorts, live, embed or youtu.be link and return its video ID and start time.
+function parseYouTubeVideo(url) {
+    if (!url) return null;
+
+    let parsed;
+    try {
+        parsed = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    } catch (error) {
+        return null;
+    }
+
+    const host = parsed.hostname.toLowerCase().replace(/^(www\.|m\.|music\.)/, '');
+    let videoId = null;
+
+    if (host === 'youtu.be') {
+        videoId = parsed.pathname.split('/')[1] ?? null;
+    } else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+        if (parsed.pathname === '/watch') {
+            videoId = parsed.searchParams.get('v');
+        } else {
+            const pathMatch = parsed.pathname.match(/^\/(?:embed|shorts|live|v)\/([^/]+)/);
+            videoId = pathMatch ? pathMatch[1] : null;
+        }
+    }
+
+    if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
+
+    const hashTime = parsed.hash.match(/[#&]t=([^&]+)/);
+    const rawStart = parsed.searchParams.get('t') ?? parsed.searchParams.get('start') ?? (hashTime ? hashTime[1] : null);
+
+    return { id: videoId, start: parseYouTubeStartTime(rawStart) };
+}
+
+// Convert a YouTube start time such as "90", "90s" or "1h2m3s" into whole seconds.
+function parseYouTubeStartTime(value) {
+    if (!value) return 0;
+    if (/^\d+s?$/.test(value)) return parseInt(value, 10);
+
+    const match = value.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+    if (!match) return 0;
+
+    return (parseInt(match[1] ?? '0', 10) * 3600)
+        + (parseInt(match[2] ?? '0', 10) * 60)
+        + parseInt(match[3] ?? '0', 10);
+}
+
+// Build the canonical short link that the editor writes into messages for a YouTube video.
+function createYouTubeWatchUrl(video) {
+    return video.start > 0 ? `https://youtu.be/${video.id}?t=${video.start}` : `https://youtu.be/${video.id}`;
+}
+
+// Build the privacy-enhanced player URL for an embedded or popped-up YouTube video.
+function getYouTubePlayerUrl(video, options = {}) {
+    const params = new URLSearchParams({ rel: '0', playsinline: '1' });
+    if (video.start > 0) params.set('start', String(video.start));
+    if (options.autoplay) params.set('autoplay', '1');
+    if (options.muted) params.set('mute', '1');
+    return `https://www.youtube-nocookie.com/embed/${video.id}?${params.toString()}`;
+}
+
+function createYouTubeIframeHtml(video, className, options = {}) {
+    const loading = options.lazy === false ? '' : ' loading="lazy"';
+    return `<iframe class="${className}" src="${escapeHtml(getYouTubePlayerUrl(video, options))}" title="YouTube video player"${loading} referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+}
+
+function createYouTubeEmbedHtml(video) {
+    return `<div class="inline-media-embed inline-youtube-embed">${createYouTubeIframeHtml(video, 'inline-youtube-embed-frame')}</div>`;
+}
+
+// The popup link shows a thumbnail preview on hover and opens the player in an overlay on click.
+function createYouTubePopupLinkHtml(label, video) {
+    return `<span class="inline-media-wrapper"><a href="#" class="inline-media-link" data-media-url="${escapeHtml(createYouTubeWatchUrl(video))}" data-youtube-id="${video.id}" data-youtube-start="${video.start}" onmouseenter="openInlineMediaPopup(this)" onmouseleave="scheduleCloseInlineMediaPopup()" onclick="openYouTubeViewer(this.dataset.youtubeId, Number(this.dataset.youtubeStart)); return false;" style="color: hsl(var(--primary)); cursor: pointer;"><b>${escapeHtml(label)}</b></a></span>`;
+}
+
+let activeYouTubeViewerCleanup = null;
+
+function closeYouTubeViewer() {
+    if (!activeYouTubeViewerCleanup) return;
+
+    const cleanup = activeYouTubeViewerCleanup;
+    activeYouTubeViewerCleanup = null;
+    cleanup();
+}
+
+// Open a YouTube video in a dimmed overlay and start playing it.
+function openYouTubeViewer(videoId, start = 0) {
+    closeInlineMediaPopup();
+    closeYouTubeViewer();
+    if (!/^[A-Za-z0-9_-]{11}$/.test(videoId ?? '')) return;
+
+    const video = { id: videoId, start: Number.isFinite(start) && start > 0 ? Math.floor(start) : 0 };
+    const overlay = document.createElement('div');
+    overlay.className = 'youtube-viewer-layer';
+    overlay.innerHTML = `
+        <button type="button" class="media-viewer-close youtube-viewer-close" aria-label="Close video">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+        </button>
+        <div class="youtube-viewer-frame" role="dialog" aria-modal="true" aria-label="YouTube video">
+            ${createYouTubeIframeHtml(video, 'youtube-viewer-iframe', { autoplay: true, lazy: false })}
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const handleClick = (event) => {
+        if (event.target === overlay || event.target.closest('.youtube-viewer-close')) {
+            closeYouTubeViewer();
+        }
+    };
+    // Listen in the capture phase so Escape closes the video before other screens react to it.
+    const handleKeydown = (event) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeYouTubeViewer();
+    };
+    const cleanup = () => {
+        overlay.removeEventListener('click', handleClick);
+        document.removeEventListener('keydown', handleKeydown, true);
+        overlay.remove();
+    };
+
+    activeYouTubeViewerCleanup = cleanup;
+    overlay.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKeydown, true);
 }
 
 function createInlineMediaPopupLinkHtml(label, href) {
@@ -660,13 +790,17 @@ function formatMessageText(text) {
         const attributes = parseInlineTagAttributes(rawAttributes);
         const content = tagContent;
         const media = parseInlineMediaReference(content);
-        const html = media
+        const html = !media
+            ? escapeHtml(match)
+            : media.youtube
             ? (isPopup
+                ? createYouTubePopupLinkHtml(media.label, media.youtube)
+                : createYouTubeEmbedHtml(media.youtube))
+            : (isPopup
                 ? createInlineMediaPopupLinkHtml(media.label, media.href)
                 : createInlineMediaEmbedHtml(media.label, media.href, {
                     blurred: isTruthyInlineTagAttribute(attributes.blurred)
-                }))
-            : escapeHtml(match);
+                }));
         const idx = taggedMediaPlaceholders.length;
         taggedMediaPlaceholders.push(html);
         return isPopup ? `\x00MEDIATAG${idx}\x00` : `\x00EMBEDTAG${idx}\x00`;
@@ -748,6 +882,7 @@ function openMediaViewerForUrl(url) {
 }
 
 let inlineMediaPopupCloseTimer = null;
+let inlineMediaPopupPointerCleanup = null;
 
 function openInlineMediaPopup(linkElement) {
     // Cancel any pending close so hovering back keeps the popup open
@@ -779,8 +914,27 @@ function openInlineMediaPopup(linkElement) {
     });
     popupElement.addEventListener('mouseleave', scheduleCloseInlineMediaPopup);
 
+    const youtubeId = linkElement.dataset.youtubeId;
+
     let mediaElement;
-    if (isVideo) {
+    if (youtubeId) {
+        // YouTube links play muted right inside the hover popup, like uploaded videos do.
+        // Browsers only allow autoplay without a click when the video starts muted.
+        const youtubeVideo = { id: youtubeId, start: Number(linkElement.dataset.youtubeStart) || 0 };
+        mediaElement = document.createElement('div');
+        mediaElement.className = 'inline-media-popup-content inline-youtube-preview';
+        mediaElement.innerHTML = createYouTubeIframeHtml(youtubeVideo, 'inline-youtube-preview-frame', { autoplay: true, muted: true, lazy: false });
+
+        // Mouse events inside the player belong to YouTube's page, so the popup can't rely on
+        // its own mouseleave. Instead it closes once the pointer shows up anywhere else on this page.
+        const handlePointerElsewhere = (event) => {
+            if (!popupElement.contains(event.target) && !linkElement.contains(event.target)) {
+                scheduleCloseInlineMediaPopup();
+            }
+        };
+        document.addEventListener('mouseover', handlePointerElsewhere);
+        inlineMediaPopupPointerCleanup = () => document.removeEventListener('mouseover', handlePointerElsewhere);
+    } else if (isVideo) {
         mediaElement = document.createElement('video');
         mediaElement.src = url;
         mediaElement.controls = true;
@@ -830,13 +984,28 @@ function openInlineMediaPopup(linkElement) {
 }
 
 function scheduleCloseInlineMediaPopup() {
-    inlineMediaPopupCloseTimer = setTimeout(closeInlineMediaPopup, 120);
+    if (inlineMediaPopupCloseTimer) clearTimeout(inlineMediaPopupCloseTimer);
+
+    inlineMediaPopupCloseTimer = setTimeout(() => {
+        inlineMediaPopupCloseTimer = null;
+
+        // Moving into an embedded player can look like leaving the popup, so keep it open
+        // while the pointer is still over it.
+        const popupElement = document.getElementById('inlineMediaPopup');
+        if (popupElement && popupElement.matches(':hover')) return;
+
+        closeInlineMediaPopup();
+    }, 120);
 }
 
 function closeInlineMediaPopup() {
     if (inlineMediaPopupCloseTimer) {
         clearTimeout(inlineMediaPopupCloseTimer);
         inlineMediaPopupCloseTimer = null;
+    }
+    if (inlineMediaPopupPointerCleanup) {
+        inlineMediaPopupPointerCleanup();
+        inlineMediaPopupPointerCleanup = null;
     }
     const popupElement = document.getElementById('inlineMediaPopup');
     if (popupElement) {
