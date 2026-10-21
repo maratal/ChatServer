@@ -62,34 +62,41 @@ struct DashboardController: RouteCollection {
         let isStatic = options.isStatic == true
         let directory = req.application.directory.workingDirectory
         let path = directory + "update.sh"
-        var status = try startUpdate(path, in: directory, isStatic: isStatic)
-        if status != 0 && isStatic {
+        var result = try startUpdate(path, in: directory, isStatic: isStatic)
+        if result.status != 0 && isStatic {
             // Most likely a droplet whose sudoers rule predates `--static`.
             // refresh.sh brings the rule up to date; the copy on disk is the
             // current one even if the dashboard's own refresh ran an older copy.
             _ = try await runScript("refresh.sh", on: req, asSudo: true)
-            status = try startUpdate(path, in: directory, isStatic: isStatic)
+            result = try startUpdate(path, in: directory, isStatic: isStatic)
         }
-        guard status == 0 else {
-            throw Abort(.internalServerError, reason: "Could not start the update (systemd-run exited with \(status)).")
+        guard result.status == 0 else {
+            // sudo's or systemd-run's own message says which of them refused and why.
+            let detail = result.output.isEmpty ? "" : " \(result.output)"
+            throw Abort(.internalServerError,
+                        reason: "Could not start the update (systemd-run exited with \(result.status)).\(detail)")
         }
         return Response(status: .ok, headers: ["Content-Type": "application/json"],
                         body: .init(string: #"{"status":"ok"}"#))
     }
 
-    /// Starts update.sh as a transient unit and returns sudo's exit status.
+    /// Starts update.sh as a transient unit and returns sudo's exit status,
+    /// along with whatever sudo or systemd-run printed.
     /// systemd-run returns as soon as the unit is started, so the wait is brief;
     /// it is how a sudo refusal is noticed instead of silently doing nothing.
-    private func startUpdate(_ path: String, in directory: String, isStatic: Bool) throws -> Int32 {
+    private func startUpdate(_ path: String, in directory: String, isStatic: Bool) throws -> (status: Int32, output: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
         process.arguments = ["-n", "systemd-run", "--collect", path] + (isStatic ? ["--static"] : [])
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
+        let pipe = Pipe()
         process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        process.standardError = pipe
         try process.run()
         process.waitUntilExit()
-        return process.terminationStatus
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return (process.terminationStatus, output)
     }
 
     func getLog(_ req: Request) async throws -> Response {
