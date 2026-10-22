@@ -111,3 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
         button.innerHTML = formatLinkIcon;
     });
 });
+
+// Icons for the Table Of Contents panel
+const tocIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 12H3"></path><path d="M16 18H3"></path><path d="M16 6H3"></path><path d="M21 12h.01"></path><path d="M21 18h.01"></path><path d="M21 6h.01"></path></svg>';
+const searchIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>';
+const journalInfoIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="18" x="4" y="3" rx="2"></rect><path d="M2 7.5h4"></path><path d="M2 12h4"></path><path d="M2 16.5h4"></path><path d="M10 9.5h6"></path><path d="M10 14.5h4"></path></svg>';

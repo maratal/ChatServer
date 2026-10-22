@@ -540,7 +540,8 @@ async function apiAddChatImage(chatId, imageId, fileType, fileSize) {
     return await handleResponse(response);
 }
 
-async function apiGetMessages(chatId, count = 50, before = null) {
+// Pass `search` to get only the messages whose text contains it (case-insensitive)
+async function apiGetMessages(chatId, count = 50, before = null, search = null) {
     const accessToken = getAccessToken();
     if (!accessToken) {
         throw new Error('No access token available');
@@ -549,6 +550,9 @@ async function apiGetMessages(chatId, count = 50, before = null) {
     let url = `/api/chats/${chatId}/messages?count=${count}`;
     if (before) {
         url += `&before=${before}`;
+    }
+    if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
     }
     
     const response = await fetch(url, {
@@ -805,13 +809,21 @@ async function apiGetNoteStatus(messageId) {
     return await handleResponse(response);
 }
 
-async function apiGetUserNotes(userId, { count = 20, before = null, pinned = false, language = null } = {}) {
+// Pass `all: true` to get pinned and unpinned notes together in date order (then `pinned` is ignored),
+// and `search` to get only the notes whose text contains it (case-insensitive)
+async function apiGetUserNotes(userId, { count = 20, before = null, pinned = false, language = null, all = false, search = null } = {}) {
     let url = `/api/users/${userId}/notes?count=${count}&pinned=${pinned ? 'true' : 'false'}`;
+    if (all) {
+        url += '&all=true';
+    }
     if (before) {
         url += `&before=${before}`;
     }
     if (language) {
         url += `&language=${encodeURIComponent(language)}`;
+    }
+    if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
     }
     const response = await fetch(url);
     return await handleResponse(response);

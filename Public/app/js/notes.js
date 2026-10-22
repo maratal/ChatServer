@@ -276,6 +276,9 @@ function initializeHeader() {
         subtitleElement.textContent = `Since ${year}`;
     }
 
+    const tocButton = document.getElementById('notesTocButton');
+    if (tocButton) tocButton.innerHTML = tocIcon;
+
     // Left avatar — notes avatar, always visible as the journal info trigger
     const leftAvatarContainer = document.getElementById('notesHeaderLeftAvatar');
     const notesImage = pageNotesImages && pageNotesImages.length > 0 ? pageNotesImages[0] : null;
@@ -376,6 +379,65 @@ function setupScrollPagination() {
             loadNotes();
         }
     });
+}
+
+// ── Table Of Contents ───────────────────────────────────────────────────────
+
+function toggleJournalTableOfContents() {
+    const button = document.getElementById('notesTocButton');
+    if (!button) return;
+
+    // The panel lists the same posts as the page, so it follows the selected language too
+    const language = notesViewerLanguage;
+    toggleTocPanel({
+        anchor: button,
+        side: 'right',
+        fetchPage: async ({ before, search, count }) => {
+            const notes = await apiGetUserNotes(pageUserId, { count, before, all: true, language, search });
+            return {
+                items: notes.filter(note => note.message).map(note => createTocItem({
+                    id: String(note.id).toLowerCase(),
+                    createdAt: note.createdAt ?? note.message.createdAt,
+                    text: note.message.text,
+                    attachmentsCount: note.message.attachments?.length ?? 0,
+                    isPinned: note.isPinned
+                })),
+                nextCursor: notes.length > 0 ? notes[notes.length - 1].id : before,
+                done: notes.length < count
+            };
+        },
+        onSelect: (item) => {
+            revealJournalPost(item.id).catch(console.error);
+        }
+    });
+}
+
+// Scrolls to a post on the page, loading older pages until it shows up.
+// Falls back to the post popup if the post can't be found in the list.
+async function revealJournalPost(noteId) {
+    const container = document.getElementById('notesContainer');
+    for (let attempt = 0; attempt < 500; attempt++) {
+        const row = container?.querySelector(`[data-note-id="${noteId}"]`);
+        if (row) {
+            scrollElementIntoScroller(row, document.getElementById('notesScrollWrapper'), 'start');
+            const content = row.querySelector('.message-row-content') || row;
+            content.classList.remove('message-highlight');
+            void content.offsetWidth; // restart the animation if it is still running
+            content.classList.add('message-highlight');
+            setTimeout(() => content.classList.remove('message-highlight'), 1500);
+            return;
+        }
+        if (allNotesLoaded) break;
+        if (isLoadingNotes) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            continue;
+        }
+        const previousOldestId = notesOldestId;
+        await loadNotes();
+        // Stop if loading failed and nothing new came in
+        if (!allNotesLoaded && notesOldestId === previousOldestId) break;
+    }
+    await openNoteLinkTarget(noteId, pageUserId, { target: 'popup' });
 }
 
 // ── Note Rendering ──────────────────────────────────────────────────────────

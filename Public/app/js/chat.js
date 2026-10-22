@@ -187,8 +187,67 @@ function scrollToMessage(messageId) {
     closeNotePopup();
 
     const row = messageElement.querySelector('.message-row-content') || messageElement;
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    scrollElementIntoScroller(row, document.getElementById('messagesScrollWrapper'), 'center');
     highlightMessageRow(row);
+}
+
+// ── Table Of Contents (Personal Notes) ─────────────────────────────────────
+
+function togglePersonalNotesTableOfContents(chatId, anchor) {
+    toggleTocPanel({
+        anchor,
+        side: 'right',
+        fetchPage: async ({ before, search, count }) => {
+            const messages = await apiGetMessages(chatId, count, before, search);
+            return {
+                items: messages
+                    .filter(message => message.id != null && message.deletedAt == null)
+                    .map(message => createTocItem({
+                        id: message.id,
+                        createdAt: message.createdAt,
+                        text: message.text,
+                        attachmentsCount: message.attachments?.length ?? 0,
+                        isPublished: !!message.note
+                    })),
+                nextCursor: messages.length > 0 ? messages[messages.length - 1].id : before,
+                done: messages.length < count
+            };
+        },
+        onSelect: (item) => {
+            revealPersonalNote(chatId, item.id).catch(console.error);
+        }
+    });
+}
+
+// Closes the journal properties, opens the Personal Notes chat if needed, and scrolls to the note,
+// loading older messages until it shows up.
+async function revealPersonalNote(chatId, messageId) {
+    while (userInfoModalStack.length > 0) {
+        closeTopModalInfoPanel();
+    }
+    if (currentChatId !== chatId) {
+        await selectChat(chatId);
+    }
+
+    const container = document.getElementById('messagesContainer');
+    for (let attempt = 0; attempt < 500; attempt++) {
+        if (container?.querySelector(`[data-message-id="${messageId}"]`)) {
+            // Let the scroll position settle after older messages were prepended
+            requestAnimationFrame(() => scrollToMessage(messageId));
+            return;
+        }
+        if (currentChatId !== chatId || !hasMoreMessages) return;
+        // The note is inside the loaded range but not on screen, so loading more won't help
+        if (oldestMessageId != null && Number(messageId) >= Number(oldestMessageId)) return;
+        if (isLoadingMessages) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            continue;
+        }
+        const previousOldestId = oldestMessageId;
+        await loadMessages(chatId);
+        // Stop if loading failed and nothing new came in
+        if (hasMoreMessages && oldestMessageId === previousOldestId) return;
+    }
 }
 
 // Setup infinite scroll for messages container

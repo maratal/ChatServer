@@ -36,7 +36,10 @@
                     <div class="notes-header-title" id="notesHeaderTitle"></div>
                     <div class="notes-header-subtitle" id="notesHeaderSubtitle"></div>
                 </div>
-                <button class="inline-button language-button" id="notesLanguageButton" type="button" title="Language" onclick="showViewerLanguageMenu(event)">A</button>
+                <div class="notes-header-right">
+                    <button class="inline-button language-button" id="notesLanguageButton" type="button" title="Language" onclick="showViewerLanguageMenu(event)">A</button>
+                    <button class="inline-button toc-button" id="notesTocButton" type="button" title="Table Of Contents" onclick="toggleJournalTableOfContents()"></button>
+                </div>
             </header>
 
             <!-- Notes Container -->
@@ -76,6 +79,7 @@
     <script src="/app/js/utils.js?v=#(version)"></script>
     <script src="/app/js/api.js?v=#(version)"></script>
     <script src="/app/js/media-viewer.js?v=#(version)"></script>
+    <script src="/app/js/toc-panel.js?v=#(version)"></script>
     <script src="/app/js/notes.js?v=#(version)"></script>
 </body>
 </html>

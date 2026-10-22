@@ -4179,3 +4179,219 @@ img.inline-media-embed-content {
     padding: 20px;
     font-size: 0.875rem;
 }
+/* ── Table Of Contents ───────────────────────────────────────────────────────── */
+
+.notes-header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* The panel itself is a .user-info-content that slides in from the right by default */
+.toc-modal-left .user-info-content {
+    right: auto;
+    left: 0;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.toc-modal-left.show .user-info-content {
+    transform: translateX(0);
+}
+
+.toc-search {
+    position: relative;
+    margin: 0 1rem 8px;
+}
+
+.toc-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+}
+
+.toc-panel input.toc-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 30px 6px 32px;
+    font-size: 0.875rem;
+    border: none;
+    border-radius: 0.6rem;
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    outline: none;
+}
+
+.toc-search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+}
+
+.toc-search-clear[hidden] {
+    display: none;
+}
+
+.toc-search-clear svg {
+    width: 14px;
+    height: 14px;
+}
+
+.toc-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 0.5rem 0.75rem;
+}
+
+.toc-year {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 6px 8px 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground));
+    background-color: hsl(var(--sidebar-background));
+}
+
+.toc-item {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.toc-item:hover,
+.toc-item:focus-visible {
+    background-color: hsl(var(--muted));
+    outline: none;
+}
+
+.toc-item-date {
+    flex: 0 0 3.5rem;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.toc-item-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.toc-item-title,
+.toc-item-snippet {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.toc-item-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.toc-item-title.placeholder {
+    font-weight: 400;
+    font-style: italic;
+    color: hsl(var(--muted-foreground));
+}
+
+.toc-item-snippet {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.toc-item mark {
+    background-color: hsl(var(--primary) / 0.2);
+    color: inherit;
+    border-radius: 2px;
+}
+
+.toc-item-icons {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    align-self: center;
+    color: hsl(var(--muted-foreground));
+}
+
+.toc-item-icon {
+    display: flex;
+}
+
+.toc-item-icon svg {
+    width: 12px;
+    height: 12px;
+}
+
+.toc-status {
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: hsl(var(--muted-foreground));
+}
+
+/* "View Table of Contents" in journal properties: a plain button as tall as the Share balloon
+   (its 0.5rem vertical padding around the 24px copy button) */
+.notes-info-toc-button {
+    width: 100%;
+    height: calc(24px + 1rem);
+    padding: 0 0.75rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-foreground));
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    text-align: left;
+    transition: background-color 0.15s ease;
+}
+
+.notes-info-toc-button svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: hsl(var(--muted-foreground));
+}
+
+.notes-info-toc-button:hover {
+    background: color-mix(in hsl, hsl(var(--sidebar-accent)), hsl(var(--sidebar-foreground)) 8%);
+}

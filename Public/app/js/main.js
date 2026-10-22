@@ -107,6 +107,37 @@ async function loadChats() {
     }
 }
 
+// In Personal Notes the header shows the Table Of Contents and journal properties buttons
+// in place of the avatar; other chats show the avatar.
+function updateChatHeaderJournalButtons(chat) {
+    const isNotes = isPersonalNotes(chat);
+    const tocButton = document.getElementById('chatHeaderTocButton');
+    const journalButton = document.getElementById('chatHeaderJournalButton');
+    const avatarContainer = document.getElementById('chatHeaderAvatarContainer');
+    if (tocButton) {
+        if (!tocButton.innerHTML) tocButton.innerHTML = tocIcon;
+        tocButton.style.display = isNotes ? '' : 'none';
+    }
+    if (journalButton) {
+        if (!journalButton.innerHTML) journalButton.innerHTML = journalInfoIcon;
+        journalButton.style.display = isNotes ? '' : 'none';
+    }
+    if (avatarContainer) avatarContainer.style.display = isNotes ? 'none' : '';
+}
+
+// Opens the journal properties of the Personal Notes chat, refreshing the chat first
+async function openPersonalNotesInfo(chatId) {
+    if (!chatId) return;
+    try {
+        const fullChat = await apiGetChat(chatId);
+        const chatIndex = chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) chats[chatIndex] = fullChat;
+        showNotesInfo(fullChat, { isOwner: true });
+    } catch (error) {
+        console.error('Error fetching chat for notes info:', error);
+    }
+}
+
 // Check if chat is Personal Notes (personal chat with only yourself)
 function isPersonalNotes(chat) {
     return chat.isPersonal && chat.allUsers.length === 1 && chat.allUsers[0].id === currentUser?.info?.id;
@@ -521,6 +552,8 @@ async function selectChat(chatId, addToHistory = true) {
         chatHeaderStatusIndicator.style.display = 'none'; // No status for group chats
     }
     
+    updateChatHeaderJournalButtons(chat);
+
     if (currentChatId === chatId) {
         return;
     }
@@ -539,16 +572,7 @@ async function selectChat(chatId, addToHistory = true) {
     // Add click handler to chat header avatar
     if (chatHeaderAvatarContainer) {
         if (isPersonalNotes(chat)) {
-            chatHeaderAvatarContainer.onclick = async () => {
-                try {
-                    const fullChat = await apiGetChat(chat.id);
-                    const chatIndex = chats.findIndex(c => c.id === chat.id);
-                    if (chatIndex !== -1) chats[chatIndex] = fullChat;
-                    showNotesInfo(fullChat, { isOwner: true });
-                } catch (error) {
-                    console.error('Error fetching chat for notes info:', error);
-                }
-            };
+            chatHeaderAvatarContainer.onclick = () => openPersonalNotesInfo(chat.id);
         } else if (chat.isPersonal) {
             const user = chat.allUsers.find(user => user.id !== currentUser?.info.id) || currentUser.info;
             chatHeaderAvatarContainer.onclick = () => showUserInfo(user.id);
@@ -1015,6 +1039,7 @@ function closeTopModalInfoPanel() {
     if (userInfoModalStack.length === 0) return;
     
     const modalInfo = userInfoModalStack.pop();
+    closeTocPanelIfInside(modalInfo.element);
     modalInfo.element.classList.remove('show');
     
     // Hide modal after animation completes
@@ -1828,6 +1853,14 @@ function displayNotesInfo(chat, bodyId, isOwner) {
                     </svg>
                 </button>
             </div>
+        </div>
+    `;
+
+    // Contents section - a button that opens the table of contents
+    html += `
+        <div class="user-info-section">
+            <div class="user-info-section-title">Contents</div>
+            <button class="notes-info-toc-button" type="button" onclick="event.stopPropagation(); togglePersonalNotesTableOfContents('${chat.id}', this)"><span>Table of Contents</span>${tocIcon}</button>
         </div>
     `;
 

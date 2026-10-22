@@ -613,7 +613,12 @@ function createNoteNavigationController(options = {}) {
         if (!noteElement) return false;
 
         close();
-        noteElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const scroller = noteElement.closest('#notesScrollWrapper, #messagesScrollWrapper');
+        if (scroller) {
+            scrollElementIntoScroller(noteElement, scroller, 'start');
+        } else {
+            noteElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         return true;
     }
 
@@ -1668,4 +1673,19 @@ function setupScrollJumpButton(scrollElement, target = 'bottom') {
     }
 
     update();
+}
+
+// Scrolls only `scroller` so that `element` is shown at its top ('start') or middle ('center').
+// Unlike element.scrollIntoView(), this leaves every other ancestor alone: scrollIntoView also scrolls
+// containers clipped with `overflow: hidden`, which shifts the whole page layout.
+function scrollElementIntoScroller(element, scroller, block = 'center', behavior = 'smooth') {
+    if (!element || !scroller) return;
+    const elementRect = element.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    let top = scroller.scrollTop + (elementRect.top - scrollerRect.top);
+    if (block === 'center') {
+        top -= (scroller.clientHeight - elementRect.height) / 2;
+    }
+    const maxTop = scroller.scrollHeight - scroller.clientHeight;
+    scroller.scrollTo({ top: Math.max(0, Math.min(top, maxTop)), behavior });
 }
