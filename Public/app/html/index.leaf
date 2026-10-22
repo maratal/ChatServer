@@ -20,7 +20,7 @@
     
     <!-- Prevent Chrome from requesting favicon.ico -->
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-    <link rel="stylesheet" href="/app/css/index.css">
+    <link rel="stylesheet" href="/app/css/index.css?v=#(productInfo.version)">
 </head>
 <body>
     <a href="https://github.com/maratal/ChatServer" class="github-button" title="View on GitHub">
