@@ -4406,3 +4406,17 @@ img.inline-media-embed-content {
 .notes-info-toc-button:hover {
     background: color-mix(in hsl, hsl(var(--sidebar-accent)), hsl(var(--sidebar-foreground)) 8%);
 }
+
+/* Message search button in the chat toolbar, set apart from the avatar next to it */
+.chat-search-button {
+    margin-right: 0.5rem;
+}
+
+.chat-search-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.toc-item-snippet.placeholder {
+    font-style: italic;
+}

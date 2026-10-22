@@ -722,7 +722,10 @@ function createNotePopupController(options = {}) {
         document.addEventListener('keydown', handleKeydown, true);
 
         try {
-            const note = await apiGetUserNote(userId, noteId);
+            // `options.load` lets the popup show something other than a journal post, such as a chat message
+            const note = typeof options.load === 'function'
+                ? await options.load(noteId, userId)
+                : await apiGetUserNote(userId, noteId);
             if (activeCleanup !== cleanup || currentRequestSequence !== requestSequence || !document.body.contains(overlay)) {
                 return;
             }

@@ -1,13 +1,19 @@
-// Table Of Contents panel, shared by the journal page and the Personal Notes chat.
+// Table Of Contents panel, shared by the journal page and the Personal Notes chat,
+// and the message search panel of the other chats, which works the same way.
 //
 // The panel slides in from the edge of the screen like the other info panels, and lists posts
 // in a compact form, grouped by year, newest first. More posts are loaded page by page as the list is scrolled.
-// Typing in the search field filters the posts that are already loaded straight away,
-// and then asks the server for matching posts in the background, so that older posts
-// which have not been loaded yet can be found as well.
+// In search-only mode (chat search) nothing is listed until something is typed.
+//
+// Typing in the search field filters the posts that are already loaded straight away.
+// Once the search is at least TOC_SEARCH_MIN_LENGTH characters long, the server is asked for matches
+// in the background, so that older posts which have not been loaded yet can be found as well.
+// The request goes out only after a pause in typing: every keystroke within TOC_SEARCH_DELAY_MS
+// of the previous one restarts the timer with the new search.
 
 const TOC_PAGE_SIZE = 50;
-const TOC_SEARCH_DELAY_MS = 300;
+const TOC_SEARCH_DELAY_MS = 1000;
+const TOC_SEARCH_MIN_LENGTH = 2;
 const TOC_SNIPPET_CONTEXT = 24; // How many characters to show before a match that is deep inside the body
 const TOC_ANIMATION_MS = 300; // Matches the slide transition of .user-info-content
 
@@ -16,12 +22,17 @@ let activeTocPanel = null;
 // Opens the panel, or closes it when it is already open for the same button.
 //
 // options:
-//   anchor    – the button that opens the panel
-//   side      – 'right' (default) or 'left': the screen edge the panel slides in from
-//   fetchPage – async ({ before, search, count }) => ({ items, nextCursor, done }),
-//               where `items` are made with createTocItem() and `nextCursor` is passed back as `before`
-//               to get the following page
-//   onSelect  – called with the picked item after the panel has closed
+//   anchor        – the button that opens the panel
+//   side          – 'right' (default) or 'left': the screen edge the panel slides in from
+//   title         – the panel header, 'Contents' by default
+//   noun          – what the items are called in placeholders and messages, 'posts' by default
+//   searchOnly    – list nothing until something is typed, and never load pages without a search
+//   getLocalItems – for searchOnly: returns the items that are already loaded on the page,
+//                   so they can be filtered right away while the server is asked
+//   fetchPage     – async ({ before, search, count }) => ({ items, nextCursor, done }),
+//                   where `items` are made with createTocItem() or createMessageSearchItem()
+//                   and `nextCursor` is passed back as `before` to get the following page
+//   onSelect      – called with the picked item after the panel has closed
 function toggleTocPanel(options) {
     if (activeTocPanel) {
         const isSameAnchor = activeTocPanel.anchor === options.anchor;
@@ -81,6 +92,28 @@ function createTocItem({ id, createdAt, text, attachmentsCount = 0, isPinned = f
     };
 }
 
+// Converts a chat message into the compact form shown in the search panel:
+// the author on the first line and the text below. Only the text is searched.
+function createMessageSearchItem({ id, createdAt, authorName, text, attachmentsCount = 0 }) {
+    const body = tocPlainText(text || '').replace(/\s+/g, ' ').trim();
+    const placeholder = attachmentsCount > 1
+        ? `${attachmentsCount} attachments`
+        : attachmentsCount === 1 ? 'Attachment' : 'Empty message';
+
+    return {
+        id: String(id),
+        date: normalizeTimestamp(createdAt),
+        title: authorName || 'Unknown',
+        body: body || placeholder,
+        isPlaceholderTitle: false,
+        isPlaceholderBody: !body,
+        isTitleSearchable: false,
+        isPinned: false,
+        isPublished: false,
+        searchText: body.toLowerCase()
+    };
+}
+
 // Strips the app's inline markup (embedded media tags, markdown links, bold, italic and strikethrough)
 // so that titles and snippets read as plain text.
 function tocPlainText(text) {
@@ -98,20 +131,22 @@ function tocPlainText(text) {
 
 function openTocPanel(options) {
     const side = options.side === 'left' ? 'left' : 'right';
+    const title = options.title || 'Contents';
+    const noun = options.noun || 'posts';
     const modal = document.createElement('div');
     modal.className = `user-info-modal toc-modal toc-modal-${side}`;
     modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-label', 'Table Of Contents');
+    modal.setAttribute('aria-label', title);
     modal.style.zIndex = String(nextTocModalZIndex());
     modal.innerHTML = `
         <div class="user-info-content toc-panel">
             <div class="modal-panel-header">
-                <h1 class="text-2xl font-bold text-sidebar-foreground">Contents</h1>
+                <h1 class="text-2xl font-bold text-sidebar-foreground">${escapeHtml(title)}</h1>
                 <button class="inline-button toc-panel-close" type="button" title="Close">${closeIcon}</button>
             </div>
             <div class="toc-search">
                 <span class="toc-search-icon">${searchIcon}</span>
-                <input type="text" class="toc-search-input" placeholder="Search posts" autocomplete="off" spellcheck="false" aria-label="Search posts">
+                <input type="text" class="toc-search-input" placeholder="Search ${escapeHtml(noun)}" autocomplete="off" spellcheck="false" aria-label="Search ${escapeHtml(noun)}">
                 <button class="toc-search-clear" type="button" title="Clear search" hidden>${closeIcon}</button>
             </div>
             <div class="toc-list"></div>
@@ -124,13 +159,17 @@ function openTocPanel(options) {
         modal,
         panel,
         anchor: options.anchor,
+        noun,
+        searchOnly: !!options.searchOnly,
+        getLocalItems: options.getLocalItems,
         fetchPage: options.fetchPage,
         onSelect: options.onSelect,
         list: panel.querySelector('.toc-list'),
         input: panel.querySelector('.toc-search-input'),
         clearButton: panel.querySelector('.toc-search-clear'),
 
-        // Posts loaded page by page without a search, newest first
+        // Posts loaded page by page without a search, newest first.
+        // In search-only mode these are the items already loaded on the page, refreshed on every keystroke.
         items: [],
         cursor: null,
         isDone: false,
@@ -228,6 +267,11 @@ function handleTocSearchInput(state) {
     state.query = query;
     clearTimeout(state.searchTimer);
 
+    if (state.searchOnly) {
+        // Pick up messages that were loaded or changed since the last keystroke
+        state.items = state.getLocalItems?.() ?? [];
+    }
+
     // Results for a shorter query stay useful while the server works on the longer one,
     // because the local filter narrows them down to what still matches
     if (!query || !query.toLowerCase().includes(previousQuery.toLowerCase())) {
@@ -240,9 +284,11 @@ function handleTocSearchInput(state) {
     state.isSearchDone = false;
     state.isSearchLoading = false;
     state.hasSearchError = false;
-    state.isSearchPending = !!query;
 
-    if (query) {
+    // The server is asked only for searches of a useful length, and only once typing pauses:
+    // each keystroke cancels the pending request and starts the wait again with the new search
+    state.isSearchPending = query.length >= TOC_SEARCH_MIN_LENGTH;
+    if (state.isSearchPending) {
         state.searchTimer = setTimeout(() => {
             state.isSearchPending = false;
             state.isSearchStarted = true;
@@ -259,7 +305,7 @@ function loadMoreTocItems(state) {
         if (state.isSearchStarted) loadMoreTocSearchResults(state);
         return;
     }
-    loadMoreTocPage(state);
+    if (!state.searchOnly) loadMoreTocPage(state);
 }
 
 async function loadMoreTocPage(state) {
@@ -335,7 +381,7 @@ function tocItemMatches(item, query) {
 // Returns the posts to show for the current state: all loaded posts without a search,
 // or the loaded posts that match the search together with the server's matches.
 function visibleTocItems(state) {
-    if (!state.query) return state.items;
+    if (!state.query) return state.searchOnly ? [] : state.items;
 
     const merged = new Map();
     for (const item of state.items) {
@@ -395,14 +441,19 @@ function tocGroupedItemsHtml(items, query) {
 }
 
 function tocStatusText(state, visibleCount) {
+    const noun = state.noun;
     if (state.query) {
+        if (state.query.length < TOC_SEARCH_MIN_LENGTH) {
+            return visibleCount === 0 ? `Type at least ${TOC_SEARCH_MIN_LENGTH} characters to search all ${noun}` : '';
+        }
         if (state.isSearchPending || state.isSearchLoading) return 'Searching...';
-        if (state.hasSearchError) return visibleCount > 0 ? 'Can\'t search older posts' : 'Can\'t search posts';
-        return visibleCount === 0 ? 'No matching posts' : '';
+        if (state.hasSearchError) return visibleCount > 0 ? `Can't search older ${noun}` : `Can't search ${noun}`;
+        return visibleCount === 0 ? `No matching ${noun}` : '';
     }
+    if (state.searchOnly) return '';
     if (state.isLoading) return 'Loading...';
-    if (state.hasError) return 'Can\'t load posts';
-    return visibleCount === 0 ? 'No posts yet' : '';
+    if (state.hasError) return `Can't load ${noun}`;
+    return visibleCount === 0 ? `No ${noun} yet` : '';
 }
 
 function renderTocItem(item, query) {
@@ -411,10 +462,15 @@ function renderTocItem(item, query) {
 
     const titleHtml = item.isPlaceholderTitle
         ? `<span class="toc-item-title placeholder">${escapeHtml(item.title)}</span>`
-        : `<span class="toc-item-title">${highlightTocText(item.title, query)}</span>`;
+        : `<span class="toc-item-title">${item.isTitleSearchable === false ? escapeHtml(item.title) : highlightTocText(item.title, query)}</span>`;
 
-    const snippet = tocSnippet(item.body, query);
-    const snippetHtml = snippet ? `<span class="toc-item-snippet">${highlightTocText(snippet, query)}</span>` : '';
+    let snippetHtml = '';
+    if (item.isPlaceholderBody) {
+        snippetHtml = `<span class="toc-item-snippet placeholder">${escapeHtml(item.body)}</span>`;
+    } else {
+        const snippet = tocSnippet(item.body, query);
+        if (snippet) snippetHtml = `<span class="toc-item-snippet">${highlightTocText(snippet, query)}</span>`;
+    }
 
     let iconsHtml = '';
     if (item.isPinned) iconsHtml += `<span class="toc-item-icon" title="Pinned">${pinIcon}</span>`;

@@ -81,6 +81,8 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
+                    <!-- All chats except Personal Notes: message search -->
+                    <button class="inline-button chat-search-button" id="chatHeaderSearchButton" type="button" title="Search messages" style="display: none;" onclick="event.stopPropagation(); toggleChatSearch(currentChatId, this)"></button>
                     <!-- Personal Notes only: Table Of Contents and journal properties instead of the avatar -->
                     <button class="inline-button toc-button" id="chatHeaderTocButton" type="button" title="Table Of Contents" style="display: none;" onclick="event.stopPropagation(); togglePersonalNotesTableOfContents(currentChatId, this)"></button>
                     <button class="inline-button journal-info-button" id="chatHeaderJournalButton" type="button" title="Journal" style="display: none;" onclick="event.stopPropagation(); openPersonalNotesInfo(currentChatId)"></button>

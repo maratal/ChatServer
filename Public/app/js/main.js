@@ -108,9 +108,14 @@ async function loadChats() {
 }
 
 // In Personal Notes the header shows the Table Of Contents and journal properties buttons
-// in place of the avatar; other chats show the avatar.
+// in place of the avatar; other chats show the message search button and the avatar.
 function updateChatHeaderJournalButtons(chat) {
     const isNotes = isPersonalNotes(chat);
+    const searchButton = document.getElementById('chatHeaderSearchButton');
+    if (searchButton) {
+        if (!searchButton.innerHTML) searchButton.innerHTML = searchIcon;
+        searchButton.style.display = isNotes ? 'none' : '';
+    }
     const tocButton = document.getElementById('chatHeaderTocButton');
     const journalButton = document.getElementById('chatHeaderJournalButton');
     const avatarContainer = document.getElementById('chatHeaderAvatarContainer');

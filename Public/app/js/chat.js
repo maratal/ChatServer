@@ -214,14 +214,103 @@ function togglePersonalNotesTableOfContents(chatId, anchor) {
             };
         },
         onSelect: (item) => {
-            revealPersonalNote(chatId, item.id).catch(console.error);
+            revealChatMessage(chatId, item.id).catch(console.error);
         }
     });
 }
 
-// Closes the journal properties, opens the Personal Notes chat if needed, and scrolls to the note,
-// loading older messages until it shows up.
-async function revealPersonalNote(chatId, messageId) {
+// ── Message search (all chats except Personal Notes) ───────────────────────
+
+function toggleChatSearch(chatId, anchor) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    toggleTocPanel({
+        anchor,
+        side: 'right',
+        title: 'Search',
+        noun: 'messages',
+        searchOnly: true,
+        getLocalItems: () => loadedChatMessageSearchItems(chat),
+        fetchPage: async ({ before, search, count }) => {
+            const messages = await apiGetMessages(chatId, count, before, search);
+            return {
+                items: messages
+                    .filter(message => message.id != null && message.deletedAt == null)
+                    .map(message => createMessageSearchItem({
+                        id: message.id,
+                        createdAt: message.createdAt,
+                        authorName: chatSearchAuthorName(chat, message.author?.id, message.author?.name),
+                        text: message.text,
+                        attachmentsCount: message.attachments?.length ?? 0
+                    })),
+                nextCursor: messages.length > 0 ? messages[messages.length - 1].id : before,
+                done: messages.length < count
+            };
+        },
+        onSelect: (item) => {
+            revealChatMessage(chatId, item.id).catch(console.error);
+        }
+    });
+}
+
+// "You" for the current user, otherwise the author's name as the chat knows it
+function chatSearchAuthorName(chat, authorId, fallbackName) {
+    if (authorId != null && authorId === currentUser?.info?.id) return 'You';
+    return chat?.allUsers?.find(user => user.id === authorId)?.name || fallbackName || 'Unknown';
+}
+
+// The messages currently shown in the chat, as search items, so typing can filter them right away
+function loadedChatMessageSearchItems(chat) {
+    const rows = document.querySelectorAll('#messagesContainer .message-row[data-message-id]');
+    const items = [];
+    rows.forEach(row => {
+        if (row.querySelector('.message-deleted')) return;
+        const textElement = row.querySelector('.message-text');
+        let attachmentsCount = 0;
+        try {
+            attachmentsCount = JSON.parse(row.dataset.attachments || '[]').length;
+        } catch (_) {
+            attachmentsCount = 0;
+        }
+        const authorId = row.dataset.authorId ? Number(row.dataset.authorId) : null;
+        items.push(createMessageSearchItem({
+            id: row.dataset.messageId,
+            createdAt: row.dataset.createdAt,
+            authorName: chatSearchAuthorName(chat, authorId),
+            // The rendered text, which already has the inline formatting applied
+            text: textElement ? textElement.textContent : '',
+            attachmentsCount
+        }));
+    });
+    return items.sort((a, b) => b.date - a.date);
+}
+
+// Shows a single chat message that isn't loaded in the chat, in the same popup as linked journal posts
+const messagePopupController = createNotePopupController({
+    title: 'Message',
+    loadingText: 'Loading message...',
+    unavailableText: 'Message is unavailable',
+    errorText: 'Can\'t load this message',
+    // The popup passes its two ids through as given: here they are the message id and the chat id
+    load: async (messageId, chatId) => {
+        // The one message before the next id is the message itself, if it still exists
+        const messages = await apiGetMessages(chatId, 1, Number(messageId) + 1);
+        const message = messages[0];
+        return message && String(message.id) === String(messageId) && message.deletedAt == null ? message : null;
+    },
+    renderRow: (message) => {
+        if (!message) return null;
+        const chat = chats.find(c => c.id === currentChatId);
+        const row = isPersonalNotes(chat) ? createPersonalNote(message) : createMessageElement(message);
+        return finalizeNotePopupRow(row);
+    }
+});
+
+// Closes any info panels, opens the chat if needed, and scrolls to the message.
+// A message that isn't loaded is shown in a popup instead: loading every page in between
+// could take very long in a chat with years of history.
+async function revealChatMessage(chatId, messageId) {
     while (userInfoModalStack.length > 0) {
         closeTopModalInfoPanel();
     }
@@ -230,24 +319,11 @@ async function revealPersonalNote(chatId, messageId) {
     }
 
     const container = document.getElementById('messagesContainer');
-    for (let attempt = 0; attempt < 500; attempt++) {
-        if (container?.querySelector(`[data-message-id="${messageId}"]`)) {
-            // Let the scroll position settle after older messages were prepended
-            requestAnimationFrame(() => scrollToMessage(messageId));
-            return;
-        }
-        if (currentChatId !== chatId || !hasMoreMessages) return;
-        // The note is inside the loaded range but not on screen, so loading more won't help
-        if (oldestMessageId != null && Number(messageId) >= Number(oldestMessageId)) return;
-        if (isLoadingMessages) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            continue;
-        }
-        const previousOldestId = oldestMessageId;
-        await loadMessages(chatId);
-        // Stop if loading failed and nothing new came in
-        if (hasMoreMessages && oldestMessageId === previousOldestId) return;
+    if (container?.querySelector(`[data-message-id="${messageId}"]`)) {
+        requestAnimationFrame(() => scrollToMessage(messageId));
+        return;
     }
+    await messagePopupController.open(messageId, chatId);
 }
 
 // Setup infinite scroll for messages container
