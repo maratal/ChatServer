@@ -92,10 +92,12 @@
             </header>
 
             <!-- Messages Container -->
-            <div class="relative overflow-x-hidden overflow-y-auto flex-1" id="messagesScrollWrapper">
-                <div class="messages-container" id="messagesContainer">
-                    <div class="no-chat-selected">
-                        Select a chat to start messaging
+            <div class="scroll-jump-host">
+                <div class="relative overflow-x-hidden overflow-y-auto flex-1" id="messagesScrollWrapper">
+                    <div class="messages-container" id="messagesContainer">
+                        <div class="no-chat-selected">
+                            Select a chat to start messaging
+                        </div>
                     </div>
                 </div>
             </div>

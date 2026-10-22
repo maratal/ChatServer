@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         handleInitialNoteNavigation().catch(console.error);
     });
     setupScrollPagination();
+    setupScrollJumpButton(document.getElementById('notesScrollWrapper'), 'top');
 });
 
 function createNotePopupRow(note) {

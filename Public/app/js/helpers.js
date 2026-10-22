@@ -1618,3 +1618,54 @@ function openUserInfoViewer() {
 function saveBtnHTML(id, onclick) {
     return `<button class="group-name-save-btn" id="${id}" style="display: none;" onclick="${onclick}" title="Save">${checkmarkSaveIcon}${checkmarkSaveIconSaving}</button>`;
 }
+
+// ── Go to top/bottom button ─────────────────────────────────────────────────
+
+// Add a round button to the bottom-right corner of a scrolling message list that jumps to its newest end.
+// Pass 'bottom' for chats, where the newest message is at the bottom, and 'top' for the journal page,
+// where the newest note is at the top. The button shows up only after the user scrolls away from that end.
+// The scroll element's parent must be positioned, because the button is placed inside it.
+function setupScrollJumpButton(scrollElement, target = 'bottom') {
+    const host = scrollElement?.parentElement;
+    if (!host || host.querySelector(':scope > .scroll-jump-button')) return;
+
+    const goesUp = target === 'top';
+    const label = goesUp ? 'Go to top' : 'Go to bottom';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = goesUp ? 'scroll-jump-button points-up' : 'scroll-jump-button';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.innerHTML = scrollJumpChevronIcon;
+    host.appendChild(button);
+
+    // How far, in pixels, the user has to scroll away from the target end before the button appears.
+    const showThreshold = 150;
+
+    const update = () => {
+        const distanceFromTarget = goesUp
+            ? scrollElement.scrollTop
+            : scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop;
+        button.classList.toggle('is-visible', distanceFromTarget > showThreshold);
+    };
+
+    button.addEventListener('click', () => {
+        scrollElement.scrollTo({
+            top: goesUp ? 0 : scrollElement.scrollHeight,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollElement.addEventListener('scroll', update, { passive: true });
+
+    // Messages loading, arriving or being removed change the list's height without any scrolling,
+    // so watch the sizes of both the scroll area and its content.
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(scrollElement);
+    if (scrollElement.firstElementChild) {
+        resizeObserver.observe(scrollElement.firstElementChild);
+    }
+
+    update();
+}

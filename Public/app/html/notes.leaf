@@ -40,9 +40,11 @@
             </header>
 
             <!-- Notes Container -->
-            <div class="relative overflow-x-hidden overflow-y-auto flex-1" id="notesScrollWrapper">
-                <div class="messages-container" id="notesContainer">
-                    <div class="no-messages" id="emptyPlaceholder">No published notes yet</div>
+            <div class="scroll-jump-host">
+                <div class="relative overflow-x-hidden overflow-y-auto flex-1" id="notesScrollWrapper">
+                    <div class="messages-container" id="notesContainer">
+                        <div class="no-messages" id="emptyPlaceholder">No published notes yet</div>
+                    </div>
                 </div>
             </div>
         </div>
