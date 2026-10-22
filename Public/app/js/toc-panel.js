@@ -63,16 +63,22 @@ function closeTocPanelIfInside(element) {
     }
 }
 
-// Converts a post into the compact form shown in the panel.
+// Converts a post into the compact form shown in the panel: a single line with the post's title,
+// or with its text when it has no title, the same way posts are shown in the chat.
 // `text` may contain the app's inline formatting; it is reduced to plain text here.
 function createTocItem({ id, createdAt, text, attachmentsCount = 0, isPinned = false, isPublished = false }) {
     const plainText = tocPlainText(text || '').trim();
     const firstNewlineIndex = plainText.indexOf('\n');
     const firstLine = (firstNewlineIndex >= 0 ? plainText.substring(0, firstNewlineIndex) : plainText).trim();
     const restText = firstNewlineIndex >= 0 ? plainText.substring(firstNewlineIndex + 1) : '';
-    const body = restText.replace(/\s+/g, ' ').trim();
 
-    let title = firstLine;
+    // Same rule as the post view: the first line is a title when more text follows it
+    // and it isn't longer than one sentence
+    const sentenceCount = (firstLine.match(/[.!?](\s|$)/g) || []).length;
+    const hasTitle = firstNewlineIndex >= 0 && firstLine.length > 0 && sentenceCount <= 1;
+
+    let title = hasTitle ? firstLine : plainText.replace(/\s+/g, ' ').trim();
+    const body = hasTitle ? restText.replace(/\s+/g, ' ').trim() : '';
     let isPlaceholderTitle = false;
     if (!title) {
         isPlaceholderTitle = true;
@@ -87,6 +93,12 @@ function createTocItem({ id, createdAt, text, attachmentsCount = 0, isPinned = f
         title,
         body,
         isPlaceholderTitle,
+        // Without a title the line is the whole text, so a search shows it around the match
+        isTitleWholeText: !hasTitle && !isPlaceholderTitle,
+        // The body is shown only while searching, to reveal a match that isn't in the line itself
+        isBodyShownOnlyForMatches: true,
+        // The beginning of the post, with its line breaks, shown when hovering the row
+        tooltip: isPlaceholderTitle ? '' : tocLineText(plainText),
         isPinned,
         isPublished,
         searchText: `${isPlaceholderTitle ? '' : title}\n${body}`.toLowerCase()
@@ -459,7 +471,8 @@ function renderTocItem(item, query) {
     // Each line shows a single row of text anyway, so only its beginning is drawn. This keeps long posts
     // out of the page, and Safari's automatic tooltip for text cut off with an ellipsis stays short.
     // The item keeps the full text for searching and for placing the snippet around a match.
-    const title = tocLineText(item.title);
+    // A post's own tooltip (the beginning of the post) is set on the whole row.
+    const title = tocLineText(item.isTitleWholeText ? tocSnippet(item.title, query) : item.title);
     const titleHtml = item.isPlaceholderTitle
         ? `<span class="toc-item-title placeholder">${escapeHtml(title)}</span>`
         : `<span class="toc-item-title">${item.isTitleSearchable === false ? escapeHtml(title) : highlightTocText(title, query)}</span>`;
@@ -468,7 +481,10 @@ function renderTocItem(item, query) {
     if (item.isPlaceholderBody) {
         snippetHtml = `<span class="toc-item-snippet placeholder">${escapeHtml(item.body)}</span>`;
     } else {
-        const snippet = tocLineText(tocSnippet(item.body, query));
+        const lowerQuery = query.toLowerCase();
+        const showBody = !item.isBodyShownOnlyForMatches
+            || (!!query && item.body.toLowerCase().includes(lowerQuery) && !item.title.toLowerCase().includes(lowerQuery));
+        const snippet = showBody ? tocLineText(tocSnippet(item.body, query)) : '';
         if (snippet) snippetHtml = `<span class="toc-item-snippet">${highlightTocText(snippet, query)}</span>`;
     }
 
@@ -477,7 +493,7 @@ function renderTocItem(item, query) {
     if (item.isPublished) iconsHtml += `<span class="toc-item-icon" title="Published">${globeIcon}</span>`;
 
     return `
-        <button class="toc-item" type="button" data-id="${escapeHtml(item.id)}">
+        <button class="toc-item" type="button" data-id="${escapeHtml(item.id)}"${item.tooltip ? ` title="${escapeHtml(item.tooltip)}"` : ''}>
             <span class="toc-item-date" title="${escapeHtml(fullDateText)}">${escapeHtml(dateText)}</span>
             <span class="toc-item-text">${titleHtml}${snippetHtml}</span>
             ${iconsHtml ? `<span class="toc-item-icons">${iconsHtml}</span>` : ''}
