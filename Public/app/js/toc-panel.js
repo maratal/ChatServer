@@ -179,7 +179,6 @@ function openTocPanel(options) {
         // Matches returned by the server for the current search
         query: '',
         searchItems: [],
-        searchItemsQuery: '', // the query that `searchItems` were found for
         searchCursor: null,
         searchToken: 0,
         searchTimer: null,
@@ -276,7 +275,6 @@ function handleTocSearchInput(state) {
     // because the local filter narrows them down to what still matches
     if (!query || !query.toLowerCase().includes(previousQuery.toLowerCase())) {
         state.searchItems = [];
-        state.searchItemsQuery = '';
     }
     state.searchToken++;
     state.searchCursor = null;
@@ -343,10 +341,7 @@ async function loadMoreTocSearchResults(state) {
         const page = await state.fetchPage({ before: state.searchCursor, search: state.query, count: TOC_PAGE_SIZE });
         // Drop the answer if the panel was closed or the query has changed in the meantime
         if (activeTocPanel !== state || token !== state.searchToken) return;
-        if (isFirstPage) {
-            state.searchItems = [];
-            state.searchItemsQuery = state.query;
-        }
+        if (isFirstPage) state.searchItems = [];
         const knownIds = new Set(state.searchItems.map(item => item.id));
         state.searchItems.push(...page.items.filter(item => !knownIds.has(item.id)));
         state.searchCursor = page.nextCursor;
@@ -387,12 +382,12 @@ function visibleTocItems(state) {
     for (const item of state.items) {
         if (tocItemMatches(item, state.query)) merged.set(item.id, item);
     }
-    const isCurrentSearch = state.searchItemsQuery === state.query;
     for (const item of state.searchItems) {
-        // Server matches for the current query are all shown, because the server also searches
-        // the markup that the local filter does not see. Matches left from a shorter query
-        // are shown only while they still match locally.
-        if (isCurrentSearch || tocItemMatches(item, state.query)) merged.set(item.id, item);
+        // The server searches the raw text, markup included, so "up" also finds every post with
+        // a <popup> tag and a link's hidden address matches too. Server results are therefore
+        // filtered again by the visible text, the same way as the loaded items. This also narrows
+        // down results left from a shorter query while the server works on the longer one.
+        if (tocItemMatches(item, state.query)) merged.set(item.id, item);
     }
     return [...merged.values()].sort((a, b) => b.date - a.date);
 }
