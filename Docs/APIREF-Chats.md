@@ -293,9 +293,11 @@ ________________________________________________________________________________
 
 Retrives `number` messages before the message with the `id`. If `id` is omitted retrives last `number` of messages or 50 by default.
 
+The optional `search` parameter keeps only the messages whose text contains the given string (case-insensitive). Deleted messages are never returned by a search. It can be combined with `before` to page through the results.
+
 __Path__:
 ```
-GET /chats/<id>/messages?count=<number>&before=<id>
+GET /chats/<id>/messages?count=<number>&before=<id>&search=<text>
 ```
 __Response__: An array of [`MessageInfo`](APIREF-JSON.md#messageinfo) objects.
 _________________________________________________________________________________

@@ -53,7 +53,8 @@ protocol ChatServiceProtocol: LoggedIn {
     
     /// Returns `count` messages from a chat before certain message (limited to 50 by default).
     /// In case if `before` is omitted, returns `count` latest messages.
-    func messages(from id: ChatID, for userId: UserID, before: MessageID?, count: Int?) async throws -> [MessageInfo]
+    /// When `search` is not blank, only the messages whose text contains it (case-insensitively) are returned.
+    func messages(from id: ChatID, for userId: UserID, before: MessageID?, count: Int?, search: String?) async throws -> [MessageInfo]
     
     /// Creates new message in a chat with `id` (if user with `userId` is not blocked).
     func postMessage(to id: ChatID, with info: PostMessageRequest, by userId: UserID) async throws -> MessageInfo
@@ -368,11 +369,11 @@ actor ChatService: ChatServiceProtocol {
         try await core.notificator.notify(chat: chat, in: repo, about: .chatCleared, from: relation.user, with: nil)
     }
     
-    func messages(from id: ChatID, for userId: UserID, before: MessageID?, count: Int?) async throws -> [MessageInfo] {
+    func messages(from id: ChatID, for userId: UserID, before: MessageID?, count: Int?, search: String?) async throws -> [MessageInfo] {
         guard let relation = try await repo.findRelation(of: id, userId: userId), !relation.isUserBlocked else {
             throw ServiceError(.forbidden)
         }
-        let messages = try await repo.messages(from: id, before: before, count: count ?? 50)
+        let messages = try await repo.messages(from: id, before: before, count: count ?? 50, search: search)
         var infos = messages.map { $0.info() }
         
         // For personal notes chats, attach note info to each message

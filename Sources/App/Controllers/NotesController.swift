@@ -150,9 +150,12 @@ struct NotesController: RouteCollection {
         let userId = try req.objectID()
         let before: NoteID? = req.query["before"]
         let count = req.countFromQuery(default: 20)
-        let pinned = req.query["pinned"] ?? false
+        // `all=true` lists pinned and unpinned notes together in date order (used by the table of contents)
+        let includeAll: Bool = req.query["all"] ?? false
+        let pinned: Bool? = includeAll ? nil : (req.query["pinned"] ?? false)
         let language: String? = req.query["language"]
-        return try await service.notes(for: userId, before: before, count: count, pinned: pinned, languageCode: language)
+        let search: String? = req.query["search"]
+        return try await service.notes(for: userId, before: before, count: count, pinned: pinned, languageCode: language, search: search)
     }
 }
 

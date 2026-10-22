@@ -14,6 +14,22 @@ extension String {
     var isName: Bool {
         !isEmpty && normalized().replacingOccurrences(of: " ", with: "").isAlphanumeric
     }
+
+    /// The longest search string that is passed on to the database; longer input is cut to this length.
+    static let maxSearchLength = 200
+
+    /// Builds an ILIKE pattern that matches this string anywhere inside a value.
+    /// The characters that ILIKE treats specially (`%`, `_` and the `\` escape character) are escaped,
+    /// so the user's input is always matched literally. Returns nil when the string is blank.
+    var containsSearchPattern: String? {
+        let trimmed = String(trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maxSearchLength))
+        guard !trimmed.isEmpty else { return nil }
+        let escaped = trimmed
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "%", with: "\\%")
+            .replacingOccurrences(of: "_", with: "\\_")
+        return "%\(escaped)%"
+    }
 }
 
 extension Array where Element: Hashable {

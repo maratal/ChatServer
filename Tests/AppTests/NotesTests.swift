@@ -19,9 +19,9 @@ final class NotesTests: AppTestCase {
         return note
     }
 
-    private func publishedNotes(of userId: UserID) async throws -> [NoteInfo] {
+    private func publishedNotes(of userId: UserID, query: String = "") async throws -> [NoteInfo] {
         var notes = [NoteInfo]()
-        try await asyncTest(.GET, "api/users/\(userId)/notes", headers: .none, afterResponse: { res in
+        try await asyncTest(.GET, "api/users/\(userId)/notes?all=true\(query)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .ok, res.body.string)
             notes = try res.content.decode([NoteInfo].self)
         })
@@ -114,6 +114,58 @@ final class NotesTests: AppTestCase {
 
         try await asyncTest(.GET, "api/users/\(current.id!)/notes/\(note.id!)", headers: .none, afterResponse: { res in
             XCTAssertEqual(res.status, .notFound, res.body.string)
+        })
+    }
+
+    // MARK: - Search
+
+    func test_07_searchFindsOnlyPublishedNotes() async throws {
+        let current = try await service.seedCurrentUser()
+        let chat = try await makeNotesChat(of: current)
+        try await service.makeMessage(for: chat.id!, authorId: current.id!, text: "Secret plan")
+        let published = try await service.makeMessage(for: chat.id!, authorId: current.id!, text: "Public plan")
+        try await publishDirectly(published)
+
+        let planNotes = try await publishedNotes(of: current.id!, query: "&search=PLAN")
+        XCTAssertEqual(planNotes.map { $0.message?.id }, [published.id])
+
+        let secretNotes = try await publishedNotes(of: current.id!, query: "&search=secret")
+        XCTAssertTrue(secretNotes.isEmpty)
+    }
+
+    func test_08_searchTreatsWildcardsLiterally() async throws {
+        let current = try await service.seedCurrentUser()
+        let chat = try await makeNotesChat(of: current)
+        let plain = try await service.makeMessage(for: chat.id!, authorId: current.id!, text: "Plain post")
+        let percent = try await service.makeMessage(for: chat.id!, authorId: current.id!, text: "Up 100% today")
+        try await publishDirectly(plain)
+        try await publishDirectly(percent)
+
+        let notes = try await publishedNotes(of: current.id!, query: "&search=%25")
+        XCTAssertEqual(notes.map { $0.message?.id }, [percent.id])
+    }
+
+    func test_09_searchOwnNotesChatMessages() async throws {
+        let current = try await service.seedCurrentUser()
+        let chat = try await makeNotesChat(of: current)
+        try await service.makeMessage(for: chat.id!, authorId: current.id!, text: "Garden plan")
+        try await service.makeMessage(for: chat.id!, authorId: current.id!, text: "Reading list")
+
+        try await asyncTest(.GET, "api/chats/\(chat.id!)/messages?search=garden", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let messages = try res.content.decode([MessageInfo].self)
+            XCTAssertEqual(messages.map { $0.text }, ["Garden plan"])
+        })
+    }
+
+    func test_10_trySearchOtherUsersNotesChat() async throws {
+        try await service.seedCurrentUser()
+        let victim = try await service.seedUsers(count: 1, namePrefix: "User", usernamePrefix: "user")[0]
+        let chat = try await makeNotesChat(of: victim)
+        try await service.makeMessage(for: chat.id!, authorId: victim.id!, text: "Secret plan")
+
+        try await asyncTest(.GET, "api/chats/\(chat.id!)/messages?search=secret", headers: .none, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
         })
     }
 }

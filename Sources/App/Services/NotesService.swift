@@ -24,9 +24,10 @@ protocol NotesServiceProtocol: LoggedIn {
     /// Returns a single published note for a particular journal owner. Public access (no auth required).
     func note(_ id: NoteID, for userId: UserID) async throws -> NoteInfo
     
-    /// Returns paginated published notes for a given user, filtered by language code. Public access (no auth required).
-    /// A nil language returns all notes regardless of their language.
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool, languageCode: String?) async throws -> [NoteInfo]
+    /// Returns paginated published notes for a given user, newest first, filtered by language code. Public access (no auth required).
+    /// A nil language returns all notes regardless of their language. A nil `pinned` returns pinned and unpinned notes together.
+    /// A non-blank `search` keeps only the notes whose text contains it; only published notes are ever searched.
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool?, languageCode: String?, search: String?) async throws -> [NoteInfo]
 }
 
 actor NotesService: NotesServiceProtocol {
@@ -97,11 +98,11 @@ actor NotesService: NotesServiceProtocol {
         return note.info()
     }
     
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool, languageCode: String?) async throws -> [NoteInfo] {
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool?, languageCode: String?, search: String?) async throws -> [NoteInfo] {
         if let languageCode, !Language.isValidCode(languageCode) {
             throw ServiceError(.badRequest, reason: "Invalid language code.")
         }
-        let notes = try await repo.notes(for: userId, before: noteId, count: count, pinned: pinned, languageCode: languageCode)
+        let notes = try await repo.notes(for: userId, before: noteId, count: count, pinned: pinned, languageCode: languageCode, search: search)
         return notes.map { $0.info() }
     }
 

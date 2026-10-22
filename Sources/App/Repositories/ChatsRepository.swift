@@ -16,7 +16,7 @@ protocol ChatsRepository: Sendable {
     func deleteRelation(_ relation: ChatRelation) async throws
 
     func findMessage(id: MessageID) async throws -> Message?
-    func messages(from chatId: ChatID, before: MessageID?, count: Int) async throws -> [Message]
+    func messages(from chatId: ChatID, before: MessageID?, count: Int, search: String?) async throws -> [Message]
     func saveMessage(_ message: Message) async throws
     func loadAttachments(for message: Message) async throws
     func deletePivots(messageId: MessageID, mediaResourceIds: [ResourceID]) async throws
@@ -204,35 +204,29 @@ actor ChatsDatabaseRepository: DatabaseRepository, ChatsRepository {
             .first()
     }
     
-    func messages(from chatId: ChatID, before: MessageID?, count: Int) async throws -> [Message] {
+    func messages(from chatId: ChatID, before: MessageID?, count: Int, search: String?) async throws -> [Message] {
+        var query = Message.query(on: database)
+            .filter(\.$chat.$id == chatId)
         if let before {
-            return try await Message.query(on: database)
-                .filter(\.$chat.$id == chatId)
-                .with(\.$attachmentPivots) { pivot in
-                    pivot.with(\.$mediaResource)
-                }
-                .with(\.$readMarks)
-                .with(\.$author) { author in
-                    author.with(\.$photos)
-                }
-                .sort(\.$createdAt, .descending)
-                .filter(\.$id < before)
-                .range(..<count)
-                .all()
-        } else {
-            return try await Message.query(on: database)
-                .filter(\.$chat.$id == chatId)
-                .with(\.$attachmentPivots) { pivot in
-                    pivot.with(\.$mediaResource)
-                }
-                .with(\.$readMarks)
-                .with(\.$author) { author in
-                    author.with(\.$photos)
-                }
-                .sort(\.$createdAt, .descending)
-                .range(..<count)
-                .all()
+            query = query.filter(\.$id < before)
         }
+        if let pattern = search?.containsSearchPattern {
+            // Deleted messages have their text cleared, but they are excluded explicitly to be safe.
+            query = query
+                .filter(\.$deletedAt == nil)
+                .filter(\.$text, .custom("ILIKE"), pattern)
+        }
+        return try await query
+            .with(\.$attachmentPivots) { pivot in
+                pivot.with(\.$mediaResource)
+            }
+            .with(\.$readMarks)
+            .with(\.$author) { author in
+                author.with(\.$photos)
+            }
+            .sort(\.$createdAt, .descending)
+            .range(..<count)
+            .all()
     }
     
     func saveMessage(_ message: Message) async throws {

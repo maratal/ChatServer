@@ -6,7 +6,7 @@ protocol NotesRepository: Sendable {
     func findBySource(messageId: MessageID) async throws -> Note?
     func findSourceMessage(id: MessageID) async throws -> Message?
     func findBySourceIds(messageIds: [MessageID]) async throws -> [MessageID: Note]
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool, languageCode: String?) async throws -> [Note]
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool?, languageCode: String?, search: String?) async throws -> [Note]
     func pinnedCount(for userId: UserID) async throws -> Int
     func save(_ note: Note) async throws
     func delete(_ note: Note) async throws
@@ -61,14 +61,24 @@ actor NotesDatabaseRepository: DatabaseRepository, NotesRepository {
         return result
     }
     
-    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool, languageCode: String?) async throws -> [Note] {
+    func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool?, languageCode: String?, search: String?) async throws -> [Note] {
         var query = Note.query(on: database)
             .join(Message.self, on: \Note.$source.$id == \Message.$id)
             .join(Chat.self, on: \Message.$chat.$id == \Chat.$id)
             .filter(Message.self, \.$author.$id == userId)
             .filter(Chat.self, \.$isPersonal == true)
             .filter(Chat.self, \.$participantsKey == Set([userId]).participantsKey())
-            .filter(\.$isPinned == pinned)
+
+        // A nil `pinned` returns pinned and unpinned notes together
+        if let pinned {
+            query = query.filter(\.$isPinned == pinned)
+        }
+
+        if let pattern = search?.containsSearchPattern {
+            query = query
+                .filter(Message.self, \.$deletedAt == nil)
+                .filter(Message.self, \.$text, .custom("ILIKE"), pattern)
+        }
 
         if let languageCode {
             query = query.filter(Message.self, \.$language == languageCode)

@@ -156,7 +156,8 @@ struct ChatController: RouteCollection {
         return try await service.with(currentUser).messages(from: req.objectUUID(),
                                                             for: currentUser.requireID(),
                                                             before: req.idFromQuery("before"),
-                                                            count: req.query["count"])
+                                                            count: req.query["count"],
+                                                            search: req.query["search"])
     }
     
     func postMessage(_ req: Request) async throws -> MessageInfo {
