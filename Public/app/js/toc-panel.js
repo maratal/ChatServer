@@ -15,6 +15,7 @@ const TOC_PAGE_SIZE = 50;
 const TOC_SEARCH_DELAY_MS = 1000;
 const TOC_SEARCH_MIN_LENGTH = 2;
 const TOC_SNIPPET_CONTEXT = 24; // How many characters to show before a match that is deep inside the body
+const TOC_LINE_MAX_LENGTH = 256; // Longest text drawn in a row's title or text line
 const TOC_ANIMATION_MS = 300; // Matches the slide transition of .user-info-content
 
 let activeTocPanel = null;
@@ -455,15 +456,19 @@ function renderTocItem(item, query) {
     const dateText = item.date.toLocaleDateString([], { day: 'numeric', month: 'short' });
     const fullDateText = typeof formatFullDateTime === 'function' ? formatFullDateTime(item.date) : item.date.toLocaleString();
 
+    // Each line shows a single row of text anyway, so only its beginning is drawn. This keeps long posts
+    // out of the page, and Safari's automatic tooltip for text cut off with an ellipsis stays short.
+    // The item keeps the full text for searching and for placing the snippet around a match.
+    const title = tocLineText(item.title);
     const titleHtml = item.isPlaceholderTitle
-        ? `<span class="toc-item-title placeholder">${escapeHtml(item.title)}</span>`
-        : `<span class="toc-item-title">${item.isTitleSearchable === false ? escapeHtml(item.title) : highlightTocText(item.title, query)}</span>`;
+        ? `<span class="toc-item-title placeholder">${escapeHtml(title)}</span>`
+        : `<span class="toc-item-title">${item.isTitleSearchable === false ? escapeHtml(title) : highlightTocText(title, query)}</span>`;
 
     let snippetHtml = '';
     if (item.isPlaceholderBody) {
         snippetHtml = `<span class="toc-item-snippet placeholder">${escapeHtml(item.body)}</span>`;
     } else {
-        const snippet = tocSnippet(item.body, query);
+        const snippet = tocLineText(tocSnippet(item.body, query));
         if (snippet) snippetHtml = `<span class="toc-item-snippet">${highlightTocText(snippet, query)}</span>`;
     }
 
@@ -478,6 +483,14 @@ function renderTocItem(item, query) {
             ${iconsHtml ? `<span class="toc-item-icons">${iconsHtml}</span>` : ''}
         </button>
     `;
+}
+
+// Cuts the text to TOC_LINE_MAX_LENGTH characters, ending with an ellipsis when it was longer.
+// Counts whole characters, so an emoji is never split in half.
+function tocLineText(text) {
+    const characters = Array.from(text || '');
+    if (characters.length <= TOC_LINE_MAX_LENGTH) return text || '';
+    return characters.slice(0, TOC_LINE_MAX_LENGTH - 1).join('').trimEnd() + '…';
 }
 
 // When the match is deep inside the body, the snippet starts a little before it so it can be seen
