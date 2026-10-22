@@ -4,6 +4,7 @@ import Foundation
 protocol NotesRepository: Sendable {
     func find(id: NoteID) async throws -> Note?
     func findBySource(messageId: MessageID) async throws -> Note?
+    func findSourceMessage(id: MessageID) async throws -> Message?
     func findBySourceIds(messageIds: [MessageID]) async throws -> [MessageID: Note]
     func notes(for userId: UserID, before noteId: NoteID?, count: Int, pinned: Bool, languageCode: String?) async throws -> [Note]
     func pinnedCount(for userId: UserID) async throws -> Int
@@ -23,6 +24,7 @@ actor NotesDatabaseRepository: DatabaseRepository, NotesRepository {
         try await Note.query(on: database)
             .filter(\.$id == id)
             .with(\.$source) { message in
+                message.with(\.$chat)
                 message.with(\.$author) { author in
                     author.with(\.$photos)
                 }
@@ -36,6 +38,14 @@ actor NotesDatabaseRepository: DatabaseRepository, NotesRepository {
     func findBySource(messageId: MessageID) async throws -> Note? {
         try await Note.query(on: database)
             .filter(\.$source.$id == messageId)
+            .first()
+    }
+    
+    /// Loads a message together with its chat, to check where it was written before publishing it.
+    func findSourceMessage(id: MessageID) async throws -> Message? {
+        try await Message.query(on: database)
+            .filter(\.$id == id)
+            .with(\.$chat)
             .first()
     }
     
@@ -57,6 +67,7 @@ actor NotesDatabaseRepository: DatabaseRepository, NotesRepository {
             .join(Chat.self, on: \Message.$chat.$id == \Chat.$id)
             .filter(Message.self, \.$author.$id == userId)
             .filter(Chat.self, \.$isPersonal == true)
+            .filter(Chat.self, \.$participantsKey == Set([userId]).participantsKey())
             .filter(\.$isPinned == pinned)
 
         if let languageCode {
@@ -92,6 +103,7 @@ actor NotesDatabaseRepository: DatabaseRepository, NotesRepository {
             .join(Chat.self, on: \Message.$chat.$id == \Chat.$id)
             .filter(Message.self, \.$author.$id == userId)
             .filter(Chat.self, \.$isPersonal == true)
+            .filter(Chat.self, \.$participantsKey == Set([userId]).participantsKey())
             .filter(\.$isPinned == true)
             .count()
     }

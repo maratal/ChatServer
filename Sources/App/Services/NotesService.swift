@@ -46,6 +46,7 @@ actor NotesService: NotesServiceProtocol {
     }
     
     func publish(messageId: MessageID, by userId: UserID) async throws -> NoteInfo {
+        try await requireOwnNotesMessage(messageId, of: userId, allowDeleted: false)
         // Check if already published
         if let existing = try await repo.findBySource(messageId: messageId) {
             // Already published, return existing
@@ -66,6 +67,7 @@ actor NotesService: NotesServiceProtocol {
     }
     
     func unpublish(messageId: MessageID, by userId: UserID) async throws {
+        try await requireOwnNotesMessage(messageId, of: userId, allowDeleted: true)
         guard let note = try await repo.findBySource(messageId: messageId) else {
             throw ServiceError(.notFound, reason: "Note not found for this message.")
         }
@@ -89,7 +91,7 @@ actor NotesService: NotesServiceProtocol {
         guard let note = try await repo.find(id: id) else {
             throw ServiceError(.notFound)
         }
-        guard note.source.author.id == userId else {
+        guard note.source.author.id == userId, Self.isNotesChat(note.source.chat, of: userId) else {
             throw ServiceError(.notFound)
         }
         return note.info()
@@ -119,6 +121,25 @@ actor NotesService: NotesServiceProtocol {
         note.isPinned = isPinned
         try await repo.save(note)
         return note.info()
+    }
+
+    /// Whether `chat` is the Personal Notes chat of the user (a personal chat with only that user in it).
+    private static func isNotesChat(_ chat: Chat, of userId: UserID) -> Bool {
+        chat.isPersonal && chat.participantsKey == Set([userId]).participantsKey()
+    }
+
+    /// Makes sure the message was written by the user in their own Personal Notes chat.
+    /// Only such messages may be published, so that nobody can publish (and expose) somebody else's private posts.
+    /// Responds with "not found" either way, so that message ids of other users can't be probed.
+    @discardableResult
+    private func requireOwnNotesMessage(_ messageId: MessageID, of userId: UserID, allowDeleted: Bool) async throws -> Message {
+        guard let message = try await repo.findSourceMessage(id: messageId),
+              message.$author.id == userId,
+              Self.isNotesChat(message.chat, of: userId),
+              allowDeleted || message.deletedAt == nil else {
+            throw ServiceError(.notFound, reason: "Message not found.")
+        }
+        return message
     }
 
     private func requireOwnedNote(_ noteId: NoteID) async throws -> Note {
