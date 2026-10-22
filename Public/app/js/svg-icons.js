@@ -92,6 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.lock-icon').forEach(element => {
         element.innerHTML = lockIcon;
     });
+    document.querySelectorAll('.search-icon').forEach(element => {
+        element.innerHTML = searchIcon;
+    });
     document.querySelectorAll('.settings-icon-button').forEach(button => {
         button.innerHTML = settingsIcon;
     });

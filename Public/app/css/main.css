@@ -73,6 +73,17 @@ input[type="text"], textarea {
     padding-left: 38px !important; /* Override pl-11 to prevent text overlap with icon */
 }
 
+/* Search fields in static HTML: the icon is filled in from svg-icons.js and keeps its former 18px size */
+.search-icon {
+    display: flex;
+    pointer-events: none;
+}
+
+.search-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
 .lucide-search {
     top: 50% !important;
     transform: translateY(-50%) !important;
