@@ -76,6 +76,9 @@ func configure(_ app: Application, service: inout CoreService) throws {
     // counted by.
     app.middleware.use(TelemetryMiddleware())
 
+    // Rendered pages must be revalidated on every load (see the middleware below)
+    app.middleware.use(PageRevalidationMiddleware())
+
     // Use custom FileMiddleware that only handles GET/HEAD requests
     app.middleware.use(ReadOnlyFileMiddleware(publicDirectory: app.directory.publicDirectory))
 
@@ -99,5 +102,22 @@ struct ReadOnlyFileMiddleware: AsyncMiddleware {
         // Use standard FileMiddleware for safe methods
         let fileMiddleware = FileMiddleware(publicDirectory: publicDirectory)
         return try await fileMiddleware.respond(to: request, chainingTo: next)
+    }
+}
+
+/// Makes the browser check with the server before reusing a page it has cached.
+///
+/// The `?v=` version on scripts and styles only refreshes the files a page links to. Data
+/// templated into the page itself, such as the security questions and the password-rules flag,
+/// changes only when the page does, so a page served from the browser's cache would keep
+/// showing old values after an update. `no-cache` still allows the back/forward cache.
+struct PageRevalidationMiddleware: AsyncMiddleware {
+
+    func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
+        let response = try await next.respond(to: request)
+        if response.headers.contentType == .html, response.headers.cacheControl == nil {
+            response.headers.cacheControl = HTTPHeaders.CacheControl(noCache: true)
+        }
+        return response
     }
 }
