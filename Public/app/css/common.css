@@ -354,13 +354,6 @@ h1, h2, h3, h4, h5, h6 {
     border: 1px solid hsl(var(--destructive) / 0.3);
 }
 
-/* A short note under a field, such as the password rules. */
-.field-hint {
-    margin-top: 6px;
-    font-size: 0.8rem;
-    color: hsl(var(--muted-foreground));
-}
-
 /* Editable field with a dropdown of suggestions. The chevron sits inside the
    field, and the list writes into it rather than replacing it, so the typed
    text is always what counts. */

@@ -36,11 +36,17 @@
     overflow-y: auto;
 }
 
+/* Fields on the sign-in pages sit 30% closer than the app's usual 20px. */
+.login-container .form-group,
+.register-container .form-group {
+    margin-bottom: 14px;
+}
+
 .login-button,
 .register-button {
     width: 100%;
     padding: 12px;
-    margin-top: 18px;
+    margin-top: 13px;
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border: none;
@@ -70,7 +76,7 @@
 
 .divider {
     text-align: center;
-    margin: 30px 0;
+    margin: 21px 0;
     position: relative;
     color: hsl(var(--muted-foreground));
     font-size: 0.9rem;
@@ -105,7 +111,7 @@
    not, because on the sign-in page a divider sits above it. */
 .forgot-link,
 .back-link {
-    margin-top: 16px;
+    margin-top: 20px;
 }
 
 .register-link a,
@@ -115,7 +121,7 @@
     color: hsl(var(--primary));
     text-decoration: none;
     font-weight: 500;
-    border-bottom: 1px solid hsl(var(--primary) / 0.3);
+    border-bottom: 1px solid transparent; /* underlined only on hover */
     transition: border-color 0.3s ease;
 }
 

@@ -35,9 +35,8 @@
                 <div class="error-popup"></div>
             </div>
             <div class="form-group">
-                <label for="newPassword">New password</label>
-                <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" required>
-                <div class="field-hint">8-25 characters, with an uppercase letter, a lowercase letter and a digit.</div>
+                <label for="newPassword" title="#(passwordRules)">New password</label>
+                <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" placeholder="#(passwordRules)" required>
                 <div class="error-popup"></div>
             </div>
             <button type="submit" class="login-button">Reset Password</button>
@@ -51,7 +50,7 @@
     <script src="/app/js/constants.js?v=#(productInfo.version)"></script>
     <script src="/app/js/settings.js?v=#(productInfo.version)"></script>
     <script src="/app/js/api.js?v=#(productInfo.version)"></script>
-    <script>var PASSWORD_RULES_ENFORCED = #(passwordRulesEnforced);</script>
+    <script>var PASSWORD_RULES_ENFORCED = #(passwordRulesEnforced); var PASSWORD_RULES_PLACEHOLDER = #unsafeHTML(passwordRulesJSON);</script>
     <script src="/app/js/password-rules.js?v=#(productInfo.version)"></script>
     <script src="/app/js/forgot.js?v=#(productInfo.version)"></script>
 </body>

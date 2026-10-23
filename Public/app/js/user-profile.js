@@ -1,5 +1,9 @@
 // Current User Profile Functions
 
+// Whether the current user has a security question, which is what recovers the account when the
+// password is lost. Loaded when the profile opens; while unknown (null), the menu shows no badge.
+let securityQuestionSet = null;
+
 async function openCurrentUserProfile() {
     if (!currentUser || !currentUser.info || !currentUser.info.id) {
         console.error('Cannot open profile: currentUser is not set');
@@ -22,6 +26,11 @@ async function openCurrentUserProfile() {
     });
     
     body.innerHTML = '<div class="user-profile-loading">Loading profile...</div>';
+    
+    // Not awaited: the profile should not wait for this, and a failure only means no badge.
+    apiGetSecurityQuestion()
+        .then(data => { securityQuestionSet = !!(data && data.question); })
+        .catch(error => console.error('Error loading security question:', error));
     
     try {
         // Fetch current user info
@@ -324,7 +333,7 @@ function showUserProfileMenu() {
     
     const menuItems = [
         { id: 'change_password', label: 'Change Password', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' },
-        { id: 'change_security_question', label: 'Change Security Question', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2"></path><line x1="12" y1="17" x2="12" y2="17"></line></svg>' },
+        { id: 'change_security_question', label: 'Change Security Question', badge: securityQuestionSet === false ? '!' : null, icon: securityQuestionIcon },
         { id: 'logout', label: 'Logout', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>', separator: true }
     ];
     
@@ -388,9 +397,8 @@ function showChangePasswordModal() {
                         <input type="password" id="currentPasswordInput" placeholder="Enter current password" autocomplete="current-password">
                     </div>
                     <div class="form-group">
-                        <label for="newPasswordInput">New Password</label>
-                        <input type="password" id="newPasswordInput" placeholder="Enter new password" autocomplete="new-password">
-                        <div class="field-hint">8-25 characters, with an uppercase letter, a lowercase letter and a digit.</div>
+                        <label for="newPasswordInput" title="${escapeHtml(PASSWORD_RULES_PLACEHOLDER)}">New Password</label>
+                        <input type="password" id="newPasswordInput" placeholder="${escapeHtml(PASSWORD_RULES_PLACEHOLDER)}" autocomplete="new-password">
                     </div>
                     <div class="form-group">
                         <label for="confirmPasswordInput">Confirm New Password</label>
@@ -679,6 +687,7 @@ async function handleChangeSecurityQuestion() {
     
     try {
         await apiSetSecurityQuestion(password, question, answer);
+        securityQuestionSet = true;
         successDiv.textContent = 'Security question changed';
         successDiv.style.display = 'block';
         setTimeout(() => {

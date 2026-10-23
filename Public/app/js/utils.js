@@ -149,6 +149,7 @@ function addLongPressHandler(element, options) {
 
 // Show context menu utility
 // options: { items, x, y, onAction, highlightElement, highlightClass, anchor }
+// An item may have `badge` (short text, such as '!') to show a round alert badge after its label.
 // anchor: 'top-left' (default) - menu top-left at (x,y), 'bottom-left' - menu bottom-left at (x,y)
 function showContextMenu(options) {
     const { items, x, y, onAction, highlightElement, highlightClass = 'menu-active', anchor = 'top-left' } = options;
@@ -173,6 +174,7 @@ function showContextMenu(options) {
         return `${separator}<div class="context-menu-item" data-action="${item.id}">
             ${item.icon || ''}
             <span>${item.label}</span>
+            ${item.badge ? `<span class="context-menu-badge">${item.badge}</span>` : ''}
         </div>`;
     }).join('');
     

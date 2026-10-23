@@ -3,7 +3,8 @@
 // the page, only decides whether a password is actually checked against them: a production
 // server enforces them, while one running locally accepts any non-empty password.
 
-const PASSWORD_RULES_DESCRIPTION = 'Password must be 8-25 characters and contain an uppercase letter, a lowercase letter and a digit.';
+// PASSWORD_RULES_PLACEHOLDER, also templated in, is the rules as text (PasswordPolicy.description).
+// It is used for the placeholder, the label's tooltip and the error message.
 
 // Returns what is wrong with the password, or null if it is acceptable.
 function passwordProblem(password) {
@@ -17,5 +18,5 @@ function passwordProblem(password) {
         && /\p{Lu}/u.test(password)
         && /\p{Ll}/u.test(password)
         && /\p{N}/u.test(password);
-    return valid ? null : PASSWORD_RULES_DESCRIPTION;
+    return valid ? null : PASSWORD_RULES_PLACEHOLDER;
 }

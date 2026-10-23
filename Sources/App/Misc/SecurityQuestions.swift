@@ -15,11 +15,5 @@ enum SecurityQuestions {
     ]
 
     /// The list as a JSON array that is safe to put inside a `<script>` tag.
-    /// Every `<` is escaped, so a question can never close the tag it is in.
-    static let json: String = {
-        guard let data = try? JSONEncoder().encode(suggested), let string = String(data: data, encoding: .utf8) else {
-            return "[]"
-        }
-        return string.replacingOccurrences(of: "<", with: "\\u003c")
-    }()
+    static let json = scriptSafeJSON(suggested, fallback: "[]")
 }

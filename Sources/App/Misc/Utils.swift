@@ -105,3 +105,13 @@ extension Serializable {
 protocol JSONSerializable {
     func jsonObject() throws -> JSON
 }
+
+/// Encodes a value as JSON that is safe to put inside a `<script>` tag.
+/// Every `<` is escaped, so the value can never close the tag it is in.
+/// Returns `fallback` if the value cannot be encoded.
+func scriptSafeJSON<T: Encodable>(_ value: T, fallback: String) -> String {
+    guard let data = try? JSONEncoder().encode(value), let string = String(data: data, encoding: .utf8) else {
+        return fallback
+    }
+    return string.replacingOccurrences(of: "<", with: "\\u003c")
+}

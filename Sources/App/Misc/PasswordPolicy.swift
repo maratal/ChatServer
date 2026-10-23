@@ -13,8 +13,8 @@ struct PasswordPolicy: Sendable {
     static let minLength = 8
     static let maxLength = 25
 
-    /// The rules in one sentence, for error messages and the hint under password fields.
-    static let description = "Password must be \(minLength)-\(maxLength) characters and contain an uppercase letter, a lowercase letter and a digit."
+    /// The rules in short, the same wording the pages use.
+    static let description = "\(minLength)-\(maxLength) chars, upper and lower case letters and a digit"
 
     func isValid(_ password: String) -> Bool {
         guard enforced else {

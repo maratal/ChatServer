@@ -7,8 +7,8 @@ function generateUUID() {
 }
 
 // Centralized registration function
-async function performRegistration(name, username, password, securityQuestion, securityAnswer, deviceInfo) {
-    const data = await apiRegisterUser(name, username, password, deviceInfo, securityQuestion, securityAnswer);
+async function performRegistration(name, username, password, deviceInfo) {
+    const data = await apiRegisterUser(name, username, password, deviceInfo);
     
     // Store user data with access token in currentUser
     const currentUserData = {
@@ -60,37 +60,6 @@ function getDeviceInfo() {
     };
 }
 
-// The suggested security questions, shown under the field's chevron.
-// Picking one only fills the field in, so the user can still edit it.
-function toggleQuestionMenu() {
-    const combo = document.getElementById('questionCombo');
-    if (combo.classList.contains('open')) {
-        combo.classList.remove('open');
-        return;
-    }
-    const menu = document.getElementById('questionMenu');
-    menu.innerHTML = '';
-    SECURITY_QUESTIONS.forEach(function (question) {
-        const item = document.createElement('div');
-        item.className = 'combo-item';
-        item.textContent = question;
-        item.onclick = function () {
-            const field = document.getElementById('securityQuestion');
-            field.value = question;
-            combo.classList.remove('open');
-            field.focus();
-            field.closest('.form-group').classList.remove('error');
-        };
-        menu.appendChild(item);
-    });
-    combo.classList.add('open');
-}
-
-document.addEventListener('click', function (event) {
-    const combo = document.getElementById('questionCombo');
-    if (combo && !combo.contains(event.target)) combo.classList.remove('open');
-});
-
 document.getElementById('registerForm').addEventListener('submit', async function (event) {
     event.preventDefault();
 
@@ -98,8 +67,6 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
-    const securityQuestion = document.getElementById('securityQuestion').value.trim();
-    const securityAnswer = document.getElementById('securityAnswer').value.trim();
     const button = document.querySelector('.register-button');
 
     clearErrors();
@@ -126,14 +93,6 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         showFieldError('confirmPassword', 'Passwords do not match.');
         return;
     }
-    if (!securityQuestion) {
-        showFieldError('securityQuestion', 'Please choose or write a security question.');
-        return;
-    }
-    if (!securityAnswer) {
-        showFieldError('securityAnswer', 'An answer is required.');
-        return;
-    }
 
     button.disabled = true;
     button.classList.add('loading');
@@ -141,7 +100,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
 
     try {
         const deviceInfo = await getDeviceInfoWithPush();
-        await performRegistration(name, username, password, securityQuestion, securityAnswer, deviceInfo);
+        await performRegistration(name, username, password, deviceInfo);
         // Registration logs the user in immediately.
         window.location.href = '/main';
     } catch (error) {
