@@ -485,4 +485,130 @@ final class UserTests: AppTestCase {
             XCTAssertEqual(res.status, .notFound, res.body.string)
         })
     }
+    
+    // MARK: Recovery with a security question
+    
+    private func loginCurrentUser() async throws -> String {
+        var tokenString = ""
+        try await asyncTest(.POST, "api/users/login",
+                            headers: .authWith(username: CurrentUser.username, password: CurrentUser.password),
+                            beforeRequest: { req in
+            try req.content.encode(DeviceInfo.testInfoMobile)
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            tokenString = try res.content.decode(User.PrivateInfo.self).deviceSessions.first!.accessToken
+        })
+        return tokenString
+    }
+    
+    func test_21_registerWithSecurityQuestionAndRecover() async throws {
+        try await asyncTest(.POST, "api/users", beforeRequest: { req in
+            try req.content.encode(
+                RegistrationRequest(name: "Test", username: "TestUser", password: "********", deviceInfo: .testInfoMobile,
+                                    securityQuestion: "  What city were you born in? ", securityAnswer: "Paris")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        // The username is matched the way registration stored it, and the question comes back trimmed.
+        try await asyncTest(.POST, "api/users/recover/question", beforeRequest: { req in
+            try req.content.encode(RecoveryQuestionRequest(username: " testuser "))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            XCTAssertEqual(try res.content.decode(SecurityQuestionInfo.self).question, "What city were you born in?")
+        })
+        // The answer is compared trimmed and case-insensitively.
+        try await asyncTest(.POST, "api/users/recover/reset", beforeRequest: { req in
+            try req.content.encode(RecoveryResetRequest(username: "testuser", answer: " pARIS ", newPassword: "12345678"))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try await asyncTest(.POST, "api/users/login",
+                            headers: .authWith(username: "testuser", password: "12345678"),
+                            beforeRequest: { req in
+            try req.content.encode(DeviceInfo.testInfoMobile)
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+    }
+    
+    func test_22_tryRegisterWithQuestionButNoAnswer() async throws {
+        try await asyncTest(.POST, "api/users", beforeRequest: { req in
+            try req.content.encode(
+                RegistrationRequest(name: "Test", username: "testuser", password: "********", deviceInfo: .testInfoMobile,
+                                    securityQuestion: "What city were you born in?", securityAnswer: "   ")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .badRequest, res.body.string)
+        })
+    }
+    
+    func test_23_tryRecoverWithoutSecurityQuestion() async throws {
+        try await service.seedCurrentUser()
+        // An account without a question and an unknown username get the same answer.
+        for username in [CurrentUser.username, "nobody"] {
+            try await asyncTest(.POST, "api/users/recover/question", beforeRequest: { req in
+                try req.content.encode(RecoveryQuestionRequest(username: username))
+            }, afterResponse: { res in
+                XCTAssertEqual(res.status, .notFound, res.body.string)
+            })
+            try await asyncTest(.POST, "api/users/recover/reset", beforeRequest: { req in
+                try req.content.encode(RecoveryResetRequest(username: username, answer: "anything", newPassword: "12345678"))
+            }, afterResponse: { res in
+                XCTAssertEqual(res.status, .forbidden, res.body.string)
+            })
+        }
+    }
+    
+    func test_24_setSecurityQuestionAndRecover() async throws {
+        try await service.seedCurrentUser()
+        let token = try await loginCurrentUser()
+        try await asyncTest(.GET, "api/users/me/security", headers: .authWith(token: token), afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            XCTAssertNil(try res.content.decode(SecurityQuestionInfo.self).question)
+        })
+        try await asyncTest(.PUT, "api/users/me/security", headers: .authWith(token: token), beforeRequest: { req in
+            try req.content.encode(
+                SetSecurityQuestionRequest(password: "wrong-password", securityQuestion: "What was the name of your first pet?", securityAnswer: "Rex")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+        try await asyncTest(.PUT, "api/users/me/security", headers: .authWith(token: token), beforeRequest: { req in
+            try req.content.encode(
+                SetSecurityQuestionRequest(password: CurrentUser.password, securityQuestion: "What was the name of your first pet?", securityAnswer: "Rex")
+            )
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+        try await asyncTest(.GET, "api/users/me/security", headers: .authWith(token: token), afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            XCTAssertEqual(try res.content.decode(SecurityQuestionInfo.self).question, "What was the name of your first pet?")
+        })
+        try await asyncTest(.POST, "api/users/recover/reset", beforeRequest: { req in
+            try req.content.encode(RecoveryResetRequest(username: CurrentUser.username, answer: "Max", newPassword: "12345678"))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .forbidden, res.body.string)
+        })
+        try await asyncTest(.POST, "api/users/recover/reset", beforeRequest: { req in
+            try req.content.encode(RecoveryResetRequest(username: CurrentUser.username, answer: "rex", newPassword: "12345678"))
+        }, afterResponse: { res in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+        })
+    }
+    
+    func test_25_passwordPolicy() throws {
+        // A production server enforces the complexity rules.
+        let production = PasswordPolicy(enforced: true)
+        XCTAssertTrue(production.isValid("Passw0rd"))
+        XCTAssertFalse(production.isValid("Pass0rd"))        // too short
+        XCTAssertFalse(production.isValid("password1"))      // no uppercase letter
+        XCTAssertFalse(production.isValid("PASSWORD1"))      // no lowercase letter
+        XCTAssertFalse(production.isValid("Password"))       // no digit
+        XCTAssertFalse(production.isValid("Passw0rd" + String(repeating: "x", count: 18))) // too long
+        // A server running locally accepts any password that is not empty.
+        let local = PasswordPolicy(enforced: false)
+        XCTAssertTrue(local.isValid("1"))
+        XCTAssertFalse(local.isValid(""))
+    }
 }

@@ -7,8 +7,8 @@ function generateUUID() {
 }
 
 // Centralized registration function
-async function performRegistration(name, username, password, deviceInfo) {
-    const data = await apiRegisterUser(name, username, password, deviceInfo);
+async function performRegistration(name, username, password, securityQuestion, securityAnswer, deviceInfo) {
+    const data = await apiRegisterUser(name, username, password, deviceInfo, securityQuestion, securityAnswer);
     
     // Store user data with access token in currentUser
     const currentUserData = {
@@ -60,205 +60,133 @@ function getDeviceInfo() {
     };
 }
 
-// Validate password strength
-function validatePassword(password) {
-    const requirements = {
-        length: password.length >= 8,
-        uppercase: /[A-Z]/.test(password),
-        lowercase: /[a-z]/.test(password),
-        number: /\d/.test(password)
-    };
-    
-    const isValid = Object.values(requirements).every(req => req);
-    return { isValid, requirements };
-}
-
-// Show error for a specific field
-function showFieldError(fieldId, message) {
-    const field = document.getElementById(fieldId);
-    const formGroup = field.closest('.form-group');
-    const errorPopup = formGroup.querySelector('.error-popup');
-    
-    formGroup.classList.add('error');
-    errorPopup.textContent = message;
-    
-    // Auto-hide error after 5 seconds
-    setTimeout(() => {
-        hideFieldError(fieldId);
-    }, 5000);
-}
-
-// Hide error for a specific field
-function hideFieldError(fieldId) {
-    const field = document.getElementById(fieldId);
-    const formGroup = field.closest('.form-group');
-    formGroup.classList.remove('error');
-}
-
-// Show status message
-function showStatus(message, type) {
-    const statusEl = document.getElementById('statusMessage');
-    statusEl.textContent = message;
-    statusEl.className = `status-message ${type}`;
-    statusEl.style.display = 'block';
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            statusEl.style.display = 'none';
-        }, 3000);
-    }
-}
-
-// Handle form submission
-document.getElementById('registerForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    // Clear previous errors
-    document.querySelectorAll('.form-group.error').forEach(group => {
-        group.classList.remove('error');
-    });
-    
-    const button = document.querySelector('.register-button');
-    button.classList.add('loading');
-    button.textContent = 'Creating Account...';
-    button.disabled = true;
-    
-    const deviceInfo = await getDeviceInfoWithPush();
-    
-    const formData = {
-        name: document.getElementById('name').value.trim(),
-        username: document.getElementById('username').value.trim(),
-        password: document.getElementById('password').value,
-        confirmPassword: document.getElementById('confirmPassword').value,
-        deviceInfo: deviceInfo
-    };
-    
-    // Validation
-    let hasErrors = false;
-    
-    if (!formData.name) {
-        showFieldError('name', 'Full name is required');
-        hasErrors = true;
-    }
-    
-    if (!formData.username) {
-        showFieldError('username', 'Username is required');
-        hasErrors = true;
-    } else if (formData.username.length < 3) {
-        showFieldError('username', 'Username must be at least 3 characters');
-        hasErrors = true;
-    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-        showFieldError('username', 'Username can only contain letters, numbers, and underscores');
-        hasErrors = true;
-    }
-    
-    if (!formData.password) {
-        showFieldError('password', 'Password is required');
-        hasErrors = true;
-    } else {
-        const passwordValidation = validatePassword(formData.password);
-        if (!passwordValidation.isValid) {
-            const missing = [];
-            if (!passwordValidation.requirements.length) missing.push('at least 8 characters');
-            if (!passwordValidation.requirements.uppercase) missing.push('uppercase letter');
-            if (!passwordValidation.requirements.lowercase) missing.push('lowercase letter');
-            if (!passwordValidation.requirements.number) missing.push('number');
-            
-            showFieldError('password', `Password must contain: ${missing.join(', ')}`);
-            hasErrors = true;
-        }
-    }
-    
-    if (!formData.confirmPassword) {
-        showFieldError('confirmPassword', 'Please confirm your password');
-        hasErrors = true;
-    } else if (formData.password !== formData.confirmPassword) {
-        showFieldError('confirmPassword', 'Passwords do not match');
-        hasErrors = true;
-    }
-    
-    if (hasErrors) {
-        button.classList.remove('loading');
-        button.textContent = 'Create Account';
-        button.disabled = false;
+// The suggested security questions, shown under the field's chevron.
+// Picking one only fills the field in, so the user can still edit it.
+function toggleQuestionMenu() {
+    const combo = document.getElementById('questionCombo');
+    if (combo.classList.contains('open')) {
+        combo.classList.remove('open');
         return;
     }
-    
+    const menu = document.getElementById('questionMenu');
+    menu.innerHTML = '';
+    SECURITY_QUESTIONS.forEach(function (question) {
+        const item = document.createElement('div');
+        item.className = 'combo-item';
+        item.textContent = question;
+        item.onclick = function () {
+            const field = document.getElementById('securityQuestion');
+            field.value = question;
+            combo.classList.remove('open');
+            field.focus();
+            field.closest('.form-group').classList.remove('error');
+        };
+        menu.appendChild(item);
+    });
+    combo.classList.add('open');
+}
+
+document.addEventListener('click', function (event) {
+    const combo = document.getElementById('questionCombo');
+    if (combo && !combo.contains(event.target)) combo.classList.remove('open');
+});
+
+document.getElementById('registerForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const securityQuestion = document.getElementById('securityQuestion').value.trim();
+    const securityAnswer = document.getElementById('securityAnswer').value.trim();
+    const button = document.querySelector('.register-button');
+
+    clearErrors();
+
+    // These mirror the server's rules in UserService, so most mistakes are caught before the request.
+    if (!name) {
+        showFieldError('name', 'Full name is required.');
+        return;
+    }
+    if (!username) {
+        showFieldError('username', 'Username is required.');
+        return;
+    }
+    if (!/^\p{L}[\p{L}\p{Nd}]{4,24}$/u.test(username)) {
+        showFieldError('username', 'Username must be 5-25 letters or digits and start with a letter.');
+        return;
+    }
+    const problem = passwordProblem(password);
+    if (problem) {
+        showFieldError('password', problem);
+        return;
+    }
+    if (password !== confirmPassword) {
+        showFieldError('confirmPassword', 'Passwords do not match.');
+        return;
+    }
+    if (!securityQuestion) {
+        showFieldError('securityQuestion', 'Please choose or write a security question.');
+        return;
+    }
+    if (!securityAnswer) {
+        showFieldError('securityAnswer', 'An answer is required.');
+        return;
+    }
+
+    button.disabled = true;
+    button.classList.add('loading');
+    button.textContent = 'Creating account...';
+
     try {
-        await performRegistration(formData.name, formData.username, formData.password, formData.deviceInfo);
-        
-        showStatus('Account created successfully! Redirecting...', 'success');
-        
-        // Redirect to main page
-        setTimeout(() => {
-            window.location.href = '/main';
-        }, 0);
+        const deviceInfo = await getDeviceInfoWithPush();
+        await performRegistration(name, username, password, securityQuestion, securityAnswer, deviceInfo);
+        // Registration logs the user in immediately.
+        window.location.href = '/main';
     } catch (error) {
         console.error('Registration error:', error);
-        
-        // Handle specific error cases based on status code
         if (error.status === 409) {
-            showFieldError('username', 'Username already exists');
-        } else if (error.status === 400) {
-            // Parse error message if available
-            let errorMsg = 'Invalid registration data';
-            try {
-                const errorData = JSON.parse(error.responseText);
-                errorMsg = errorData.message || errorMsg;
-            } catch {}
-            
-            if (errorMsg.toLowerCase().includes('username')) {
-                showFieldError('username', errorMsg);
-            } else if (errorMsg.toLowerCase().includes('password')) {
-                showFieldError('password', errorMsg);
-            } else {
-                showStatus(errorMsg, 'error');
-            }
+            showFieldError('username', 'Username already taken.');
+        } else if (error.status) {
+            showStatus(apiErrorReason(error) || 'Registration failed.', 'error');
         } else {
-            showStatus('Registration failed. Please check your connection.', 'error');
+            showStatus('Network error. Please try again.', 'error');
         }
+    } finally {
+        button.disabled = false;
+        button.classList.remove('loading');
+        button.textContent = 'Create Account';
     }
-    
-    button.classList.remove('loading');
-    button.textContent = 'Create Account';
-    button.disabled = false;
 });
 
-// Clear errors when user starts typing
-document.querySelectorAll('input, textarea, select').forEach(input => {
-    input.addEventListener('input', function() {
-        hideFieldError(this.id);
+// Shows an error under a field; it stays until the next submit or until the field is edited.
+function showFieldError(fieldId, message) {
+    const group = document.getElementById(fieldId).closest('.form-group');
+    group.classList.add('error');
+    group.querySelector('.error-popup').textContent = message;
+}
+
+function clearErrors() {
+    document.querySelectorAll('.form-group').forEach(function (group) {
+        group.classList.remove('error');
+        const popup = group.querySelector('.error-popup');
+        if (popup) popup.textContent = '';
     });
-});
+    document.getElementById('statusMessage').style.display = 'none';
+}
 
-// Real-time password validation feedback
-document.getElementById('password').addEventListener('input', function() {
-    const password = this.value;
-    const validation = validatePassword(password);
-    
-    if (password && !validation.isValid) {
-        const requirements = document.querySelector('.password-requirements-tooltip');
-        const items = requirements.querySelectorAll('li');
-        
-        items[0].style.color = validation.requirements.length ? '#28a745' : '#dc3545';
-        items[1].style.color = validation.requirements.uppercase ? '#28a745' : '#dc3545';
-        items[2].style.color = validation.requirements.lowercase ? '#28a745' : '#dc3545';
-        items[3].style.color = validation.requirements.number ? '#28a745' : '#dc3545';
-    } else {
-        // Reset colors
-        const items = document.querySelectorAll('.password-requirements-tooltip li');
-        items.forEach(item => item.style.color = '');
-    }
-});
+function showStatus(message, type) {
+    const statusMessage = document.getElementById('statusMessage');
+    statusMessage.className = `status-message ${type}`;
+    statusMessage.textContent = message;
+    statusMessage.style.display = 'block';
+}
 
-// Real-time confirm password validation
-document.getElementById('confirmPassword').addEventListener('input', function() {
-    const password = document.getElementById('password').value;
-    const confirmPassword = this.value;
-    
-    if (confirmPassword && password !== confirmPassword) {
-        showFieldError('confirmPassword', 'Passwords do not match');
-    } else {
-        hideFieldError('confirmPassword');
-    }
+// Editing a field clears its error.
+document.querySelectorAll('.form-group input').forEach(function (input) {
+    input.addEventListener('input', function () {
+        const group = this.closest('.form-group');
+        if (group) group.classList.remove('error');
+    });
 });

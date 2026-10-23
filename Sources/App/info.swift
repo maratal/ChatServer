@@ -9,9 +9,17 @@ struct ProductInfo: Serializable {
 struct IndexContext: Encodable {
     let productInfo = ProductInfo()
     let registrationOpen: Bool
+    /// Whether new passwords must follow the complexity rules (see `PasswordPolicy`).
+    let passwordRulesEnforced: Bool
+    /// Suggestions for the security question, already escaped for a `<script>` tag.
+    let securityQuestionsJSON = SecurityQuestions.json
 }
 
 struct MainContext: Encodable {
     let productInfo = ProductInfo()
     let serverMessage: String?
+    /// Whether new passwords must follow the complexity rules (see `PasswordPolicy`).
+    let passwordRulesEnforced: Bool
+    /// Suggestions for the security question, already escaped for a `<script>` tag.
+    let securityQuestionsJSON = SecurityQuestions.json
 }

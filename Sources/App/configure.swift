@@ -55,6 +55,7 @@ func configure(_ app: Application, service: inout CoreService) throws {
     app.migrations.add(AlterStatRecordPeaksToDouble())
     app.migrations.add(RebuildStatRecordsAsParams())
     app.migrations.add(CreateInstall())
+    app.migrations.add(AddSecurityQuestionToUser())
     
     try app.createUploadsDirectory()
     

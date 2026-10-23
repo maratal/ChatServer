@@ -32,6 +32,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
 }
 
 .login-button,
@@ -93,12 +95,23 @@
 }
 
 .register-link,
-.login-link {
+.login-link,
+.forgot-link,
+.back-link {
     text-align: center;
 }
 
+/* A link row with nothing above it carries its own gap. `.register-link` does
+   not, because on the sign-in page a divider sits above it. */
+.forgot-link,
+.back-link {
+    margin-top: 16px;
+}
+
 .register-link a,
-.login-link a {
+.login-link a,
+.forgot-link a,
+.back-link a {
     color: hsl(var(--primary));
     text-decoration: none;
     font-weight: 500;
@@ -107,7 +120,9 @@
 }
 
 .register-link a:hover,
-.login-link a:hover {
+.login-link a:hover,
+.forgot-link a:hover,
+.back-link a:hover {
     border-bottom-color: hsl(var(--primary));
 }
 
@@ -140,77 +155,6 @@
     height: 100%;
     font-size: 1rem;
     color: hsl(var(--muted-foreground));
-}
-
-.info-button {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    border-radius: 50%;
-    text-align: center;
-    font-size: 10px;
-    line-height: 16px;
-    font-weight: bold;
-    font-style: normal;
-    font-family: serif;
-    margin-left: 2px;
-    margin-bottom: 2px;
-    position: relative;
-    vertical-align: middle;
-}
-
-.info-button:hover {
-    background: hsl(var(--primary) / 0.85);
-}
-
-.password-requirements-tooltip {
-    position: absolute;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    width: 280px;
-    top: 25px;
-    left: 0;
-    z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.password-requirements-tooltip::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 20px;
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 8px solid hsl(var(--primary));
-}
-
-.password-requirements-tooltip ul {
-    margin: 5px 0 0 15px;
-    color: hsl(var(--primary-foreground));
-}
-
-.password-requirements-tooltip li {
-    margin-bottom: 2px;
-    color: hsl(var(--primary-foreground));
-}
-
-.password-requirements-tooltip strong {
-    color: hsl(var(--primary-foreground));
-}
-
-.info-button:hover + .password-requirements-tooltip {
-    opacity: 1;
-    visibility: visible;
 }
 
 @media (max-width: 480px) {

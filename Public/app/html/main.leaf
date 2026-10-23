@@ -375,6 +375,9 @@
         </div>
     </div>
     
+    <script>var SECURITY_QUESTIONS = #unsafeHTML(securityQuestionsJSON);</script>
+    <script>var PASSWORD_RULES_ENFORCED = #(passwordRulesEnforced);</script>
+    <script src="/app/js/password-rules.js?v=#(productInfo.version)"></script>
     <script src="/app/js/constants.js?v=#(productInfo.version)"></script>
     <script src="/app/js/utils.js?v=#(productInfo.version)"></script>
     <script src="/app/js/helpers.js?v=#(productInfo.version)"></script>

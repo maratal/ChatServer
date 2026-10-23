@@ -4,6 +4,7 @@ import Foundation
 protocol UsersRepository: Sendable {
     func fetch(id: UserID) async throws -> User
     func find(id: UserID) async throws -> User?
+    func find(username: String) async throws -> User?
     func save(_ user: User) async throws
     func delete(_ user: User) async throws
     func all(before userID: UserID?, count: Int) async throws -> [User]
@@ -37,6 +38,12 @@ actor UsersDatabaseRepository: DatabaseRepository, UsersRepository {
         try await User.query(on: database)
             .filter(\.$id == id)
             .with(\.$photos)
+            .first()
+    }
+    
+    func find(username: String) async throws -> User? {
+        try await User.query(on: database)
+            .filter(\.$username == username)
             .first()
     }
     

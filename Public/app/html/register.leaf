@@ -21,37 +21,46 @@
         <form id="registerForm">
             <div class="form-group">
                 <label for="name">Full Name</label>
-                <input type="text" id="name" name="name" required>
+                <input type="text" id="name" name="name" autocomplete="name" required>
                 <div class="error-popup"></div>
             </div>
             
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" autocomplete="username" required>
                 <div class="error-popup"></div>
             </div>
             
             <div class="form-group">
-                <label for="password">
-                    Password
-                    <span class="info-button" id="password-info">i</span>
-                    <div class="password-requirements-tooltip">
-                        <strong>Password requirements:</strong>
-                        <ul>
-                            <li>At least 8 characters long</li>
-                            <li>Contains at least one uppercase letter</li>
-                            <li>Contains at least one lowercase letter</li>
-                            <li>Contains at least one number</li>
-                        </ul>
-                    </div>
-                </label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" autocomplete="new-password" required>
+                <div class="field-hint">8-25 characters, with an uppercase letter, a lowercase letter and a digit.</div>
                 <div class="error-popup"></div>
             </div>
             
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required>
+                <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="securityQuestion">Security question</label>
+                <!-- An ordinary editable field with a chevron: the list only
+                     fills it in, so whatever is typed is what gets saved. -->
+                <div class="combo" id="questionCombo">
+                    <input type="text" id="securityQuestion" name="securityQuestion" placeholder="Pick one or write your own" autocomplete="off" required>
+                    <button type="button" class="combo-toggle" onclick="toggleQuestionMenu()" aria-label="Suggested questions">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="combo-menu" id="questionMenu"></div>
+                </div>
+                <div class="error-popup"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="securityAnswer">Answer</label>
+                <input type="text" id="securityAnswer" name="securityAnswer" autocomplete="off" required>
                 <div class="error-popup"></div>
             </div>
             
@@ -72,6 +81,11 @@
         #endif
     </div>
 
+    <!-- Suggestions for the security question, templated in so the pages
+         and the server cannot drift apart. -->
+    <script>var SECURITY_QUESTIONS = #unsafeHTML(securityQuestionsJSON);</script>
+    <script>var PASSWORD_RULES_ENFORCED = #(passwordRulesEnforced);</script>
+    <script src="/app/js/password-rules.js?v=#(productInfo.version)"></script>
     <script src="/app/js/constants.js?v=#(productInfo.version)"></script>
     <script src="/app/js/svg-icons.js?v=#(productInfo.version)"></script>
     <script src="/app/js/settings.js?v=#(productInfo.version)"></script>

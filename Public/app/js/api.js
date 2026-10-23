@@ -36,7 +36,7 @@ async function handleResponse(response) {
     return await response.text();
 }
 
-async function apiRegisterUser(name, username, password, deviceInfo) {
+async function apiRegisterUser(name, username, password, deviceInfo, securityQuestion, securityAnswer) {
     const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -46,8 +46,30 @@ async function apiRegisterUser(name, username, password, deviceInfo) {
             name: name,
             username: username,
             password: password,
-            deviceInfo: deviceInfo
+            deviceInfo: deviceInfo,
+            securityQuestion: securityQuestion,
+            securityAnswer: securityAnswer
         })
+    });
+    return await handleResponse(response);
+}
+
+// Password recovery, step 1: returns { question } for the account with this username.
+async function apiRecoverQuestion(username) {
+    const response = await fetch('/api/users/recover/question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+    });
+    return await handleResponse(response);
+}
+
+// Password recovery, step 2: sets a new password if the answer to the security question is correct.
+async function apiRecoverReset(username, answer, newPassword) {
+    const response = await fetch('/api/users/recover/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, answer, newPassword })
     });
     return await handleResponse(response);
 }
@@ -128,6 +150,44 @@ async function apiChangePassword(currentPassword, newPassword) {
         body: JSON.stringify({
             currentPassword,
             newPassword
+        })
+    });
+    return await handleResponse(response);
+}
+
+// Returns { question } for the current user; question is missing when none is set.
+async function apiGetSecurityQuestion() {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch('/api/users/me/security', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`
+        }
+    });
+    return await handleResponse(response);
+}
+
+// Changing the security question costs the current password, not just the session.
+async function apiSetSecurityQuestion(password, securityQuestion, securityAnswer) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        throw new Error('No access token available');
+    }
+    
+    const response = await fetch('/api/users/me/security', {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            password,
+            securityQuestion,
+            securityAnswer
         })
     });
     return await handleResponse(response);

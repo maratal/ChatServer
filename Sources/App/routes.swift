@@ -1,6 +1,10 @@
 import Vapor
 
 func routes(_ app: Application, settingsService: any SettingsServiceProtocol) {
+    // Pages need to know whether to check new passwords against the complexity rules.
+    // This matches CoreService.passwordPolicy: only a production server enforces them.
+    let passwordRulesEnforced = app.environment == .production
+    
     app.get { req async throws -> Response in
         if try await settingsService.isJournalAtIndexEnabled() {
             if let _ = try await User.find(1, on: req.db) {
@@ -8,23 +12,28 @@ func routes(_ app: Application, settingsService: any SettingsServiceProtocol) {
             }
         }
         let registrationOpen = try await settingsService.isRegistrationOpen()
-        let view = req.view.render("index", IndexContext(registrationOpen: registrationOpen))
+        let view = req.view.render("index", IndexContext(registrationOpen: registrationOpen, passwordRulesEnforced: passwordRulesEnforced))
         return try await view.encodeResponse(for: req).get()
     }
     
     app.get("main") { req async throws -> View in
         let message = try await settingsService.serverMessage()
-        return try await req.view.render("main", MainContext(serverMessage: message))
+        return try await req.view.render("main", MainContext(serverMessage: message, passwordRulesEnforced: passwordRulesEnforced))
     }
     
     app.get("login") { req async throws -> View in
         let registrationOpen = try await settingsService.isRegistrationOpen()
-        return try await req.view.render("login", IndexContext(registrationOpen: registrationOpen))
+        return try await req.view.render("login", IndexContext(registrationOpen: registrationOpen, passwordRulesEnforced: passwordRulesEnforced))
     }
     
     app.get("register") { req async throws -> View in
         let registrationOpen = try await settingsService.isRegistrationOpen()
-        return try await req.view.render("register", IndexContext(registrationOpen: registrationOpen))
+        return try await req.view.render("register", IndexContext(registrationOpen: registrationOpen, passwordRulesEnforced: passwordRulesEnforced))
+    }
+
+    app.get("forgot") { req async throws -> View in
+        let registrationOpen = try await settingsService.isRegistrationOpen()
+        return try await req.view.render("forgot", IndexContext(registrationOpen: registrationOpen, passwordRulesEnforced: passwordRulesEnforced))
     }
 
     app.get("api", "info") { req async throws in

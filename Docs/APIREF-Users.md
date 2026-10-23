@@ -20,9 +20,15 @@ __Request body__:
    "name": "…",
    "username": "…",
    "password": "…",
-   "deviceInfo": <DeviceInfo>
+   "deviceInfo": <DeviceInfo>,
+   "securityQuestion": "…",
+   "securityAnswer": "…"
 }
 ```
+On a server running with `--env production`, the password must be 8-25 characters and contain an uppercase letter, a lowercase letter and a digit; the same rules apply to every endpoint that sets a new password. A server running locally (development or testing environment) accepts any non-empty password.
+
+`securityQuestion` and `securityAnswer` are optional, but if one is sent the other must be too. They are what [password recovery](#15-recovery-get-security-question) checks. The answer is compared trimmed and case-insensitively.
+
 __Response__: [`UserInfo`](APIREF-JSON.md#userinfo) object.
 
 See also: [`DeviceInfo`](APIREF-JSON.md#deviceinfo)
@@ -263,5 +269,90 @@ DELETE /users/me
 __Headers__:
 ```
 Authorization: Basic <username:password>
+```
+__Response__: `OK`
+
+_________________________________________________________________________________
+
+### 15. Recovery: get security question
+
+The first step of password recovery. Returns the security question of the account with the given username. An unknown username and an account without a question both return `404`.
+
+__Path__:
+```
+POST /users/recover/question
+```
+__Request body__:
+```
+{
+   "username": "…"
+}
+```
+__Response__:
+```
+{
+   "question": "…"
+}
+```
+_________________________________________________________________________________
+
+### 16. Recovery: reset password
+
+The second step of password recovery. Sets a new password if the answer to the security question is correct, otherwise returns `403`.
+
+__Path__:
+```
+POST /users/recover/reset
+```
+__Request body__:
+```
+{
+   "username": "…",
+   "answer": "…",
+   "newPassword": "…"
+}
+```
+__Response__: `OK`
+_________________________________________________________________________________
+
+### 17. Get security question
+
+Returns the current user's security question. `question` is omitted when none is set. The answer is never returned.
+
+__Path__:
+```
+GET /users/me/security
+```
+__Headers__:
+```
+Authorization: Bearer <token>
+```
+__Response__:
+```
+{
+   "question": "…"
+}
+```
+_________________________________________________________________________________
+
+### 18. Set security question
+
+Sets a new security question and answer. Requires the current password, so a session alone cannot change how the account is recovered.
+
+__Path__:
+```
+PUT /users/me/security
+```
+__Headers__:
+```
+Authorization: Bearer <token>
+```
+__Request body__:
+```
+{
+   "password": "…",
+   "securityQuestion": "…",
+   "securityAnswer": "…"
+}
 ```
 __Response__: `OK`

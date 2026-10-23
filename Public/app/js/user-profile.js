@@ -324,6 +324,7 @@ function showUserProfileMenu() {
     
     const menuItems = [
         { id: 'change_password', label: 'Change Password', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' },
+        { id: 'change_security_question', label: 'Change Security Question', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2"></path><line x1="12" y1="17" x2="12" y2="17"></line></svg>' },
         { id: 'logout', label: 'Logout', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>', separator: true }
     ];
     
@@ -342,6 +343,9 @@ function handleUserProfileMenuAction(action) {
     switch (action) {
         case 'change_password':
             showChangePasswordModal();
+            break;
+        case 'change_security_question':
+            showSecurityQuestionModal();
             break;
         case 'logout':
             logout();
@@ -374,6 +378,7 @@ function showChangePasswordModal() {
                     <div class="form-group">
                         <label for="newPasswordInput">New Password</label>
                         <input type="password" id="newPasswordInput" placeholder="Enter new password">
+                        <div class="field-hint">8-25 characters, with an uppercase letter, a lowercase letter and a digit.</div>
                     </div>
                     <div class="form-group">
                         <label for="confirmPasswordInput">Confirm New Password</label>
@@ -459,15 +464,9 @@ async function handleChangePassword() {
         return;
     }
     
-    if (!newPassword) {
-        errorDiv.textContent = 'Please enter a new password';
-        errorDiv.style.display = 'block';
-        newPasswordInput.focus();
-        return;
-    }
-    
-    if (newPassword.length < 6) {
-        errorDiv.textContent = 'Password must be at least 6 characters long';
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+        errorDiv.textContent = problem;
         errorDiv.style.display = 'block';
         newPasswordInput.focus();
         return;
@@ -511,6 +510,173 @@ async function handleChangePassword() {
         // Re-enable button
         changeBtn.disabled = false;
         changeBtn.textContent = 'Change Password';
+    }
+}
+
+// The security question is what recovers the account when the password is lost.
+// Changing it costs the current password, so a stolen session alone cannot take the account over.
+async function showSecurityQuestionModal() {
+    const modalId = 'securityQuestionModal';
+    const modalElement = document.createElement('div');
+    modalElement.id = modalId;
+    modalElement.className = 'user-profile-modal';
+    modalElement.style.zIndex = 1010 + userInfoModalStack.length * 10;
+    
+    modalElement.innerHTML = `
+        <div class="user-profile-content">
+            <div class="modal-panel-header user-profile-header">
+                <h1 class="text-2xl font-bold text-sidebar-foreground"></h1>
+                <button class="inline-button" onclick="closeTopModalInfoPanel()">
+                    ${closeIcon}
+                </button>
+            </div>
+            <div class="user-profile-body" id="${modalId}_body">
+                <div class="change-password-form">
+                    <div class="form-group">
+                        <label for="securityPasswordInput">Current Password</label>
+                        <input type="password" id="securityPasswordInput" placeholder="Enter current password" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="securityQuestionInput">Security Question</label>
+                        <div class="combo" id="securityQuestionCombo">
+                            <input type="text" id="securityQuestionInput" placeholder="Pick one or write your own" autocomplete="off">
+                            <button type="button" class="combo-toggle" onclick="toggleSecurityQuestionMenu(event)" aria-label="Suggested questions">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="combo-menu" id="securityQuestionMenu"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="securityAnswerInput">Answer</label>
+                        <input type="text" id="securityAnswerInput" placeholder="Enter the answer" autocomplete="off" spellcheck="false">
+                    </div>
+                    <div id="securityQuestionError" class="user-profile-error" style="display: none; margin-top: 1rem;"></div>
+                    <div id="securityQuestionSuccess" class="user-profile-success" style="display: none; margin-top: 1rem;"></div>
+                    <div class="user-profile-actions">
+                        <button class="user-profile-save-btn" onclick="handleChangeSecurityQuestion()" id="changeSecurityQuestionBtn">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalElement);
+    
+    // Close on backdrop click, and close the suggestions on any click outside them.
+    modalElement.addEventListener('click', function(event) {
+        if (event.target === modalElement) {
+            closeTopModalInfoPanel();
+            return;
+        }
+        const combo = document.getElementById('securityQuestionCombo');
+        if (combo && !combo.contains(event.target)) {
+            combo.classList.remove('open');
+        }
+    });
+    
+    modalElement.style.display = 'block';
+    modalElement.offsetHeight;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            modalElement.classList.add('show');
+        });
+    });
+    
+    userInfoModalStack.push({ type: 'securityQuestion', element: modalElement, bodyId: `${modalId}_body` });
+    
+    setTimeout(() => {
+        const passwordInput = document.getElementById('securityPasswordInput');
+        if (passwordInput) {
+            passwordInput.focus();
+        }
+    }, 100);
+    
+    ['securityPasswordInput', 'securityQuestionInput', 'securityAnswerInput'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleChangeSecurityQuestion();
+                }
+            });
+        }
+    });
+    
+    // Show the current question, if there is one. The answer is never sent back, so it starts empty.
+    try {
+        const data = await apiGetSecurityQuestion();
+        const questionInput = document.getElementById('securityQuestionInput');
+        if (questionInput && data && data.question) {
+            questionInput.value = data.question;
+        }
+    } catch (error) {
+        console.error('Error loading security question:', error);
+    }
+}
+
+function toggleSecurityQuestionMenu(event) {
+    event.stopPropagation();
+    const combo = document.getElementById('securityQuestionCombo');
+    if (combo.classList.contains('open')) {
+        combo.classList.remove('open');
+        return;
+    }
+    const menu = document.getElementById('securityQuestionMenu');
+    menu.innerHTML = '';
+    (typeof SECURITY_QUESTIONS !== 'undefined' ? SECURITY_QUESTIONS : []).forEach(question => {
+        const item = document.createElement('div');
+        item.className = 'combo-item';
+        item.textContent = question;
+        item.onclick = () => {
+            const field = document.getElementById('securityQuestionInput');
+            field.value = question;
+            combo.classList.remove('open');
+            field.focus();
+        };
+        menu.appendChild(item);
+    });
+    combo.classList.add('open');
+}
+
+async function handleChangeSecurityQuestion() {
+    const passwordInput = document.getElementById('securityPasswordInput');
+    const questionInput = document.getElementById('securityQuestionInput');
+    const answerInput = document.getElementById('securityAnswerInput');
+    const errorDiv = document.getElementById('securityQuestionError');
+    const successDiv = document.getElementById('securityQuestionSuccess');
+    const saveBtn = document.getElementById('changeSecurityQuestionBtn');
+    
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    
+    const password = passwordInput.value;
+    const question = questionInput.value.trim();
+    const answer = answerInput.value.trim();
+    
+    if (!password || !question || !answer) {
+        errorDiv.textContent = 'Your password, a question and an answer are all required';
+        errorDiv.style.display = 'block';
+        (!password ? passwordInput : !question ? questionInput : answerInput).focus();
+        return;
+    }
+    
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    
+    try {
+        await apiSetSecurityQuestion(password, question, answer);
+        successDiv.textContent = 'Security question changed';
+        successDiv.style.display = 'block';
+        setTimeout(() => {
+            closeTopModalInfoPanel();
+        }, 500);
+    } catch (error) {
+        console.error('Error changing security question:', error);
+        errorDiv.textContent = error.status === 403 ? 'Incorrect password' : (apiErrorReason(error) || 'Failed to change security question');
+        errorDiv.style.display = 'block';
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
     }
 }
 

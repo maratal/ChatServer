@@ -5,6 +5,9 @@ struct RegistrationRequest: Serializable {
     var username: String
     var password: String
     var deviceInfo: DeviceInfo
+    /// Optional in the API so that older clients can still register, but the web sign-up page always sends both.
+    var securityQuestion: String?
+    var securityAnswer: String?
 }
 
 struct ChangePasswordRequest: Serializable {
@@ -21,6 +24,26 @@ struct ResetPasswordRequest: Serializable {
 struct SetAccountKeyRequest: Serializable {
     var password: String
     var accountKey: String
+}
+
+struct RecoveryQuestionRequest: Serializable {
+    var username: String
+}
+
+struct SecurityQuestionInfo: Serializable {
+    var question: String?
+}
+
+struct RecoveryResetRequest: Serializable {
+    var username: String
+    var answer: String
+    var newPassword: String
+}
+
+struct SetSecurityQuestionRequest: Serializable {
+    var password: String
+    var securityQuestion: String
+    var securityAnswer: String
 }
 
 struct CreateChatRequest: Serializable {

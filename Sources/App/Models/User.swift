@@ -25,6 +25,14 @@ final class User: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
     
     @Field(key: "account_key_hash")
     var accountKeyHash: String?
+
+    /// The question asked when the user has lost their password. Shown to anyone who knows the username.
+    @Field(key: "security_question")
+    var securityQuestion: String?
+
+    /// Bcrypt hash of the normalized (trimmed, lowercased) answer to `securityQuestion`.
+    @Field(key: "security_answer_hash")
+    var securityAnswerHash: String?
     
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
@@ -52,6 +60,8 @@ final class User: RepositoryItem, @unchecked Sendable /* https://blog.vapor.code
         self.username = username
         self.passwordHash = passwordHash
         self.accountKeyHash = accountKeyHash
+        self.securityQuestion = nil
+        self.securityAnswerHash = nil
         self.about = nil
         self.language = nil
     }

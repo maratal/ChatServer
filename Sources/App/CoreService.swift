@@ -40,6 +40,9 @@ struct CoreService: Sendable {
     
     var logger: Logger { app.logger }
     
+    /// Complexity rules apply only on a production server; one running locally accepts any password.
+    var passwordPolicy: PasswordPolicy { PasswordPolicy(enforced: app.environment == .production) }
+    
     lazy var users: UserService = UserService(core: self, repo: UsersDatabaseRepository(database: app.db), settingsService: self.settings)
     lazy var chats: ChatService = ChatService(core: self, repo: ChatsDatabaseRepository(core: self), notesRepo: NotesDatabaseRepository(database: app.db))
     lazy var contacts: ContactsService = ContactsService(repo: ContactsDatabaseRepository(database: app.db))
@@ -209,12 +212,12 @@ extension CoreService {
     
     struct Constants {
         /// Registration constants
-        static let minPasswordLength = 8
-        static let maxPasswordLength = 25
         static let minUsernameLength = 5
         static let maxUsernameLength = 25
         static let minAccountKeyLength = 25
         static let maxAccountKeyLength = 100
+        static let maxSecurityQuestionLength = 200
+        static let maxSecurityAnswerLength = 70 // bcrypt only looks at the first 72 bytes
     }
     
     struct Errors {
@@ -222,8 +225,10 @@ extension CoreService {
         static let invalidUser       = ServiceError(.notFound, reason: "User was not found.")
         static let invalidPassword   = ServiceError(.forbidden, reason: "Invalid user or password.")
         static let invalidAccountKey = ServiceError(.forbidden, reason: "Invalid user or account key.")
-        static let badPassword       = ServiceError(.badRequest, reason: "Password should be at least \(Constants.minPasswordLength) characters length.")
         static let badAccountKey     = ServiceError(.badRequest, reason: "Key should be at least \(Constants.minAccountKeyLength) characters length.")
+        static let badSecurityQuestion = ServiceError(.badRequest, reason: "A security question and answer are required.")
+        static let noSecurityQuestion  = ServiceError(.notFound, reason: "No security question is set for that account.")
+        static let invalidSecurityAnswer = ServiceError(.forbidden, reason: "Incorrect answer to the security question.")
         static let badName           = ServiceError(.badRequest, reason: "Name should consist of letters.")
         static let badUsername       = ServiceError(.badRequest, reason: "Username should be at least \(Constants.minUsernameLength) characters length, start with letter and consist of letters and digits.")
         

@@ -34,6 +34,18 @@ protocol UserServiceProtocol: LoggedIn {
     /// Sets an account key by providing user's current password.
     func setAccountKey(_ user: User, currentPassword: String, newAccountKey: String) async throws
     
+    /// Returns the security question of the account with the given username, the first step of password recovery.
+    func securityQuestion(username: String) async throws -> SecurityQuestionInfo
+    
+    /// Resets the password of the account with the given username if the answer to its security question is correct.
+    func resetPassword(username: String, securityAnswer: String, newPassword: String) async throws
+    
+    /// Returns the current user's security question, or `nil` in `question` if none is set.
+    func securityQuestion(of user: User) async throws -> SecurityQuestionInfo
+    
+    /// Sets a new security question and answer by providing user's current password.
+    func setSecurityQuestion(_ user: User, currentPassword: String, question: String, answer: String) async throws
+    
     /// Updates current user with the information from the request fields.
     func update(_ user: User, with info: UpdateUserRequest) async throws -> UserInfo
     
@@ -84,6 +96,10 @@ actor UserService: UserServiceProtocol {
                         username: registration.username,
                         passwordHash: registration.password.bcryptHash(),
                         accountKeyHash: nil)
+        if let question = registration.securityQuestion, let answer = registration.securityAnswer {
+            user.securityQuestion = question
+            user.securityAnswerHash = answer.bcryptHash()
+        }
         try await repo.save(user)
         return try await login(user, deviceInfo: request.deviceInfo, ipAddress: ipAddress)
     }
@@ -130,8 +146,8 @@ actor UserService: UserServiceProtocol {
         guard try user.verify(password: currentPassword) else {
             throw CoreService.Errors.invalidPassword
         }
-        guard validatePassword(newPassword) else {
-            throw CoreService.Errors.badPassword
+        guard core.passwordPolicy.isValid(newPassword) else {
+            throw core.passwordPolicy.error
         }
         user.passwordHash = newPassword.bcryptHash()
         try await repo.save(user)
@@ -144,8 +160,8 @@ actor UserService: UserServiceProtocol {
         guard try user.verify(accountKey: accountKey) else {
             throw CoreService.Errors.invalidAccountKey
         }
-        guard validatePassword(newPassword) else {
-            throw CoreService.Errors.badPassword
+        guard core.passwordPolicy.isValid(newPassword) else {
+            throw core.passwordPolicy.error
         }
         user.passwordHash = newPassword.bcryptHash()
         try await repo.save(user)
@@ -159,6 +175,46 @@ actor UserService: UserServiceProtocol {
             throw CoreService.Errors.badAccountKey
         }
         user.accountKeyHash = newAccountKey.bcryptHash()
+        try await repo.save(user)
+    }
+    
+    func securityQuestion(username: String) async throws -> SecurityQuestionInfo {
+        // An unknown username gets the same answer as an account without a question.
+        guard let user = try await repo.find(username: normalizeUsername(username)),
+              let question = user.securityQuestion, user.securityAnswerHash != nil else {
+            throw CoreService.Errors.noSecurityQuestion
+        }
+        return SecurityQuestionInfo(question: question)
+    }
+    
+    func resetPassword(username: String, securityAnswer: String, newPassword: String) async throws {
+        guard core.passwordPolicy.isValid(newPassword) else {
+            throw core.passwordPolicy.error
+        }
+        // An unknown username gets the same answer as a wrong one.
+        guard let user = try await repo.find(username: normalizeUsername(username)),
+              try user.verify(securityAnswer: normalizeAnswer(securityAnswer)) else {
+            throw CoreService.Errors.invalidSecurityAnswer
+        }
+        user.passwordHash = newPassword.bcryptHash()
+        try await repo.save(user)
+    }
+    
+    func securityQuestion(of user: User) async throws -> SecurityQuestionInfo {
+        // The question is public to anyone who knows the username, since recovery hands it out,
+        // so returning it needs nothing beyond the session. Changing it is what costs the password.
+        SecurityQuestionInfo(question: user.securityQuestion)
+    }
+    
+    func setSecurityQuestion(_ user: User, currentPassword: String, question: String, answer: String) async throws {
+        guard try user.verify(password: currentPassword) else {
+            throw CoreService.Errors.invalidPassword
+        }
+        guard case let (question, answer)? = validateSecurityQuestion(question, answer) else {
+            throw CoreService.Errors.badSecurityQuestion
+        }
+        user.securityQuestion = question
+        user.securityAnswerHash = answer.bcryptHash()
         try await repo.save(user)
     }
     
@@ -260,19 +316,49 @@ actor UserService: UserServiceProtocol {
 
 private extension UserService {
     
-    func validatePassword(_ password: String) -> Bool {
-        return password.count >= CoreService.Constants.minPasswordLength && password.count <= CoreService.Constants.maxPasswordLength
-    }
-    
     func validateAccountKey(_ key: String) -> Bool {
         return key.count >= CoreService.Constants.minAccountKeyLength && key.count <= CoreService.Constants.maxAccountKeyLength
     }
     
+    func normalizeUsername(_ username: String) -> String {
+        username.normalized().lowercased()
+    }
+    
+    /// Answers are compared trimmed and case-insensitively, so "Paris" and " paris" are the same answer.
+    func normalizeAnswer(_ answer: String) -> String {
+        answer.normalized().lowercased()
+    }
+    
+    /// Returns the trimmed question and the normalized answer, or `nil` if either is empty or too long.
+    func validateSecurityQuestion(_ question: String, _ answer: String) -> (String, String)? {
+        let question = question.normalized()
+        let answer = normalizeAnswer(answer)
+        guard !question.isEmpty, question.count <= CoreService.Constants.maxSecurityQuestionLength,
+              !answer.isEmpty, answer.count <= CoreService.Constants.maxSecurityAnswerLength else {
+            return nil
+        }
+        return (question, answer)
+    }
+    
     func validate(registration: RegistrationRequest) throws -> RegistrationRequest {
+        // Older clients send neither the question nor the answer, which is allowed.
+        // Sending only one of them, or an empty one, is a mistake and is rejected.
+        var securityQuestion: String?
+        var securityAnswer: String?
+        if registration.securityQuestion != nil || registration.securityAnswer != nil {
+            guard case let (question, answer)? = validateSecurityQuestion(registration.securityQuestion ?? "",
+                                                                    registration.securityAnswer ?? "") else {
+                throw CoreService.Errors.badSecurityQuestion
+            }
+            securityQuestion = question
+            securityAnswer = answer
+        }
         let registration = RegistrationRequest(name: registration.name.normalized(),
-                                               username: registration.username.normalized().lowercased(),
+                                               username: normalizeUsername(registration.username),
                                                password: registration.password,
-                                               deviceInfo: registration.deviceInfo)
+                                               deviceInfo: registration.deviceInfo,
+                                               securityQuestion: securityQuestion,
+                                               securityAnswer: securityAnswer)
         guard registration.name.isName else {
             throw CoreService.Errors.badName
         }
@@ -282,8 +368,8 @@ private extension UserService {
               registration.username.first!.isLetter else {
             throw CoreService.Errors.badUsername
         }
-        guard validatePassword(registration.password) else {
-            throw CoreService.Errors.badPassword
+        guard core.passwordPolicy.isValid(registration.password) else {
+            throw core.passwordPolicy.error
         }
         return registration
     }

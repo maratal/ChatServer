@@ -60,121 +60,75 @@ function getDeviceInfo() {
     };
 }
 
-// Show error for a specific field
-function showFieldError(fieldId, message) {
-    const field = document.getElementById(fieldId);
-    const formGroup = field.closest('.form-group');
-    const errorPopup = formGroup.querySelector('.error-popup');
-    
-    formGroup.classList.add('error');
-    errorPopup.textContent = message;
-    
-    // Auto-hide error after 5 seconds
-    setTimeout(() => {
-        hideFieldError(fieldId);
-    }, 5000);
-}
+document.getElementById('loginForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
 
-// Hide error for a specific field
-function hideFieldError(fieldId) {
-    const field = document.getElementById(fieldId);
-    const formGroup = field.closest('.form-group');
-    formGroup.classList.remove('error');
-}
-
-// Show status message
-function showStatus(message, type) {
-    const statusEl = document.getElementById('statusMessage');
-    statusEl.textContent = message;
-    statusEl.className = `status-message ${type}`;
-    statusEl.style.display = 'block';
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            statusEl.style.display = 'none';
-        }, 3000);
-    }
-}
-
-// Handle form submission
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    // Clear previous errors
-    document.querySelectorAll('.form-group.error').forEach(group => {
-        group.classList.remove('error');
-    });
-    
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
     const button = document.querySelector('.login-button');
-    button.classList.add('loading');
-    button.textContent = 'Signing in...';
-    button.disabled = true;
-    
-    const deviceInfo = await getDeviceInfoWithPush();
-    
-    const formData = {
-        username: document.getElementById('username').value.trim(),
-        password: document.getElementById('password').value,
-        deviceInfo: deviceInfo
-    };
-    
-    // Basic validation
-    let hasErrors = false;
-    
-    if (!formData.username) {
-        showFieldError('username', 'Username is required');
-        hasErrors = true;
-    }
-    
-    if (!formData.password) {
-        showFieldError('password', 'Password is required');
-        hasErrors = true;
-    }
-    
-    if (hasErrors) {
-        button.classList.remove('loading');
-        button.textContent = 'Sign In';
-        button.disabled = false;
+
+    clearErrors();
+
+    if (!username) {
+        showFieldError('username', 'Username is required.');
         return;
     }
-    
+    if (!password) {
+        showFieldError('password', 'Password is required.');
+        return;
+    }
+
+    button.disabled = true;
+    button.classList.add('loading');
+    button.textContent = 'Signing in...';
+
     try {
-        await performLogin(formData.username, formData.password, formData.deviceInfo);
-        
-        showStatus('Login successful! Redirecting...', 'success');
-        
-        // Redirect to main page
-        setTimeout(() => {
-            window.location.href = '/main';
-        }, 0);
+        const deviceInfo = await getDeviceInfoWithPush();
+        await performLogin(username, password, deviceInfo);
+        window.location.href = '/main';
     } catch (error) {
         console.error('Login error:', error);
-        
-        // Handle specific error cases based on status code
         if (error.status === 401) {
-            showFieldError('username', 'Invalid username or password');
-            showFieldError('password', 'Invalid username or password');
-        } else if (error.status === 400) {
-            // Parse error message if available
-            let errorMessage = 'Invalid request data';
-            try {
-                const errorData = JSON.parse(error.responseText);
-                errorMessage = errorData.message || errorMessage;
-            } catch {}
-            showStatus(errorMessage, 'error');
+            showStatus('Invalid username or password.', 'error');
+        } else if (error.status) {
+            showStatus(apiErrorReason(error) || 'Login failed.', 'error');
         } else {
-            showStatus('Login failed. Please check your connection.', 'error');
+            showStatus('Network error. Please try again.', 'error');
         }
+    } finally {
+        button.disabled = false;
+        button.classList.remove('loading');
+        button.textContent = 'Sign In';
     }
-    
-    button.classList.remove('loading');
-    button.textContent = 'Sign In';
-    button.disabled = false;
 });
 
-// Clear errors when user starts typing
-document.querySelectorAll('input, select').forEach(input => {
-    input.addEventListener('input', function() {
-        hideFieldError(this.id);
+// Shows an error under a field; it stays until the next submit or until the field is edited.
+function showFieldError(fieldId, message) {
+    const group = document.getElementById(fieldId).closest('.form-group');
+    group.classList.add('error');
+    group.querySelector('.error-popup').textContent = message;
+}
+
+function clearErrors() {
+    document.querySelectorAll('.form-group').forEach(function (group) {
+        group.classList.remove('error');
+        const popup = group.querySelector('.error-popup');
+        if (popup) popup.textContent = '';
+    });
+    document.getElementById('statusMessage').style.display = 'none';
+}
+
+function showStatus(message, type) {
+    const statusMessage = document.getElementById('statusMessage');
+    statusMessage.className = `status-message ${type}`;
+    statusMessage.textContent = message;
+    statusMessage.style.display = 'block';
+}
+
+// Editing a field clears its error.
+document.querySelectorAll('.form-group input').forEach(function (input) {
+    input.addEventListener('input', function () {
+        const group = this.closest('.form-group');
+        if (group) group.classList.remove('error');
     });
 });

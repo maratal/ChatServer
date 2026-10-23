@@ -11,6 +11,8 @@ struct UserController: RouteCollection {
         let usersPath = routes.grouped("api", "users")
         usersPath.post(use: register)
         usersPath.post("resetPassword", use: resetPassword)
+        usersPath.post("recover", "question", use: recoveryQuestion)
+        usersPath.post("recover", "reset", use: recoveryReset)
         
         usersPath.group(.id) { route in
             route.get(use: getUser)
@@ -24,6 +26,8 @@ struct UserController: RouteCollection {
             route.get(use: current)
             route.put("password", use: changePassword)
             route.put("accountKey", use: setAccountKey)
+            route.get("security", use: getSecurityQuestion)
+            route.put("security", use: setSecurityQuestion)
             route.post("logout", use: logout)
             route.delete(use: deregister)
             route.put(use: update)
@@ -76,6 +80,30 @@ struct UserController: RouteCollection {
     func setAccountKey(_ req: Request) async throws -> HTTPStatus {
         let content = try req.content.decode(SetAccountKeyRequest.self)
         try await service.setAccountKey(req.authenticatedUser(), currentPassword: content.password, newAccountKey: content.accountKey)
+        return .ok
+    }
+    
+    func recoveryQuestion(_ req: Request) async throws -> SecurityQuestionInfo {
+        let content = try req.content.decode(RecoveryQuestionRequest.self)
+        return try await service.securityQuestion(username: content.username)
+    }
+    
+    func recoveryReset(_ req: Request) async throws -> HTTPStatus {
+        let content = try req.content.decode(RecoveryResetRequest.self)
+        try await service.resetPassword(username: content.username, securityAnswer: content.answer, newPassword: content.newPassword)
+        return .ok
+    }
+    
+    func getSecurityQuestion(_ req: Request) async throws -> SecurityQuestionInfo {
+        try await service.securityQuestion(of: req.authenticatedUser())
+    }
+    
+    func setSecurityQuestion(_ req: Request) async throws -> HTTPStatus {
+        let content = try req.content.decode(SetSecurityQuestionRequest.self)
+        try await service.setSecurityQuestion(req.authenticatedUser(),
+                                              currentPassword: content.password,
+                                              question: content.securityQuestion,
+                                              answer: content.securityAnswer)
         return .ok
     }
     
