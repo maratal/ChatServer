@@ -353,6 +353,17 @@ function handleUserProfileMenuAction(action) {
     }
 }
 
+// A hidden username field for the password forms in the profile. Without it, a password manager
+// guesses which field holds the username and fills a saved login's username into the wrong one
+// (such as the security question). With it, the saved login is matched to this account instead.
+function hiddenUsernameField() {
+    const username = (currentUser && currentUser.info && currentUser.info.username) || '';
+    return `<input type="text" name="username" autocomplete="username" value="${escapeHtml(username)}" readonly style="display: none;">`;
+}
+
+// Tells common password managers that a field is not part of a login.
+const NOT_A_LOGIN_FIELD = 'autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other"';
+
 function showChangePasswordModal() {
     // Create a new modal container similar to user profile modal (slides from left)
     const modalId = 'changePasswordModal';
@@ -371,18 +382,19 @@ function showChangePasswordModal() {
             </div>
             <div class="user-profile-body" id="${modalId}_body">
                 <div class="change-password-form">
+                    ${hiddenUsernameField()}
                     <div class="form-group">
                         <label for="currentPasswordInput">Current Password</label>
-                        <input type="password" id="currentPasswordInput" placeholder="Enter current password">
+                        <input type="password" id="currentPasswordInput" placeholder="Enter current password" autocomplete="current-password">
                     </div>
                     <div class="form-group">
                         <label for="newPasswordInput">New Password</label>
-                        <input type="password" id="newPasswordInput" placeholder="Enter new password">
+                        <input type="password" id="newPasswordInput" placeholder="Enter new password" autocomplete="new-password">
                         <div class="field-hint">8-25 characters, with an uppercase letter, a lowercase letter and a digit.</div>
                     </div>
                     <div class="form-group">
                         <label for="confirmPasswordInput">Confirm New Password</label>
-                        <input type="password" id="confirmPasswordInput" placeholder="Confirm new password">
+                        <input type="password" id="confirmPasswordInput" placeholder="Confirm new password" autocomplete="new-password">
                     </div>
                     <div id="passwordChangeError" class="user-profile-error" style="display: none; margin-top: 1rem;"></div>
                     <div id="passwordChangeSuccess" class="user-profile-success" style="display: none; margin-top: 1rem;"></div>
@@ -532,6 +544,7 @@ async function showSecurityQuestionModal() {
             </div>
             <div class="user-profile-body" id="${modalId}_body">
                 <div class="change-password-form">
+                    ${hiddenUsernameField()}
                     <div class="form-group">
                         <label for="securityPasswordInput">Current Password</label>
                         <input type="password" id="securityPasswordInput" placeholder="Enter current password" autocomplete="current-password">
@@ -539,7 +552,7 @@ async function showSecurityQuestionModal() {
                     <div class="form-group">
                         <label for="securityQuestionInput">Security Question</label>
                         <div class="combo" id="securityQuestionCombo">
-                            <input type="text" id="securityQuestionInput" placeholder="Pick one or write your own" autocomplete="off">
+                            <input type="text" id="securityQuestionInput" placeholder="Pick one or write your own" ${NOT_A_LOGIN_FIELD}>
                             <button type="button" class="combo-toggle" onclick="toggleSecurityQuestionMenu(event)" aria-label="Suggested questions">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
@@ -548,7 +561,7 @@ async function showSecurityQuestionModal() {
                     </div>
                     <div class="form-group">
                         <label for="securityAnswerInput">Answer</label>
-                        <input type="text" id="securityAnswerInput" placeholder="Enter the answer" autocomplete="off" spellcheck="false">
+                        <input type="text" id="securityAnswerInput" placeholder="Enter the answer" ${NOT_A_LOGIN_FIELD} spellcheck="false">
                     </div>
                     <div id="securityQuestionError" class="user-profile-error" style="display: none; margin-top: 1rem;"></div>
                     <div id="securityQuestionSuccess" class="user-profile-success" style="display: none; margin-top: 1rem;"></div>

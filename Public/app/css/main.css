@@ -1909,8 +1909,8 @@ input[type="text"]:disabled, textarea:disabled {
 .user-profile-success {
     padding: 0.75rem 1rem;
     margin-bottom: 1rem;
-    background: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
     border-radius: 0.5rem;
     font-size: 0.875rem;
     text-align: center;
