@@ -1697,3 +1697,11 @@ function scrollElementIntoScroller(element, scroller, block = 'center', behavior
     const maxTop = scroller.scrollHeight - scroller.clientHeight;
     scroller.scrollTo({ top: Math.max(0, Math.min(top, maxTop)), behavior });
 }
+
+// The pencil shown in a post's date header when its message was edited, with the editing date as the tooltip.
+// Returns an empty string for posts that were never edited.
+function postEditedIconHtml(message) {
+    if (!message?.editedAt || message.deletedAt) return '';
+    const editedDateTime = formatFullDateTime(normalizeTimestamp(message.editedAt));
+    return `<span class="message-edited-icon personal-note-edited-icon" title="Edited: ${escapeHtml(editedDateTime)}">${messageEditedIcon}</span>`;
+}

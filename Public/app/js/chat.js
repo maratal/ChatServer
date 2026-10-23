@@ -813,7 +813,7 @@ function createPersonalNote(message) {
         ? `<span class="personal-note-pinned-icon" title="Pinned">${pinIcon}</span>`
         : '';
 
-    const statusIconsHTML = [publishedIconHTML, pinnedIconHTML]
+    const statusIconsHTML = [postEditedIconHtml(message), publishedIconHTML, pinnedIconHTML]
         .filter(Boolean)
         .map(icon => `<span class="personal-note-status-icons">${icon}</span>`)
         .join('');

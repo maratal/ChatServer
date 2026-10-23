@@ -471,9 +471,10 @@ function createNoteElement(note) {
     const pinnedIconHTML = note.isPinned
         ? `<span class="personal-note-pinned-icon" title="Pinned">${pinIcon}</span>`
         : '';
-    const statusIconsHTML = pinnedIconHTML
-        ? `<span class="personal-note-status-icons">${pinnedIconHTML}</span>`
-        : '';
+    const statusIconsHTML = [postEditedIconHtml(message), pinnedIconHTML]
+        .filter(Boolean)
+        .map(icon => `<span class="personal-note-status-icons">${icon}</span>`)
+        .join('');
 
     const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
     const messageId = message.id || note.id;

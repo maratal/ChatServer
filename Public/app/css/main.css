@@ -3876,6 +3876,14 @@ input[type="text"]:disabled, textarea:disabled {
     text-decoration: none;
 }
 
+/* The pencil in a post's date header: same color as the globe next to it, without the faded look
+   and extra right margin it has in chat messages */
+.personal-note-edited-icon {
+    margin-right: 0;
+    opacity: 1;
+    color: inherit;
+}
+
 .personal-note-pinned-icon {
     display: inline-flex;
     align-items: center;
