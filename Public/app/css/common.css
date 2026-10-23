@@ -17,6 +17,7 @@
     --accent-foreground: 335 70% 20%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 40%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
     --ring: 335 70% 49%;
@@ -69,6 +70,7 @@
 
 /* Dark Mode */
 html.dark {
+    --success: 142 69% 58%;
     --background: 0 0% 9%;
     --foreground: 0 0% 95%;
     --card: 0 0% 12%;
@@ -327,6 +329,29 @@ h1, h2, h3, h4, h5, h6 {
 .form-group.error .error-popup {
     opacity: 1;
     transform: translateY(0);
+}
+
+/* The one style for success and error messages across the app: the sign-in pages,
+   the profile panels, the dashboard. Use `status-message success` or
+   `status-message error`; layout classes may add margins, but not colors. */
+.status-message {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.status-message.success {
+    background: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
+    border: 1px solid hsl(var(--success) / 0.3);
+}
+
+.status-message.error {
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+    border: 1px solid hsl(var(--destructive) / 0.3);
 }
 
 /* A short note under a field, such as the password rules. */

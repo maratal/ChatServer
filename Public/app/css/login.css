@@ -126,26 +126,6 @@
     border-bottom-color: hsl(var(--primary));
 }
 
-.status-message {
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 0.9rem;
-    text-align: center;
-}
-
-.status-message.success {
-    background: hsl(142 70% 95%);
-    color: hsl(142 70% 20%);
-    border: 1px solid hsl(142 60% 80%);
-}
-
-.status-message.error {
-    background: hsl(var(--destructive) / 0.1);
-    color: hsl(var(--destructive));
-    border: 1px solid hsl(var(--destructive) / 0.3);
-}
-
 /* Register page specific */
 
 .registration-closed {

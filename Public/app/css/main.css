@@ -1410,8 +1410,7 @@ input[type="text"]:disabled, textarea:disabled {
     font-weight: 500;
 }
 
-.dashboard-loading,
-.dashboard-error {
+.dashboard-loading {
     font-size: 0.875rem;
     color: hsl(var(--muted-foreground));
 }
@@ -1486,16 +1485,17 @@ input[type="text"]:disabled, textarea:disabled {
     overflow-y: auto;
 }
 
+/* The log keeps its own box; its colors match .status-message. */
 .dashboard-log-error {
-    color: hsl(0 60% 60%);
-    background: hsl(0 60% 50% / 0.08);
-    border-color: hsl(0 60% 50% / 0.2);
+    color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.3);
 }
 
 .dashboard-log-success {
-    color: hsl(140 60% 60%);
-    background: hsl(140 60% 50% / 0.08);
-    border-color: hsl(140 60% 50% / 0.2);
+    color: hsl(var(--success));
+    background: hsl(var(--success) / 0.1);
+    border-color: hsl(var(--success) / 0.3);
 }
 
 /* Server message textarea */
@@ -1886,8 +1886,7 @@ input[type="text"]:disabled, textarea:disabled {
     scrollbar-width: none;
 }
 
-.user-profile-loading,
-.user-profile-error {
+.user-profile-loading {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1895,25 +1894,9 @@ input[type="text"]:disabled, textarea:disabled {
     color: hsl(var(--muted-foreground));
 }
 
-.user-profile-error {
-    color: #ef4444;
-}
-
-.user-profile-error:not(:empty) {
-    padding: 0.75rem 1rem;
-    background: rgba(239, 68, 68, 0.1);
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-}
-
-.user-profile-success {
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    background: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    text-align: center;
+/* Layout only; the colors come from .status-message. */
+.panel-load-error {
+    margin: 2.5rem 1rem;
 }
 
 .user-profile-avatar-container {
@@ -2102,19 +2085,14 @@ input[type="text"]:disabled, textarea:disabled {
     background-color: hsl(var(--primary));
 }
 
+/* Layout only; the colors come from .status-message. */
 .user-profile-avatar-error {
     margin-top: 1rem;
-    padding: 0.75rem 1rem;
-    background-color: hsl(var(--destructive) / 0.1);
-    border: 1px solid hsl(var(--destructive) / 0.3);
-    border-radius: 0.5rem;
-    text-align: center;
+    margin-bottom: 0;
     max-width: 300px;
 }
 
 .user-profile-avatar-error-message {
-    color: hsl(var(--destructive));
-    font-size: 0.875rem;
     margin-bottom: 0.5rem;
 }
 

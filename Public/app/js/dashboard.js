@@ -43,7 +43,7 @@ async function loadDashboardProductInfo() {
             container.appendChild(row);
         });
     } catch (error) {
-        container.innerHTML = '<p class="dashboard-error">Failed to load product info.</p>';
+        container.innerHTML = '<p class="status-message error">Failed to load product info.</p>';
     }
 }
 
@@ -65,7 +65,7 @@ async function loadDashboardInfo() {
             container.appendChild(row);
         });
     } catch (error) {
-        container.innerHTML = '<p class="dashboard-error">Failed to load system info.</p>';
+        container.innerHTML = '<p class="status-message error">Failed to load system info.</p>';
     }
 }
 

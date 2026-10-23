@@ -1017,7 +1017,7 @@ async function showUserInfo(userId) {
         displayUserInfo(user, `${modalId}_body`);
     } catch (error) {
         console.error('Error fetching user info:', error);
-        body.innerHTML = `<div class="user-info-loading" style="color: #ef4444;">Error: ${error.message || 'Failed to load user information'}</div>`;
+        body.innerHTML = `<div class="status-message error panel-load-error">Error: ${escapeHtml(error.message || 'Failed to load user information')}</div>`;
     }
 }
 
@@ -1432,7 +1432,7 @@ async function showGroupChatInfo(chatId) {
         displayGroupChatInfo(chat);
     } catch (error) {
         console.error('Error fetching group chat info:', error);
-        body.innerHTML = `<div class="user-info-loading" style="color: #ef4444;">Error: ${error.message || 'Failed to load group chat information'}</div>`;
+        body.innerHTML = `<div class="status-message error panel-load-error">Error: ${escapeHtml(error.message || 'Failed to load group chat information')}</div>`;
     }
 }
 

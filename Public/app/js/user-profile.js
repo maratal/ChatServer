@@ -39,7 +39,7 @@ async function openCurrentUserProfile() {
         displayCurrentUserProfile();
     } catch (error) {
         console.error('Error fetching current user info:', error);
-        body.innerHTML = `<div class="user-profile-error">Error loading profile: ${error.message}</div>`;
+        body.innerHTML = `<div class="status-message error panel-load-error">Error loading profile: ${escapeHtml(error.message)}</div>`;
     }
 
     // Close on backdrop click
@@ -396,8 +396,8 @@ function showChangePasswordModal() {
                         <label for="confirmPasswordInput">Confirm New Password</label>
                         <input type="password" id="confirmPasswordInput" placeholder="Confirm new password" autocomplete="new-password">
                     </div>
-                    <div id="passwordChangeError" class="user-profile-error" style="display: none; margin-top: 1rem;"></div>
-                    <div id="passwordChangeSuccess" class="user-profile-success" style="display: none; margin-top: 1rem;"></div>
+                    <div id="passwordChangeError" class="status-message error" style="display: none; margin-top: 1rem;"></div>
+                    <div id="passwordChangeSuccess" class="status-message success" style="display: none; margin-top: 1rem;"></div>
                     <div class="user-profile-actions">
                         <button class="user-profile-save-btn" onclick="handleChangePassword()" id="changePasswordBtn">Change Password</button>
                     </div>
@@ -563,8 +563,8 @@ async function showSecurityQuestionModal() {
                         <label for="securityAnswerInput">Answer</label>
                         <input type="text" id="securityAnswerInput" placeholder="Enter the answer" ${NOT_A_LOGIN_FIELD} spellcheck="false">
                     </div>
-                    <div id="securityQuestionError" class="user-profile-error" style="display: none; margin-top: 1rem;"></div>
-                    <div id="securityQuestionSuccess" class="user-profile-success" style="display: none; margin-top: 1rem;"></div>
+                    <div id="securityQuestionError" class="status-message error" style="display: none; margin-top: 1rem;"></div>
+                    <div id="securityQuestionSuccess" class="status-message success" style="display: none; margin-top: 1rem;"></div>
                     <div class="user-profile-actions">
                         <button class="user-profile-save-btn" onclick="handleChangeSecurityQuestion()" id="changeSecurityQuestionBtn">Save</button>
                     </div>
@@ -831,7 +831,7 @@ function showAvatarUploadError(errorMessage) {
     }
     
     const errorDiv = document.createElement('div');
-    errorDiv.className = 'user-profile-avatar-error';
+    errorDiv.className = 'status-message error user-profile-avatar-error';
     errorDiv.innerHTML = `
         <div class="user-profile-avatar-error-message">${escapeHtml(errorMessage)}</div>
         <button class="user-profile-avatar-retry-btn" onclick="retryAvatarUpload()">Retry</button>
