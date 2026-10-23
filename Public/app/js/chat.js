@@ -193,6 +193,9 @@ function scrollToMessage(messageId) {
 
 // ── Table Of Contents (Personal Notes) ─────────────────────────────────────
 
+// More than the server allows to pin (NotesService.maxPinnedNotes), so every pinned post is fetched
+const PERSONAL_NOTES_MAX_PINNED = 20;
+
 function togglePersonalNotesTableOfContents(chatId, anchor) {
     toggleTocPanel({
         anchor,
@@ -207,11 +210,27 @@ function togglePersonalNotesTableOfContents(chatId, anchor) {
                         createdAt: message.createdAt,
                         text: message.text,
                         attachmentsCount: message.attachments?.length ?? 0,
+                        isPinned: !!message.note?.isPinned,
                         isPublished: !!message.note
                     })),
                 nextCursor: messages.length > 0 ? messages[messages.length - 1].id : before,
                 done: messages.length < count
             };
+        },
+        // Only published posts can be pinned, so the pinned ones come from the user's own journal.
+        // They are listed by message id, like the rest of this panel.
+        fetchPinned: async () => {
+            const userId = currentUser?.info?.id;
+            if (userId == null) return [];
+            const notes = await apiGetUserNotes(userId, { count: PERSONAL_NOTES_MAX_PINNED, pinned: true });
+            return notes.filter(note => note.message?.id != null).map(note => createTocItem({
+                id: note.message.id,
+                createdAt: note.message.createdAt,
+                text: note.message.text,
+                attachmentsCount: note.message.attachments?.length ?? 0,
+                isPinned: true,
+                isPublished: true
+            }));
         },
         onSelect: (item) => {
             revealChatMessage(chatId, item.id).catch(console.error);

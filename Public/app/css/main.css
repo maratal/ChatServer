@@ -4414,3 +4414,19 @@ img.inline-media-embed-content {
 .toc-item-snippet.placeholder {
     font-style: italic;
 }
+
+/* Pinned section of Contents: an uppercase heading and a line separating it from the years below */
+.toc-pinned-group {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.toc-pinned-group .toc-year {
+    text-transform: uppercase;
+}
+
+/* Pinned section of Contents: the date includes the year, so the column is wider */
+.toc-item-date.full-date {
+    flex-basis: 5.75rem;
+}

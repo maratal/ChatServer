@@ -406,6 +406,16 @@ function toggleJournalTableOfContents() {
                 done: notes.length < count
             };
         },
+        fetchPinned: async () => {
+            const notes = await apiGetUserNotes(pageUserId, { count: MAX_PINNED_NOTES, pinned: true, language });
+            return notes.filter(note => note.message).map(note => createTocItem({
+                id: String(note.id).toLowerCase(),
+                createdAt: note.createdAt ?? note.message.createdAt,
+                text: note.message.text,
+                attachmentsCount: note.message.attachments?.length ?? 0,
+                isPinned: true
+            }));
+        },
         onSelect: (item) => {
             revealJournalPost(item.id).catch(console.error);
         }

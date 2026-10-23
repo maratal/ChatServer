@@ -33,6 +33,7 @@ let activeTocPanel = null;
 //   fetchPage     – async ({ before, search, count }) => ({ items, nextCursor, done }),
 //                   where `items` are made with createTocItem() or createMessageSearchItem()
 //                   and `nextCursor` is passed back as `before` to get the following page
+//   fetchPinned   – optional async () => items: the pinned posts, listed in their own section on top
 //   onSelect      – called with the picked item after the panel has closed
 function toggleTocPanel(options) {
     if (activeTocPanel) {
@@ -176,10 +177,14 @@ function openTocPanel(options) {
         searchOnly: !!options.searchOnly,
         getLocalItems: options.getLocalItems,
         fetchPage: options.fetchPage,
+        fetchPinned: options.searchOnly ? null : options.fetchPinned,
         onSelect: options.onSelect,
         list: panel.querySelector('.toc-list'),
         input: panel.querySelector('.toc-search-input'),
         clearButton: panel.querySelector('.toc-search-clear'),
+
+        // Pinned posts, all loaded at once when the panel opens and shown above the years
+        pinnedItems: [],
 
         // Posts loaded page by page without a search, newest first.
         // In search-only mode these are the items already loaded on the page, refreshed on every keystroke.
@@ -251,6 +256,7 @@ function openTocPanel(options) {
     });
 
     renderTocList(state);
+    loadTocPinnedItems(state);
     loadMoreTocItems(state);
 
     // Focusing would pop up the on-screen keyboard on phones, so only do it with a mouse or trackpad
@@ -309,6 +315,20 @@ function handleTocSearchInput(state) {
 
     state.list.scrollTop = 0;
     renderTocList(state);
+}
+
+// Pinned posts can be far back in history, so they are fetched on their own instead of waiting for paging
+async function loadTocPinnedItems(state) {
+    if (!state.fetchPinned) return;
+    try {
+        const items = await state.fetchPinned();
+        if (activeTocPanel !== state) return;
+        state.pinnedItems = [...items].sort((a, b) => b.date - a.date);
+        renderTocList(state);
+    } catch (error) {
+        // The rest of the list still works; the pinned posts just stay in their years
+        console.error('Failed to load pinned posts:', error);
+    }
 }
 
 function loadMoreTocItems(state) {
@@ -406,7 +426,10 @@ function visibleTocItems(state) {
 }
 
 function findTocItem(state, id) {
-    return state.items.find(item => item.id === id) || state.searchItems.find(item => item.id === id) || null;
+    return state.pinnedItems.find(item => item.id === id)
+        || state.items.find(item => item.id === id)
+        || state.searchItems.find(item => item.id === id)
+        || null;
 }
 
 function selectTocItem(state, id) {
@@ -417,12 +440,23 @@ function selectTocItem(state, id) {
 }
 
 function renderTocList(state) {
-    const items = visibleTocItems(state);
+    // Pinned posts are listed once, in their own section on top, and left out of the years below
+    const pinnedIds = new Set(state.pinnedItems.map(item => item.id));
+    const pinnedItems = state.query
+        ? state.pinnedItems.filter(item => tocItemMatches(item, state.query))
+        : state.pinnedItems;
+    const items = visibleTocItems(state).filter(item => !pinnedIds.has(item.id));
     const scrollTop = state.list.scrollTop;
 
-    let html = tocGroupedItemsHtml(items, state.query);
+    let html = '';
+    if (pinnedItems.length > 0) {
+        html += '<div class="toc-year-group toc-pinned-group"><div class="toc-year">Pinned</div>';
+        html += pinnedItems.map(item => renderTocItem(item, state.query, { isInPinnedSection: true })).join('');
+        html += '</div>';
+    }
+    html += tocGroupedItemsHtml(items, state.query);
 
-    const status = tocStatusText(state, items.length);
+    const status = tocStatusText(state, pinnedItems.length + items.length);
     if (status) {
         html += `<div class="toc-status">${escapeHtml(status)}</div>`;
     }
@@ -464,8 +498,11 @@ function tocStatusText(state, visibleCount) {
     return visibleCount === 0 ? `No ${noun} yet` : '';
 }
 
-function renderTocItem(item, query) {
-    const dateText = item.date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+// In the Pinned section there is no year header, so the date shows the year too
+function renderTocItem(item, query, { isInPinnedSection = false } = {}) {
+    const dateText = isInPinnedSection
+        ? item.date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+        : item.date.toLocaleDateString([], { day: 'numeric', month: 'short' });
     const fullDateText = typeof formatFullDateTime === 'function' ? formatFullDateTime(item.date) : item.date.toLocaleString();
 
     // Each line shows a single row of text anyway, so only its beginning is drawn. This keeps long posts
@@ -489,12 +526,12 @@ function renderTocItem(item, query) {
     }
 
     let iconsHtml = '';
-    if (item.isPinned) iconsHtml += `<span class="toc-item-icon" title="Pinned">${pinIcon}</span>`;
+    if (item.isPinned && !isInPinnedSection) iconsHtml += `<span class="toc-item-icon" title="Pinned">${pinIcon}</span>`;
     if (item.isPublished) iconsHtml += `<span class="toc-item-icon" title="Published">${globeIcon}</span>`;
 
     return `
         <button class="toc-item" type="button" data-id="${escapeHtml(item.id)}"${item.tooltip ? ` title="${escapeHtml(item.tooltip)}"` : ''}>
-            <span class="toc-item-date" title="${escapeHtml(fullDateText)}">${escapeHtml(dateText)}</span>
+            <span class="toc-item-date${isInPinnedSection ? ' full-date' : ''}" title="${escapeHtml(fullDateText)}">${escapeHtml(dateText)}</span>
             <span class="toc-item-text">${titleHtml}${snippetHtml}</span>
             ${iconsHtml ? `<span class="toc-item-icons">${iconsHtml}</span>` : ''}
         </button>
