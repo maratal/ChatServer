@@ -825,7 +825,7 @@ function createPersonalNote(message) {
 
     noteDiv.innerHTML = `
         <div class="personal-note-date-header">
-            ${leadingIconsHTML}<span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>${statusIconsHTML}
+            <span class="personal-note-date-side personal-note-date-side-left">${leadingIconsHTML}</span><span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span><span class="personal-note-date-side personal-note-date-side-right">${statusIconsHTML}</span>
         </div>
         <div class="message-row-content personal-note-content">
             <div class="personal-note-bubble">
