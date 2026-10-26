@@ -3868,6 +3868,12 @@ input[type="text"]:disabled, textarea:disabled {
     margin-left: 4px;
 }
 
+/* A status icon placed before the date needs its gap on the right side instead */
+.personal-note-status-icons-leading {
+    margin-left: 0;
+    margin-right: 4px;
+}
+
 .personal-note-published-icon {
     display: inline-flex;
     align-items: center;

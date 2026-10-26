@@ -471,7 +471,12 @@ function createNoteElement(note) {
     const pinnedIconHTML = note.isPinned
         ? `<span class="personal-note-pinned-icon" title="Pinned">${pinIcon}</span>`
         : '';
-    const statusIconsHTML = [postEditedIconHtml(message), pinnedIconHTML]
+    // The edited pencil goes before the post date, while the other status icons follow it.
+    const editedIconHTML = postEditedIconHtml(message);
+    const leadingIconsHTML = editedIconHTML
+        ? `<span class="personal-note-status-icons personal-note-status-icons-leading">${editedIconHTML}</span>`
+        : '';
+    const statusIconsHTML = [pinnedIconHTML]
         .filter(Boolean)
         .map(icon => `<span class="personal-note-status-icons">${icon}</span>`)
         .join('');
@@ -518,7 +523,7 @@ function createNoteElement(note) {
 
     noteDiv.innerHTML = `
         <div class="personal-note-date-header">
-            <span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>${statusIconsHTML}
+            ${leadingIconsHTML}<span class="personal-note-date-text" title="${escapeHtml(fullDateTime)}">${escapeHtml(dateHeaderText)}</span>${statusIconsHTML}
         </div>
         <div class="message-row-content personal-note-content">
             <div class="personal-note-bubble">
