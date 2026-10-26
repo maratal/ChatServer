@@ -3890,6 +3890,12 @@ input[type="text"]:disabled, textarea:disabled {
     color: inherit;
 }
 
+/* The header pencil is drawn 10% larger than the 10px pencil used in chat messages */
+.personal-note-edited-icon svg {
+    width: 11px;
+    height: 11px;
+}
+
 .personal-note-pinned-icon {
     display: inline-flex;
     align-items: center;
