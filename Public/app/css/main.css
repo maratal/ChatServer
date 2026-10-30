@@ -3985,26 +3985,21 @@ input[type="text"]:disabled, textarea:disabled {
     overflow: hidden;
 }
 
-/* A post reached through a post link: its balloon turns the primary color, holds it briefly, then fades back */
-.personal-note-bubble.post-link-flash {
-    animation: post-link-flash 0.9s ease-out;
+/* The post the user has just navigated to: its balloon gets a 2px primary border, then fades back.
+   The balloon's own border is 1px, so a 1px ring drawn just outside it makes up the second pixel
+   without changing the balloon's size. */
+.personal-note-bubble.post-bubble-flash {
+    animation: post-bubble-flash 1.6s ease-out;
 }
 
-/* Links in a post are colored primary inline, so they would vanish on the primary balloon while it flashes */
-.personal-note-bubble.post-link-flash a {
-    color: inherit !important;
-}
-
-@keyframes post-link-flash {
-    0%, 15% {
-        background-color: hsl(var(--primary));
+@keyframes post-bubble-flash {
+    0%, 50% {
         border-color: hsl(var(--primary));
-        color: hsl(var(--primary-foreground));
+        box-shadow: 0 0 0 1px hsl(var(--primary)), var(--shadow-soft);
     }
     100% {
-        background-color: hsl(var(--chat-bubble-received));
         border-color: hsl(var(--chat-bubble-received));
-        color: hsl(var(--chat-bubble-received-foreground));
+        box-shadow: 0 0 0 1px transparent, var(--shadow-soft);
     }
 }
 

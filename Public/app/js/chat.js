@@ -188,7 +188,13 @@ function scrollToMessage(messageId) {
 
     const row = messageElement.querySelector('.message-row-content') || messageElement;
     scrollElementIntoScroller(row, document.getElementById('messagesScrollWrapper'), 'center');
-    highlightMessageRow(row);
+
+    // Posts in Personal Notes flash their balloon border, the same way as when a post link leads to them
+    if (messageElement.classList.contains('personal-note-row')) {
+        flashPostBubble(messageElement);
+    } else {
+        highlightMessageRow(row);
+    }
 }
 
 // ── Table Of Contents (Personal Notes) ─────────────────────────────────────

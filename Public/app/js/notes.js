@@ -430,11 +430,7 @@ async function revealJournalPost(noteId) {
         const row = container?.querySelector(`[data-note-id="${noteId}"]`);
         if (row) {
             scrollElementIntoScroller(row, document.getElementById('notesScrollWrapper'), 'start');
-            const content = row.querySelector('.message-row-content') || row;
-            content.classList.remove('message-highlight');
-            void content.offsetWidth; // restart the animation if it is still running
-            content.classList.add('message-highlight');
-            setTimeout(() => content.classList.remove('message-highlight'), 1500);
+            flashPostBubble(row);
             return;
         }
         if (allNotesLoaded) break;

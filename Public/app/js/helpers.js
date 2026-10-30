@@ -526,16 +526,17 @@ function handleNoteLinkClick(event, href) {
     return false;
 }
 
-// Briefly turns a post's balloon the primary color and fades it back, to show which post a link led to.
-// Used for posts in both the Journal and Personal Notes.
+// Briefly outlines a post's balloon with a thick primary border and fades it back, to show which post
+// the user has just navigated to. Used in the Journal and Personal Notes, whether the post was reached
+// through a post link or picked in the Contents panel.
 function flashPostBubble(postElement) {
     const bubble = postElement?.querySelector('.personal-note-bubble');
     if (!bubble) return;
 
-    bubble.classList.remove('post-link-flash');
+    bubble.classList.remove('post-bubble-flash');
     void bubble.offsetWidth; // Restart the animation when the same post is opened again while it is still running
-    bubble.classList.add('post-link-flash');
-    bubble.addEventListener('animationend', () => bubble.classList.remove('post-link-flash'), { once: true });
+    bubble.classList.add('post-bubble-flash');
+    bubble.addEventListener('animationend', () => bubble.classList.remove('post-bubble-flash'), { once: true });
 }
 
 function getCurrentPageHistoryUrl() {
