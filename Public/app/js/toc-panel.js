@@ -35,6 +35,11 @@ let activeTocPanel = null;
 //                   and `nextCursor` is passed back as `before` to get the following page
 //   fetchPinned   – optional async () => items: the pinned posts, listed in their own section on top
 //   onSelect      – called with the picked item after the panel has closed
+//   onClose       – optional: called whenever the panel closes, whether or not an item was picked
+//   presentation  – 'panel' (default) slides in from the screen edge; 'popup' shows the same search
+//                   and list in a small floating popup instead, without dimming the rest of the page
+//   popupClassName – for 'popup': extra classes for the popup element, to style it like its neighbours
+//   positionPopup – for 'popup': (popupElement) => void, places the popup; called on open and on resize
 function toggleTocPanel(options) {
     if (activeTocPanel) {
         const isSameAnchor = activeTocPanel.anchor === options.anchor;
@@ -53,8 +58,15 @@ function closeTocPanel() {
     window.removeEventListener('keydown', state.onKeyDown, true);
 
     const modal = state.modal;
-    modal.classList.remove('show');
-    setTimeout(() => modal.remove(), TOC_ANIMATION_MS);
+    if (state.isPopup) {
+        document.removeEventListener('mousedown', state.onOutsideMouseDown);
+        window.removeEventListener('resize', state.onResize);
+        modal.remove();
+    } else {
+        modal.classList.remove('show');
+        setTimeout(() => modal.remove(), TOC_ANIMATION_MS);
+    }
+    state.onClose?.();
 }
 
 // Closes the panel when its button lives inside `element`, which is about to go away.
@@ -147,32 +159,52 @@ function openTocPanel(options) {
     const side = options.side === 'left' ? 'left' : 'right';
     const title = options.title || 'Contents';
     const noun = options.noun || 'posts';
-    const modal = document.createElement('div');
-    modal.className = `user-info-modal toc-modal toc-modal-${side}`;
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-label', title);
-    modal.style.zIndex = String(nextTocModalZIndex());
-    modal.innerHTML = `
-        <div class="user-info-content toc-panel">
-            <div class="modal-panel-header">
-                <h1 class="text-2xl font-bold text-sidebar-foreground">${escapeHtml(title)}</h1>
-                <button class="inline-button toc-panel-close" type="button" title="Close">${closeIcon}</button>
-            </div>
+    const isPopup = options.presentation === 'popup';
+
+    // The search field and the list are the same in both presentations
+    const bodyHtml = `
             <div class="toc-search">
                 <span class="toc-search-icon">${searchIcon}</span>
                 <input type="text" class="toc-search-input" placeholder="Search ${escapeHtml(noun)}" autocomplete="off" spellcheck="false" aria-label="Search ${escapeHtml(noun)}">
                 <button class="toc-search-clear" type="button" title="Clear search" hidden>${closeIcon}</button>
             </div>
             <div class="toc-list"></div>
+    `;
+
+    let modal;
+    if (isPopup) {
+        // In a popup the element is both the "modal" and the panel: there is no dimmed backdrop
+        modal = document.createElement('div');
+        modal.className = `toc-panel toc-popup ${options.popupClassName || ''}`.trim();
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', title);
+        modal.innerHTML = `<div class="toc-popup-header">${escapeHtml(title)}</div>${bodyHtml}`;
+    } else {
+        modal = document.createElement('div');
+        modal.className = `user-info-modal toc-modal toc-modal-${side}`;
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', title);
+        modal.style.zIndex = String(nextTocModalZIndex());
+        modal.innerHTML = `
+        <div class="user-info-content toc-panel">
+            <div class="modal-panel-header">
+                <h1 class="text-2xl font-bold text-sidebar-foreground">${escapeHtml(title)}</h1>
+                <button class="inline-button toc-panel-close" type="button" title="Close">${closeIcon}</button>
+            </div>
+            ${bodyHtml}
         </div>
     `;
+    }
     document.body.appendChild(modal);
-    const panel = modal.querySelector('.toc-panel');
+    const panel = isPopup ? modal : modal.querySelector('.toc-panel');
 
     const state = {
         modal,
         panel,
         anchor: options.anchor,
+        isPopup,
+        positionPopup: options.positionPopup,
+        onClose: options.onClose,
         noun,
         searchOnly: !!options.searchOnly,
         getLocalItems: options.getLocalItems,
@@ -208,10 +240,27 @@ function openTocPanel(options) {
     };
     activeTocPanel = state;
 
-    // A click on the dimmed area outside the panel closes it, like the other info panels
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) closeTocPanel();
-    });
+    if (isPopup) {
+        // A click anywhere outside the popup closes it, except on the button that opened it,
+        // which handles its own clicks
+        state.onOutsideMouseDown = (event) => {
+            if (modal.contains(event.target) || state.anchor?.contains(event.target)) return;
+            closeTocPanel();
+        };
+        state.onResize = () => state.positionPopup?.(modal);
+        // Wait for the click that opened the popup to finish before listening for clicks outside it
+        setTimeout(() => {
+            if (activeTocPanel === state) {
+                document.addEventListener('mousedown', state.onOutsideMouseDown);
+            }
+        }, 0);
+        window.addEventListener('resize', state.onResize);
+    } else {
+        // A click on the dimmed area outside the panel closes it, like the other info panels
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) closeTocPanel();
+        });
+    }
     state.onKeyDown = (event) => {
         if (event.key !== 'Escape') return;
         // Handled here in the capture phase so the panels underneath stay open
@@ -221,7 +270,7 @@ function openTocPanel(options) {
     };
     window.addEventListener('keydown', state.onKeyDown, true);
 
-    panel.querySelector('.toc-panel-close').addEventListener('click', () => closeTocPanel());
+    panel.querySelector('.toc-panel-close')?.addEventListener('click', () => closeTocPanel());
     state.input.addEventListener('input', () => handleTocSearchInput(state));
     state.input.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
@@ -246,14 +295,18 @@ function openTocPanel(options) {
         }
     });
 
-    // Slide in the same way as the other info panels
-    modal.style.display = 'block';
-    modal.offsetHeight;
-    requestAnimationFrame(() => {
+    if (isPopup) {
+        options.positionPopup?.(modal);
+    } else {
+        // Slide in the same way as the other info panels
+        modal.style.display = 'block';
+        modal.offsetHeight;
         requestAnimationFrame(() => {
-            modal.classList.add('show');
+            requestAnimationFrame(() => {
+                modal.classList.add('show');
+            });
         });
-    });
+    }
 
     renderTocList(state);
     loadTocPinnedItems(state);
@@ -463,6 +516,9 @@ function renderTocList(state) {
 
     state.list.innerHTML = html;
     state.list.scrollTop = scrollTop;
+
+    // A popup grows and shrinks with the list, so it is placed again to stay inside the viewport
+    if (state.isPopup) state.positionPopup?.(state.modal);
 }
 
 // Renders the rows under a header for each year

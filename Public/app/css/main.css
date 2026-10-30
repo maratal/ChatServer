@@ -2983,7 +2983,8 @@ input[type="text"]:disabled, textarea:disabled {
     animation: context-menu-fade-in 0.18s ease forwards;
 }
 
-.message-input-media-picker-header {
+.message-input-media-picker-header,
+.toc-popup-header {
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.05em;
@@ -4471,4 +4472,31 @@ img.inline-media-embed-content {
 /* Pinned section of Contents: the date includes the year, so the column is wider */
 .toc-item-date.full-date {
     flex-basis: 5.75rem;
+}
+
+/* Contents shown as a popup (the post picker of the message input): the panel's search and list
+   inside a floating box styled like the media picker */
+.message-input-media-picker.toc-popup {
+    width: min(360px, calc(100vw - 20px));
+    gap: 8px;
+}
+
+.toc-popup .toc-search {
+    margin: 0;
+}
+
+/* The popup grows with its posts until it is half as tall as the viewport, then the list scrolls */
+.message-input-media-picker.toc-popup {
+    max-height: 50vh;
+}
+
+.toc-popup .toc-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 -4px;
+    padding: 0;
+}
+
+.toc-popup .toc-year {
+    background-color: hsl(var(--popover));
 }

@@ -550,6 +550,87 @@ function insertMessageInputMarkdownLink(selectionSnapshot) {
     }
 }
 
+// Let the user pick one of their own journal posts and insert a Markdown link to it.
+// The link is relative (/users/<userId>/notes/<noteId>), so it opens the post inside the app.
+// Selected text becomes the link label; without a selection the post's title is used.
+function openMessageInputPostPicker(anchorElement, selectionSnapshot) {
+    closeMessageInputMediaPicker();
+    if (!anchorElement) return;
+
+    const userId = currentUser?.info?.id;
+    if (userId == null) return;
+
+    // Only the plain selection is replaced. When the cursor is inside an embed or popup tag,
+    // the post link is inserted at the cursor instead of replacing that tag.
+    const insertionSnapshot = selectionSnapshot
+        ? {
+            selectionStart: selectionSnapshot.selectionStart,
+            selectionEnd: selectionSnapshot.selectionEnd,
+            selectedText: selectionSnapshot.selectedText
+        }
+        : null;
+
+    const toPostItem = (note, isPinned) => createTocItem({
+        id: String(note.id).toLowerCase(),
+        createdAt: note.createdAt ?? note.message.createdAt,
+        text: note.message.text,
+        attachmentsCount: note.message.attachments?.length ?? 0,
+        isPinned
+    });
+
+    // The post list is the same one the Contents panel shows, but it opens in a popup
+    // next to the link button, like the media picker. Closing the media picker closes it too.
+    const cleanup = () => {
+        if (activeTocPanel?.isPopup && activeTocPanel.anchor === anchorElement) {
+            closeTocPanel();
+        }
+    };
+    activeMessageInputMediaPickerCleanup = cleanup;
+
+    closeTocPanel();
+    openTocPanel({
+        anchor: anchorElement,
+        presentation: 'popup',
+        popupClassName: 'message-input-media-picker message-input-post-picker',
+        positionPopup: (popupElement) => positionMessageInputMediaPicker(popupElement, anchorElement),
+        onClose: () => {
+            if (activeMessageInputMediaPickerCleanup === cleanup) {
+                activeMessageInputMediaPickerCleanup = null;
+            }
+        },
+        title: 'Link to post',
+        fetchPage: async ({ before, search, count }) => {
+            const notes = await apiGetUserNotes(userId, { count, before, all: true, search });
+            return {
+                items: notes.filter(note => note.message).map(note => toPostItem(note, note.isPinned)),
+                nextCursor: notes.length > 0 ? notes[notes.length - 1].id : before,
+                done: notes.length < count
+            };
+        },
+        fetchPinned: async () => {
+            const notes = await apiGetUserNotes(userId, { count: PERSONAL_NOTES_MAX_PINNED, pinned: true });
+            return notes.filter(note => note.message).map(note => toPostItem(note, true));
+        },
+        onSelect: (item) => {
+            const href = createNoteHref(userId, item.id);
+            if (!href) return;
+
+            const selectedLabel = (insertionSnapshot?.selectedText ?? '')
+                .trim()
+                .replace(/\s+/g, ' ')
+                .replace(/[\[\]]/g, '');
+            // A post without a title shows its whole text as the title, so keep the label short.
+            const postTitle = item.title.replace(/[\[\]]/g, '');
+            const postLabel = item.isPlaceholderTitle
+                ? 'Post'
+                : postTitle.length > 80 ? `${postTitle.slice(0, 79).trimEnd()}…` : postTitle;
+            const label = selectedLabel || postLabel;
+
+            replaceMessageInputSelection(`[${label}](${href})`, insertionSnapshot);
+        }
+    });
+}
+
 // Open the link action menu and route the chosen mode into the recent-media picker.
 function handleMessageInputLinkButton(event) {
     event.preventDefault();
@@ -578,11 +659,12 @@ function handleMessageInputLinkButton(event) {
 
     showContextMenu({
         items: [
-            { id: 'embed', label: 'Embed Image', icon: formatEmbedIcon },
-            { id: 'popup', label: 'Popup Image', icon: formatPopupIcon },
+            { id: 'embed', label: 'Embed Media', icon: formatEmbedIcon },
+            { id: 'popup', label: 'Popup Media', icon: formatPopupIcon },
             { id: 'youtube-embed', label: 'Embed Youtube', icon: formatYoutubeEmbedIcon, separator: true },
             { id: 'youtube-popup', label: 'Popup Youtube', icon: formatYoutubePopupIcon },
-            { id: 'link', label: 'Link', icon: formatLinkIcon, separator: true }
+            { id: 'link', label: 'Link', icon: formatLinkIcon, separator: true },
+            { id: 'post', label: 'Post', icon: formatPostLinkIcon }
         ],
         x: rect.right + 8,
         y: rect.bottom,
@@ -591,6 +673,10 @@ function handleMessageInputLinkButton(event) {
         onAction: (action) => {
             if (action === 'link') {
                 insertMessageInputMarkdownLink(selectionSnapshot);
+                return;
+            }
+            if (action === 'post') {
+                openMessageInputPostPicker(button, selectionSnapshot);
                 return;
             }
             if (action === 'youtube-embed' || action === 'youtube-popup') {
