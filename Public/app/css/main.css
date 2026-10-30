@@ -3985,6 +3985,29 @@ input[type="text"]:disabled, textarea:disabled {
     overflow: hidden;
 }
 
+/* A post reached through a post link: its balloon turns the primary color, holds it briefly, then fades back */
+.personal-note-bubble.post-link-flash {
+    animation: post-link-flash 0.9s ease-out;
+}
+
+/* Links in a post are colored primary inline, so they would vanish on the primary balloon while it flashes */
+.personal-note-bubble.post-link-flash a {
+    color: inherit !important;
+}
+
+@keyframes post-link-flash {
+    0%, 15% {
+        background-color: hsl(var(--primary));
+        border-color: hsl(var(--primary));
+        color: hsl(var(--primary-foreground));
+    }
+    100% {
+        background-color: hsl(var(--chat-bubble-received));
+        border-color: hsl(var(--chat-bubble-received));
+        color: hsl(var(--chat-bubble-received-foreground));
+    }
+}
+
 .personal-note-text-container {
     flex-direction: column;
     align-items: center;

@@ -526,6 +526,18 @@ function handleNoteLinkClick(event, href) {
     return false;
 }
 
+// Briefly turns a post's balloon the primary color and fades it back, to show which post a link led to.
+// Used for posts in both the Journal and Personal Notes.
+function flashPostBubble(postElement) {
+    const bubble = postElement?.querySelector('.personal-note-bubble');
+    if (!bubble) return;
+
+    bubble.classList.remove('post-link-flash');
+    void bubble.offsetWidth; // Restart the animation when the same post is opened again while it is still running
+    bubble.classList.add('post-link-flash');
+    bubble.addEventListener('animationend', () => bubble.classList.remove('post-link-flash'), { once: true });
+}
+
 function getCurrentPageHistoryUrl() {
     return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
@@ -624,6 +636,7 @@ function createNoteNavigationController(options = {}) {
         } else {
             noteElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        flashPostBubble(noteElement);
         return true;
     }
 
