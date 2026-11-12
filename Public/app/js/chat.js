@@ -145,6 +145,10 @@ function scrollMessagesToBottom(instant = false) {
     const scrollableContainer = messagesContainer.parentElement;
     if (!scrollableContainer) return;
 
+    // Content that is still loading (images, embeds, fonts) can grow the list after this,
+    // so keep the list pinned to the bottom until the user scrolls away.
+    isMessagesPinnedToBottom = true;
+
     // Scroll to the very bottom, accounting for padding
     const targetScrollTop = scrollableContainer.scrollHeight - scrollableContainer.clientHeight;
     
@@ -156,6 +160,36 @@ function scrollMessagesToBottom(instant = false) {
             behavior: 'auto'
         });
     }
+}
+
+// Whether the message list should stay at the bottom when its content or viewport changes size.
+let isMessagesPinnedToBottom = false;
+
+// How close to the bottom, in pixels, the list must be for it to count as being at the bottom.
+const messagesBottomPinThreshold = 4;
+
+// Keeps the message list scrolled to the bottom while it is there and its height changes without any scrolling.
+// Long posts keep growing after they are rendered (lazy-loaded images and embeds, web fonts), so a single
+// scroll to the bottom right after rendering stops short of the real end of the list.
+function setupMessagesBottomPinning() {
+    const messagesContainer = document.getElementById('messagesContainer');
+    const scrollableContainer = messagesContainer?.parentElement;
+    if (!scrollableContainer) return;
+
+    // The user scrolling (or any other scroll) decides whether the list is still pinned.
+    // Growing content does not fire scroll events, so it leaves the pinned state unchanged.
+    scrollableContainer.addEventListener('scroll', () => {
+        const distanceFromBottom = scrollableContainer.scrollHeight - scrollableContainer.clientHeight - scrollableContainer.scrollTop;
+        isMessagesPinnedToBottom = distanceFromBottom <= messagesBottomPinThreshold;
+    }, { passive: true });
+
+    // Watch both the content (posts growing) and the scroll area itself (window or input field resizing).
+    const resizeObserver = new ResizeObserver(() => {
+        if (!isMessagesPinnedToBottom) return;
+        scrollableContainer.scrollTop = scrollableContainer.scrollHeight - scrollableContainer.clientHeight;
+    });
+    resizeObserver.observe(messagesContainer);
+    resizeObserver.observe(scrollableContainer);
 }
 
 function highlightMessageRow(row) {

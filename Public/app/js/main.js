@@ -948,6 +948,7 @@ async function createOrOpenPersonalChat(userId) {
 // Add plus button click handler when page loads
 document.addEventListener('DOMContentLoaded', function() {
     setupScrollJumpButton(document.getElementById('messagesScrollWrapper'));
+    setupMessagesBottomPinning();
 
     const addChatButton = document.getElementById('addChatButton');
     if (addChatButton) {
