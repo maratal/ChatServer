@@ -2051,9 +2051,9 @@ function handleSendButtonClick(event) {
             { id: 'send', label: 'Send without text', icon: sendIcon },
             { id: 'upload', label: 'Only upload media', icon: uploadIcon }
         ],
-        x: rect.left,
+        x: rect.right,
         y: rect.top - 6,
-        anchor: 'bottom-left',
+        anchor: 'bottom-right',
         highlightElement: button,
         onAction: (action) => {
             if (action === 'send') {

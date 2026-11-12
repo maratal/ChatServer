@@ -150,7 +150,8 @@ function addLongPressHandler(element, options) {
 // Show context menu utility
 // options: { items, x, y, onAction, highlightElement, highlightClass, anchor }
 // An item may have `badge` (short text, such as '!') to show a round alert badge after its label.
-// anchor: 'top-left' (default) - menu top-left at (x,y), 'bottom-left' - menu bottom-left at (x,y)
+// anchor: 'top-left' (default) - menu top-left at (x,y), 'bottom-left' - menu bottom-left at (x,y),
+// 'bottom-right' - menu bottom-right at (x,y)
 function showContextMenu(options) {
     const { items, x, y, onAction, highlightElement, highlightClass = 'menu-active', anchor = 'top-left' } = options;
     
@@ -188,9 +189,13 @@ function showContextMenu(options) {
     let left = x;
     let top = y;
     
-    if (anchor === 'bottom-left') {
-        // Menu bottom-left corner at (x, y), so top = y - menuHeight
+    if (anchor === 'bottom-left' || anchor === 'bottom-right') {
+        // Menu bottom corner at (x, y), so top = y - menuHeight
         top = y - menuRect.height;
+    }
+    if (anchor === 'bottom-right') {
+        // Menu right edge at x, so left = x - menuWidth
+        left = x - menuRect.width;
     }
     
     // Adjust position to keep menu in viewport
