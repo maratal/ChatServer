@@ -130,17 +130,62 @@ function updateChatHeaderJournalButtons(chat) {
     if (avatarContainer) avatarContainer.style.display = isNotes ? 'none' : '';
 }
 
-// Opens the journal properties of the Personal Notes chat, refreshing the chat first
+// Opens the journal properties of the Personal Notes chat right away from the chat already loaded,
+// then refreshes them once the full chat arrives from the server.
 async function openPersonalNotesInfo(chatId) {
     if (!chatId) return;
+    const cachedChat = chats.find(c => c.id === chatId);
+    if (cachedChat) {
+        showNotesInfo(cachedChat, { isOwner: true });
+    }
     try {
         const fullChat = await apiGetChat(chatId);
         const chatIndex = chats.findIndex(c => c.id === chatId);
         if (chatIndex !== -1) chats[chatIndex] = fullChat;
-        showNotesInfo(fullChat, { isOwner: true });
+        if (!cachedChat) {
+            showNotesInfo(fullChat, { isOwner: true });
+            return;
+        }
+        refreshOpenNotesInfo(cachedChat, fullChat);
     } catch (error) {
         console.error('Error fetching chat for notes info:', error);
     }
+}
+
+// Redraws an open journal properties panel with the fresh chat, if it differs from what the panel shows.
+function refreshOpenNotesInfo(shownChat, freshChat) {
+    const modalEntry = userInfoModalStack.find(entry => entry.chatId === freshChat.id);
+    const shownFields = chat => [
+        chat.title, chat.description, chat.createdAt, chat.owner?.id, chat.owner?.name,
+        (chat.images || []).map(image => image.id)
+    ];
+    redrawInfoPanelIfChanged(modalEntry?.bodyId, shownFields(shownChat), shownFields(freshChat), () => {
+        displayNotesInfo(freshChat, modalEntry.bodyId, true);
+    });
+}
+
+// Info panels first show what is already in memory and are then refreshed from the server.
+// This redraws a panel only when the fields it shows have changed, so an unchanged panel does not flicker,
+// and never while the user is typing in it, so their unsaved edits are not lost.
+function redrawInfoPanelIfChanged(bodyId, shownFields, freshFields, redraw) {
+    const body = bodyId && document.getElementById(bodyId);
+    if (!body) return;
+    if (JSON.stringify(shownFields) === JSON.stringify(freshFields)) return;
+    if (body.contains(document.activeElement) && document.activeElement.matches('input, textarea')) return;
+
+    // A Table Of Contents opened from the panel is anchored to a button that the redraw replaces
+    closeTocPanelIfInside(body);
+    redraw();
+}
+
+// Finds a user among the ones already loaded: chat participants and the user list.
+function findLoadedUser(userId) {
+    if (currentUser?.info?.id === userId) return currentUser.info;
+    for (const chat of chats) {
+        const user = chat.allUsers?.find(u => u.id === userId);
+        if (user) return user;
+    }
+    return allLoadedUsers.find(u => u.id === userId) || displayedUsers.find(u => u.id === userId) || null;
 }
 
 // Check if chat is Personal Notes (personal chat with only yourself)
@@ -1012,13 +1057,28 @@ async function showUserInfo(userId) {
     // Add to stack
     userInfoModalStack.push({ userId, element: modalElement, bodyId: `${modalId}_body` });
 
+    // Show what is already known about the user right away, then refresh it from the server
+    const loadedUser = findLoadedUser(userId);
+    if (loadedUser) {
+        displayUserInfo(loadedUser, `${modalId}_body`);
+    }
+
     try {
         const user = await apiGetUser(userId, true);
-        console.log('User data received:', user);
-        displayUserInfo(user, `${modalId}_body`);
+        if (!loadedUser) {
+            displayUserInfo(user, `${modalId}_body`);
+            return;
+        }
+        const shownFields = u => [u.name, u.username, u.about, u.lastSeen, (u.photos || []).map(photo => photo.id)];
+        redrawInfoPanelIfChanged(`${modalId}_body`, shownFields(loadedUser), shownFields(user), () => {
+            displayUserInfo(user, `${modalId}_body`);
+        });
     } catch (error) {
         console.error('Error fetching user info:', error);
-        body.innerHTML = `<div class="status-message error panel-load-error">Error: ${escapeHtml(error.message || 'Failed to load user information')}</div>`;
+        // The panel keeps showing the loaded user if there is one; an error replaces only the loading text
+        if (!loadedUser) {
+            body.innerHTML = `<div class="status-message error panel-load-error">Error: ${escapeHtml(error.message || 'Failed to load user information')}</div>`;
+        }
     }
 }
 
@@ -1128,15 +1188,7 @@ async function handleChatMenuAction(action, chatId, fromModal) {
     switch (action) {
         case 'info':
             if (isPersonalNotes(chat)) {
-                // Fetch full chat info then show notes info panel
-                try {
-                    const fullChat = await apiGetChat(chatId);
-                    const chatIndex = chats.findIndex(c => c.id === chatId);
-                    if (chatIndex !== -1) chats[chatIndex] = fullChat;
-                    showNotesInfo(fullChat, { isOwner: true });
-                } catch (error) {
-                    console.error('Error fetching chat for notes info:', error);
-                }
+                await openPersonalNotesInfo(chatId);
             } else if (chat.isPersonal) {
                 const user = chat.allUsers.find(user => user.id !== currentUser?.info.id) || currentUser.info;
                 showUserInfo(user.id);
@@ -1421,6 +1473,12 @@ async function showGroupChatInfo(chatId) {
     // Add to stack
     userInfoModalStack.push({ chatId, element: modalElement, bodyId: `${modalId}_body`, isGroupChat: true });
 
+    // Show the chat already in memory right away, then refresh it from the server
+    const loadedChat = chats.find(c => c.id === chatId);
+    if (loadedChat) {
+        displayGroupChatInfo(loadedChat);
+    }
+
     try {
         const chat = await apiGetChat(chatId);
 
@@ -1430,10 +1488,25 @@ async function showGroupChatInfo(chatId) {
             chats[chatIndex] = chat;
         }
 
-        displayGroupChatInfo(chat);
+        if (!loadedChat) {
+            displayGroupChatInfo(chat);
+            return;
+        }
+        const shownFields = c => [
+            c.title, c.createdAt, c.owner?.id, c.owner?.name, c.owner?.username,
+            (c.images || []).map(image => image.id),
+            (c.allUsers || []).map(u => [u.id, u.name, u.username, u.lastSeen, (u.photos || []).map(photo => photo.id)]),
+            (c.blockedUsers || []).map(u => u.id)
+        ];
+        redrawInfoPanelIfChanged(`${modalId}_body`, shownFields(loadedChat), shownFields(chat), () => {
+            displayGroupChatInfo(chat);
+        });
     } catch (error) {
         console.error('Error fetching group chat info:', error);
-        body.innerHTML = `<div class="status-message error panel-load-error">Error: ${escapeHtml(error.message || 'Failed to load group chat information')}</div>`;
+        // The panel keeps showing the chat from memory if there is one; an error replaces only the loading text
+        if (!loadedChat) {
+            body.innerHTML = `<div class="status-message error panel-load-error">Error: ${escapeHtml(error.message || 'Failed to load group chat information')}</div>`;
+        }
     }
 }
 
