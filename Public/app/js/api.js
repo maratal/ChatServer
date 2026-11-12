@@ -792,6 +792,21 @@ async function apiGetRecentMedia(offset = 0, limit = 20) {
     return await handleResponse(response);
 }
 
+// Adds an uploaded attachment to the user's Recent Uploads, whether or not it is ever sent.
+async function apiSaveMedia(media) {
+    const accessToken = getAccessToken();
+    if (!accessToken) throw new Error('No access token available');
+    const response = await fetch('/api/media', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(media)
+    });
+    return await handleResponse(response);
+}
+
 async function apiDeleteMedia(mediaId) {
     const accessToken = getAccessToken();
     if (!accessToken) throw new Error('No access token available');

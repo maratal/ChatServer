@@ -1456,6 +1456,16 @@ function handleAttachmentFileSelect(event) {
     event.target.value = '';
 }
 
+// Deletes a discarded attachment's file from the server. Once it was saved to Recent Uploads,
+// it is deleted as media, which also removes it from there.
+async function deleteUploadedAttachment(attachment) {
+    if (attachment.savedToRecents) {
+        await apiDeleteMedia(attachment.uploadedId);
+    } else {
+        await apiDeleteUpload(`${attachment.uploadedId}.${attachment.fileType}`);
+    }
+}
+
 // Clear all attachments (cancel uploads, delete uploaded files, reset state)
 function clearAllAttachments() {
     selectedAttachments.forEach(async (attachment) => {
@@ -1468,8 +1478,7 @@ function clearAllAttachments() {
         // Delete uploaded files from server (but not if editing existing message)
         if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
             try {
-                const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
-                await apiDeleteUpload(fileName);
+                await deleteUploadedAttachment(attachment);
             } catch (error) {
                 console.error('Error deleting uploaded file:', error);
             }
@@ -1550,6 +1559,22 @@ async function uploadAttachment(attachment) {
         if (attachment.file.type.startsWith('video/')) {
             duration = await getVideoDuration(attachment.file);
         }
+        
+        // Add the file to Recent Uploads right away, so it can be found there even if it is never sent.
+        // Without this record the file would still upload and send fine, so a failure here is only logged.
+        try {
+            await apiSaveMedia({
+                id: uploadedFileId,
+                fileType: uploadedFileType,
+                fileSize: attachment.file.size,
+                previewWidth,
+                previewHeight,
+                duration
+            });
+            attachment.savedToRecents = true;
+        } catch (error) {
+            console.error('Error saving uploaded file to recents:', error);
+        }
 
         attachment.uploaded = true;
         attachment.uploading = false;
@@ -1560,6 +1585,8 @@ async function uploadAttachment(attachment) {
         attachment.previewHeight = previewHeight;
         attachment.duration = duration;
         attachmentUploads.delete(attachment.id);
+        // The user chose to only upload this file while it was still uploading; it is no longer part of the draft.
+        if (attachment.keepInRecents) return;
         hasConfirmedSendWithUploading = false; // reset confirm flag
         // Auto-expand when all uploads are done
         if (selectedAttachments.every(a => a.uploaded)) {
@@ -1602,8 +1629,7 @@ async function removeAttachment(attachmentId) {
     // But NOT if we're editing an existing message (the attachment will be handled server-side)
     if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
         try {
-            const fileName = `${attachment.uploadedId}.${attachment.fileType}`;
-            await apiDeleteUpload(fileName);
+            await deleteUploadedAttachment(attachment);
         } catch (error) {
             console.error('Error deleting uploaded file:', error);
         }
@@ -2005,6 +2031,59 @@ function getComposeLanguage() {
     const chat = chats.find(c => c.id === currentChatId);
     if (!chat || !isPersonalNotes(chat)) return null;
     return getSavedComposeLanguageCode() || null;
+}
+
+// With uploaded files and no text, the send button asks whether to send the files as a message
+// or only to upload them, so they wait in Recent Uploads to be attached later.
+function handleSendButtonClick(event) {
+    const messageInput = getMessageInputElement();
+    const hasText = !!messageInput?.value.trim();
+    if (hasText || editingMessage || selectedAttachments.length === 0) {
+        sendMessage();
+        return;
+    }
+
+    event?.stopPropagation();
+    const button = document.getElementById('sendButton');
+    const rect = button.getBoundingClientRect();
+    showContextMenu({
+        items: [
+            { id: 'send', label: 'Send without text', icon: sendIcon },
+            { id: 'upload', label: 'Only upload media', icon: uploadIcon }
+        ],
+        x: rect.left,
+        y: rect.top - 6,
+        anchor: 'bottom-left',
+        highlightElement: button,
+        onAction: (action) => {
+            if (action === 'send') {
+                sendMessage();
+            } else if (action === 'upload') {
+                saveAttachments();
+            }
+        }
+    });
+}
+
+// Takes the uploaded files out of the draft without sending them. Every attachment is saved to
+// Recent Uploads as soon as it is uploaded, so they can be attached later from there.
+// Files that are still uploading finish in the background and show up there once they are done.
+function saveAttachments() {
+    const attachments = selectedAttachments;
+    selectedAttachments = [];
+    attachmentUploads.clear();
+    hasConfirmedSendWithUploading = false;
+
+    for (const attachment of attachments) {
+        attachment.keepInRecents = true;
+        // Files waiting in the upload queue would otherwise never be uploaded, because the queue walks the draft's list.
+        if (!attachment.uploaded) {
+            uploadAttachment(attachment);
+        }
+    }
+
+    updateAttachmentPreview();
+    updateSendButtonState();
 }
 
 async function sendMessage(textOverride = null) {

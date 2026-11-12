@@ -125,7 +125,7 @@
                     </div>
                     <textarea placeholder="Type a message..." rows="1" class="message-input flex w-full text-base placeholder:text-muted-foreground md:text-sm flex-1 min-h-[40px] max-h-[120px] resize-none" id="messageInput"></textarea>
                     <div class="message-input-action-slot">
-                        <button class="inline-button hidden" id="sendButton" onclick="sendMessage()">
+                        <button class="inline-button hidden" id="sendButton" onclick="handleSendButtonClick(event)">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send">
                                 <path d="m22 2-7 20-4-9-9-4Z"></path>
                                 <path d="M22 2 11 13"></path>
