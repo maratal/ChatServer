@@ -2801,6 +2801,9 @@ function editMessage(message) {
                 previewHeight: att.previewHeight
             };
         });
+        // Open the panel on the message's attachments, even if Recents was the last tab shown.
+        activeMediaTab = 'attachments';
+        isUploadPanelCollapsed = false;
         updateAttachmentPreview();
     }
     
