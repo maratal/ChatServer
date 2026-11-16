@@ -3630,6 +3630,32 @@ input[type="text"]:disabled, textarea:disabled {
     display: block;
 }
 
+/* Journal media box: tall (9:11) or wide (11:9) depending on the first attachment, as wide as the bubble.
+   The first attachment fills it (.attachment-fill); the others are shown whole with bars. */
+.journal-attachment-box {
+    width: 100%;
+    aspect-ratio: 11 / 9;
+}
+
+.journal-attachment-box.tall {
+    aspect-ratio: 9 / 11;
+}
+
+.journal-attachment-box .message-attachment-image,
+.journal-attachment-box .message-attachment-video-wrapper,
+.journal-attachment-box .message-attachment-video {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    object-fit: contain;
+}
+
+.journal-attachment-box .message-attachment-image.attachment-fill,
+.journal-attachment-box .attachment-fill .message-attachment-image,
+.journal-attachment-box .attachment-fill .message-attachment-video {
+    object-fit: cover;
+}
+
 .message-attachment-chevron {
     position: absolute;
     top: 50%;

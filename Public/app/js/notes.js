@@ -479,7 +479,7 @@ function createNoteElement(note) {
 
     const hasAttachments = message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0;
     const messageId = message.id || note.id;
-    const attachmentHTML = hasAttachments ? buildAttachmentHTML(message.attachments, messageId, '') : '';
+    const attachmentHTML = hasAttachments ? buildAttachmentHTML(message.attachments, messageId, '', { journal: true }) : '';
 
     if (hasAttachments && attachmentHTML) {
         const validAttachments = message.attachments.filter(attachment => attachment && attachment.id && attachment.fileType);

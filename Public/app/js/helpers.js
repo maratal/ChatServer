@@ -1224,7 +1224,25 @@ function handleDebugCommandWrapper(text) {
 
 // ── Shared Attachment & Video Functions ──────────────────────────────────────
 
-function buildAttachmentHTML(attachments, messageId, overlayHTML) {
+// In the journal the media box is either tall (9:11) or wide (11:9), whichever is closer to the shape of the
+// post's first attachment. The first attachment fills the box and may be cropped at the edges; the others are
+// shown whole, with bars at the sides or at the top and bottom.
+function journalBoxShape(width, height) {
+    return width > 0 && height > 0 && height > width ? 'tall' : 'wide';
+}
+
+// Called when the first attachment's image has loaded. Videos and some older posts were stored with
+// placeholder dimensions, so the box switches to the real shape of the image when it differs.
+function fitJournalBoxToImage(img) {
+    const container = img.closest('.journal-attachment-box');
+    if (!container || !img.naturalWidth || !img.naturalHeight) return;
+    const shape = journalBoxShape(img.naturalWidth, img.naturalHeight);
+    container.classList.toggle('tall', shape === 'tall');
+    container.classList.toggle('wide', shape === 'wide');
+}
+
+// options.journal: render the box the journal way (see journalBoxShape) instead of the chat way.
+function buildAttachmentHTML(attachments, messageId, overlayHTML, options = {}) {
     if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
         return '';
     }
@@ -1238,8 +1256,16 @@ function buildAttachmentHTML(attachments, messageId, overlayHTML) {
     const isImage = firstAttachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
     const isVideo = firstAttachment.fileType.match(/^(mp4|webm|mov)$/i);
 
+    const isJournal = !!options.journal;
+    const journalClasses = isJournal
+        ? ` journal-attachment-box ${journalBoxShape(Number(firstAttachment.previewWidth), Number(firstAttachment.previewHeight))}`
+        : '';
+    // In the journal the first attachment fills the box, and its image corrects the box shape once it loads.
+    const fillClass = isJournal ? ' attachment-fill' : '';
+    const onloadAttr = isJournal ? ' onload="fitJournalBoxToImage(this)"' : '';
+
     return `
-        <div class="message-attachment-container" data-message-id="${messageId}" onclick="openMessageAttachmentViewer('${messageId}')" style="cursor: pointer;">
+        <div class="message-attachment-container${journalClasses}" data-message-id="${messageId}" onclick="openMessageAttachmentViewer('${messageId}')" style="cursor: pointer;">
             ${hasMultipleAttachments ? `
             <button class="message-attachment-chevron message-attachment-chevron-left" onclick="event.stopPropagation(); navigateMessageAttachment('${messageId}', -1)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -1248,10 +1274,10 @@ function buildAttachmentHTML(attachments, messageId, overlayHTML) {
             </button>
             ` : ''}
             ${isImage ? `
-            <img class="message-attachment-image" src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment" decoding="async">
+            <img class="message-attachment-image${fillClass}" src="${getUploadUrl(firstAttachment.id, firstAttachment.fileType)}" alt="Attachment" decoding="async"${onloadAttr}>
             ` : isVideo ? `
-            <div class="message-attachment-video-wrapper" data-video-src="/uploads/${firstAttachment.id.toLowerCase()}.${firstAttachment.fileType}" onmouseleave="stopBalloonVideoPreview(this)">
-                <img class="message-attachment-image" src="${getVideoPreviewUrl(firstAttachment.id)}" alt="Video">
+            <div class="message-attachment-video-wrapper${fillClass}" data-video-src="/uploads/${firstAttachment.id.toLowerCase()}.${firstAttachment.fileType}" onmouseleave="stopBalloonVideoPreview(this)">
+                <img class="message-attachment-image" src="${getVideoPreviewUrl(firstAttachment.id)}" alt="Video"${onloadAttr}>
             </div>
             ` : ''}
             ${hasMultipleAttachments ? `
@@ -1316,12 +1342,15 @@ function switchMessageAttachment(messageId, index) {
 
     const isImage = attachment.fileType.match(/^(jpg|jpeg|png|gif|webp)$/i);
     const isVideo = attachment.fileType.match(/^(mp4|webm|mov)$/i);
+    // In the journal only the first attachment fills the box; the others are shown whole.
+    const fillsBox = index === 0 && container.classList.contains('journal-attachment-box');
 
     const currentMedia = container.querySelector('.message-attachment-image, .message-attachment-video-wrapper, .message-attachment-video');
     if (currentMedia) {
         if (isImage) {
             const img = document.createElement('img');
             img.className = 'message-attachment-image';
+            if (fillsBox) img.classList.add('attachment-fill');
             img.decoding = 'async';
             img.src = getUploadUrl(attachment.id, attachment.fileType);
             img.alt = 'Attachment';
@@ -1331,6 +1360,7 @@ function switchMessageAttachment(messageId, index) {
         } else if (isVideo) {
             const wrapper = document.createElement('div');
             wrapper.className = 'message-attachment-video-wrapper';
+            if (fillsBox) wrapper.classList.add('attachment-fill');
             wrapper.dataset.videoSrc = `/uploads/${attachment.id.toLowerCase()}.${attachment.fileType}`;
             const img = document.createElement('img');
             img.className = 'message-attachment-image';
