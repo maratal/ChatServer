@@ -11,11 +11,10 @@ var lastReferenceReadMessageId = null; // Track the ID of either last outgoing m
 
 // Recents panel state
 let isRecentsPanelOpen = false;
-let selectedRecentIds = new Set(); // Set of selected media resource IDs
 let recentMediaItems = []; // Cached recent media list
 let hasMoreRecents = true; // Whether more recents can be loaded
 let isLoadingRecents = false; // Prevent concurrent loads
-let activeMediaTab = 'uploads'; // 'uploads' | 'recents'
+let activeMediaTab = 'attachments'; // 'attachments' | 'recents'
 let isUploadPanelCollapsed = false; // Whether the upload panel items row is collapsed
 let hasConfirmedSendWithUploading = false; // Whether the user confirmed sending while uploads are in progress
 
@@ -961,9 +960,8 @@ async function openRecentsPanel() {
 
 function closeRecentsPanel() {
     isRecentsPanelOpen = false;
-    selectedRecentIds.clear();
     if (selectedAttachments.length > 0) {
-        activeMediaTab = 'uploads';
+        activeMediaTab = 'attachments';
     }
     renderMediaPanel();
     updateSendButtonState();
@@ -971,7 +969,6 @@ function closeRecentsPanel() {
 
 function closeMediaPanel() {
     isRecentsPanelOpen = false;
-    selectedRecentIds.clear();
     if (selectedAttachments.length > 0) {
         clearAllAttachments();
     } else {
@@ -1008,7 +1005,7 @@ async function switchMediaTab(tab) {
     renderMediaPanel();
 }
 
-// Render the unified media panel (tabs: Uploads / Recents)
+// Render the unified media panel (tabs: Attachments / Recents)
 function getUploadProgressSummary() {
     const total = selectedAttachments.length;
     const done = selectedAttachments.filter(a => a.uploaded).length;
@@ -1024,8 +1021,14 @@ function renderMediaPanel() {
     const container = document.getElementById('mediaPanelContainer');
     if (!container) return;
 
-    const hasUploads = selectedAttachments.length > 0;
-    const panelVisible = hasUploads || isRecentsPanelOpen;
+    // Rebuilding the panel in the middle of a drag would drop the dragged thumbnail, so wait until it ends.
+    if (attachmentReorderDrag) {
+        attachmentReorderDrag.renderWhenDone = true;
+        return;
+    }
+
+    const hasAttachments = selectedAttachments.length > 0;
+    const panelVisible = hasAttachments || isRecentsPanelOpen;
 
     if (!panelVisible) {
         container.style.display = 'none';
@@ -1034,7 +1037,7 @@ function renderMediaPanel() {
     }
 
     // Auto-switch tab if current tab has no content
-    if (activeMediaTab === 'uploads' && !hasUploads) {
+    if (activeMediaTab === 'attachments' && !hasAttachments) {
         activeMediaTab = 'recents';
     }
 
@@ -1050,38 +1053,37 @@ function renderMediaPanel() {
 
     const hasUploading = selectedAttachments.some(a => a.uploading);
 
-    if (isUploadPanelCollapsed && hasUploads) {
+    if (isUploadPanelCollapsed && hasAttachments) {
         // Collapsed: show progress summary instead of tabs
         const summarySpan = document.createElement('span');
         summarySpan.className = 'media-panel-tab active';
         summarySpan.textContent = getUploadProgressSummary();
         tabs.appendChild(summarySpan);
     } else {
-        // Uploads tab (only show if there are uploads)
-        if (hasUploads) {
-            const uploadsTab = document.createElement('button');
-            uploadsTab.className = `media-panel-tab${activeMediaTab === 'uploads' ? ' active' : ''}`;
-            uploadsTab.textContent = `Uploads (${selectedAttachments.length})`;
-            uploadsTab.onclick = () => switchMediaTab('uploads');
-            tabs.appendChild(uploadsTab);
+        // Attachments tab: new uploads and media picked in Recents. It is shown once there is at least one.
+        if (hasAttachments) {
+            const attachmentsTab = document.createElement('button');
+            attachmentsTab.className = `media-panel-tab${activeMediaTab === 'attachments' ? ' active' : ''}`;
+            attachmentsTab.textContent = `Attachments (${selectedAttachments.length})`;
+            attachmentsTab.onclick = () => switchMediaTab('attachments');
+            tabs.appendChild(attachmentsTab);
         }
 
         // Recents tab
         const recentsTab = document.createElement('button');
         recentsTab.className = `media-panel-tab${activeMediaTab === 'recents' ? ' active' : ''}`;
-        const recentsCount = selectedRecentIds.size;
-        recentsTab.textContent = recentsCount > 0 ? `Recents (${recentsCount})` : 'Recents';
+        recentsTab.textContent = 'Recents';
         recentsTab.onclick = () => switchMediaTab('recents');
         tabs.appendChild(recentsTab);
     }
 
     header.appendChild(tabs);
 
-    // Right-side controls: collapse (if uploads) and close, grouped together
+    // Right-side controls: collapse (if there are attachments) and close, grouped together
     const headerControls = document.createElement('div');
     headerControls.style.cssText = 'display:flex;align-items:center;gap:2px;flex-shrink:0;';
 
-    if (hasUploads) {
+    if (hasAttachments) {
         const collapseBtn = document.createElement('button');
         collapseBtn.className = 'inline-button small';
         collapseBtn.title = isUploadPanelCollapsed ? 'Expand' : 'Collapse';
@@ -1107,8 +1109,8 @@ function renderMediaPanel() {
 
     // Content: hidden when collapsed
     if (!isUploadPanelCollapsed) {
-        if (activeMediaTab === 'uploads') {
-            renderUploadsTabContent(container);
+        if (activeMediaTab === 'attachments') {
+            renderAttachmentsTabContent(container);
         } else {
             renderRecentsTabContent(container);
         }
@@ -1117,15 +1119,8 @@ function renderMediaPanel() {
     updateSendButtonState();
 }
 
-function renderUploadsTabContent(container) {
-    if (selectedAttachments.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'media-panel-empty';
-        empty.textContent = 'No uploads';
-        container.appendChild(empty);
-        return;
-    }
-
+// The Attachments tab is shown only while there are attachments; otherwise the panel shows Recents.
+function renderAttachmentsTabContent(container) {
     const itemsRow = document.createElement('div');
     itemsRow.className = 'media-panel-items-row';
 
@@ -1191,11 +1186,11 @@ function renderUploadsTabContent(container) {
             });
         }
 
-        // Click opens media viewer with all uploads
+        // Click opens media viewer with all attachments
         attachmentDiv.style.cursor = 'pointer';
         attachmentDiv.onclick = (e) => {
             if (e.target.closest('.attachment-close-button')) return;
-            openUploadsMediaViewer(attachment.id);
+            openAttachmentsMediaViewer(attachment.id);
         };
 
         attachmentDiv.appendChild(closeButton);
@@ -1211,6 +1206,7 @@ function renderUploadsTabContent(container) {
     }
 
     container.appendChild(itemsRow);
+    enableAttachmentReordering(itemsRow);
 
     // Restore progress visuals now that items are in the DOM
     selectedAttachments.forEach(attachment => {
@@ -1220,8 +1216,186 @@ function renderUploadsTabContent(container) {
     });
 }
 
+// ── Reordering uploads ───────────────────────────────────────────────────────
+// Attachment thumbnails can be dragged left and right to change the order the attachments are sent in.
+// With a mouse the drag starts once the pointer moves a few pixels; on touch screens it starts after a
+// short press, so that a plain swipe still scrolls the row.
+
+let attachmentReorderDrag = null;
+const ATTACHMENT_DRAG_THRESHOLD = 6;
+const ATTACHMENT_TOUCH_HOLD_MS = 300;
+
+function enableAttachmentReordering(itemsRow) {
+    const items = itemsRow.querySelectorAll('.attachment-preview-item[data-attachment-id]');
+    if (items.length < 2) return;
+    items.forEach(item => {
+        item.addEventListener('pointerdown', (e) => onAttachmentPointerDown(e, item, itemsRow));
+        // Once a touch drag has started, stop the row from scrolling under the finger.
+        item.addEventListener('touchmove', (e) => {
+            if (attachmentReorderDrag?.active) e.preventDefault();
+        }, { passive: false });
+        item.addEventListener('contextmenu', (e) => {
+            if (attachmentReorderDrag) e.preventDefault();
+        });
+    });
+}
+
+function onAttachmentPointerDown(e, item, itemsRow) {
+    if (attachmentReorderDrag || !e.isPrimary || e.button !== 0) return;
+    if (e.target.closest('.attachment-close-button')) return;
+
+    const drag = {
+        item,
+        itemsRow,
+        pointerId: e.pointerId,
+        isTouch: e.pointerType !== 'mouse',
+        startX: e.clientX,
+        startY: e.clientY,
+        lastX: e.clientX,
+        grabOffset: 0,
+        active: false,
+        holdTimer: null,
+        renderWhenDone: false
+    };
+    attachmentReorderDrag = drag;
+
+    if (drag.isTouch) {
+        drag.holdTimer = setTimeout(() => startAttachmentDrag(drag), ATTACHMENT_TOUCH_HOLD_MS);
+    }
+
+    window.addEventListener('pointermove', onAttachmentPointerMove);
+    window.addEventListener('pointerup', onAttachmentPointerUp);
+    window.addEventListener('pointercancel', onAttachmentPointerCancel);
+}
+
+function startAttachmentDrag(drag) {
+    if (attachmentReorderDrag !== drag || drag.active) return;
+    drag.active = true;
+    drag.grabOffset = drag.startX - drag.item.getBoundingClientRect().left;
+    drag.item.classList.add('attachment-dragging');
+    try { drag.item.setPointerCapture(drag.pointerId); } catch (_) { /* the pointer may already be gone */ }
+    if (drag.isTouch && navigator.vibrate) navigator.vibrate(10);
+}
+
+function onAttachmentPointerMove(e) {
+    const drag = attachmentReorderDrag;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    drag.lastX = e.clientX;
+
+    if (!drag.active) {
+        const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+        if (distance < ATTACHMENT_DRAG_THRESHOLD) return;
+        if (drag.isTouch) {
+            // The finger moved before the hold time passed, so this is a scroll and not a drag.
+            finishAttachmentDrag(false);
+            return;
+        }
+        startAttachmentDrag(drag);
+    }
+
+    e.preventDefault();
+    autoScrollAttachmentRow(drag.itemsRow, e.clientX);
+    moveDraggedAttachment(drag, e.clientX);
+}
+
+// Moves the dragged thumbnail into the slot under the pointer and keeps it following the pointer.
+function moveDraggedAttachment(drag, pointerX) {
+    const { item, itemsRow } = drag;
+    const siblings = Array.from(itemsRow.querySelectorAll('.attachment-preview-item[data-attachment-id]'))
+        .filter(el => el !== item);
+
+    item.style.transform = '';
+    const itemWidth = item.offsetWidth;
+    const draggedCenter = pointerX - drag.grabOffset + itemWidth / 2;
+    const targetIndex = siblings.filter(el => {
+        const rect = el.getBoundingClientRect();
+        return rect.left + rect.width / 2 < draggedCenter;
+    }).length;
+
+    const currentIndex = Array.from(itemsRow.querySelectorAll('.attachment-preview-item[data-attachment-id]')).indexOf(item);
+    if (targetIndex !== currentIndex) {
+        // Animate the thumbnails that make room, so the swap is easy to follow.
+        const before = new Map(siblings.map(el => [el, el.getBoundingClientRect().left]));
+        const reference = siblings[targetIndex] ?? siblings[siblings.length - 1].nextSibling;
+        itemsRow.insertBefore(item, reference);
+        siblings.forEach(el => {
+            const shift = before.get(el) - el.getBoundingClientRect().left;
+            if (!shift) return;
+            el.style.transition = 'none';
+            el.style.transform = `translateX(${shift}px)`;
+            el.getBoundingClientRect();
+            el.style.transition = 'transform 150ms ease';
+            el.style.transform = '';
+        });
+    }
+
+    const naturalLeft = item.getBoundingClientRect().left;
+    item.style.transform = `translateX(${pointerX - drag.grabOffset - naturalLeft}px)`;
+}
+
+function autoScrollAttachmentRow(itemsRow, pointerX) {
+    const rect = itemsRow.getBoundingClientRect();
+    const edge = 40;
+    if (pointerX < rect.left + edge) {
+        itemsRow.scrollLeft -= 10;
+    } else if (pointerX > rect.right - edge) {
+        itemsRow.scrollLeft += 10;
+    }
+}
+
+function onAttachmentPointerUp(e) {
+    const drag = attachmentReorderDrag;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    finishAttachmentDrag(drag.active);
+}
+
+function onAttachmentPointerCancel(e) {
+    const drag = attachmentReorderDrag;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    finishAttachmentDrag(false);
+}
+
+// Ends the drag. When keepOrder is true the new thumbnail order becomes the attachment order;
+// otherwise the panel is redrawn in the order it had before.
+function finishAttachmentDrag(keepOrder) {
+    const drag = attachmentReorderDrag;
+    if (!drag) return;
+    attachmentReorderDrag = null;
+
+    clearTimeout(drag.holdTimer);
+    window.removeEventListener('pointermove', onAttachmentPointerMove);
+    window.removeEventListener('pointerup', onAttachmentPointerUp);
+    window.removeEventListener('pointercancel', onAttachmentPointerCancel);
+
+    const wasActive = drag.active;
+    drag.item.classList.remove('attachment-dragging');
+    drag.item.style.transform = '';
+    try { drag.item.releasePointerCapture(drag.pointerId); } catch (_) { /* already released */ }
+
+    if (wasActive) {
+        // The click that follows a drag must not open the media viewer.
+        const swallowClick = (e) => e.stopImmediatePropagation();
+        drag.item.addEventListener('click', swallowClick, { capture: true, once: true });
+        // If no click follows (for example on touch screens), stop waiting for one.
+        setTimeout(() => drag.item.removeEventListener('click', swallowClick, { capture: true }), 0);
+    }
+
+    if (keepOrder) {
+        const orderedIds = Array.from(drag.itemsRow.querySelectorAll('.attachment-preview-item[data-attachment-id]'))
+            .map(el => el.dataset.attachmentId);
+        const position = new Map(orderedIds.map((id, index) => [id, index]));
+        selectedAttachments = [...selectedAttachments].sort((a, b) =>
+            (position.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (position.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+    }
+
+    if (drag.renderWhenDone || (wasActive && !keepOrder)) {
+        renderMediaPanel();
+    }
+}
+
 function renderRecentsTabContent(container) {
-    if (recentMediaItems.length === 0) {
+    const visibleItems = visibleRecentMediaItems();
+    if (visibleItems.length === 0 && !hasMoreRecents) {
         const empty = document.createElement('div');
         empty.className = 'media-panel-empty';
         empty.textContent = 'No recent media';
@@ -1231,7 +1405,7 @@ function renderRecentsTabContent(container) {
 
     const row = document.createElement('div');
     row.className = 'media-panel-items-row';
-    recentMediaItems.forEach(media => {
+    visibleItems.forEach(media => {
         const item = createRecentMediaItem(media);
         row.appendChild(item);
     });
@@ -1253,7 +1427,7 @@ function renderRecentsTabContent(container) {
 }
 
 function createRecentMediaItem(media) {
-    const isSelected = selectedRecentIds.has(media.id);
+    const isSelected = isRecentMediaAttached(media.id);
     const div = document.createElement('div');
     div.className = 'attachment-preview-item';
     div.dataset.mediaId = media.id;
@@ -1313,20 +1487,21 @@ function createRecentMediaItem(media) {
 }
 
 function openRecentsMediaViewer(mediaId) {
-    const photos = recentMediaItems.map(m => ({
+    const items = visibleRecentMediaItems();
+    const photos = items.map(m => ({
         id: m.id,
         fileType: m.fileType,
         createdAt: m.createdAt
     }));
-    const index = recentMediaItems.findIndex(m => m.id === mediaId);
+    const index = items.findIndex(m => m.id === mediaId);
     if (index < 0 || photos.length === 0) return;
-    const currentItem = recentMediaItems[index];
+    const currentItem = items[index];
     const autoplay = /^(mp4|webm|mov)$/i.test(currentItem.fileType);
     openMediaViewer(photos, index, null, null, autoplay);
 }
 
-function openUploadsMediaViewer(attachmentId) {
-    // Build photos array from uploaded attachments that have previews
+function openAttachmentsMediaViewer(attachmentId) {
+    // Build photos array from attachments that have previews
     const viewable = selectedAttachments.filter(a => a.preview || (a.uploadedId && a.fileType));
     const photos = viewable.map(a => {
         if (a.uploadedId && a.fileType) {
@@ -1341,25 +1516,61 @@ function openUploadsMediaViewer(attachmentId) {
     openMediaViewer(photos, index, null, null, isVideo);
 }
 
-function toggleRecentMediaSelection(mediaId) {
-    if (selectedRecentIds.has(mediaId)) {
-        selectedRecentIds.delete(mediaId);
-    } else {
-        selectedRecentIds.add(mediaId);
+// The server lists a file in Recents as soon as it is uploaded, but new uploads are shown there only once
+// they leave the draft, by being sent or kept with "Only upload media". Until then they are hidden, which
+// also keeps them from being picked a second time. The same goes for the attachments of a message being edited.
+function isUnsentDraftFile(mediaId) {
+    return selectedAttachments.some(a => !a.fromRecents && isSameMediaId(a.uploadedId, mediaId));
+}
+
+function visibleRecentMediaItems() {
+    return recentMediaItems.filter(m => !isUnsentDraftFile(m.id));
+}
+
+// Fetches Recents again after files leave the draft, if the list is loaded. Otherwise it is fetched when Recents opens.
+async function refreshRecents() {
+    if (!isRecentsPanelOpen) return;
+    const itemsRow = document.querySelector('.media-panel-items-row');
+    const savedScroll = activeMediaTab === 'recents' && itemsRow ? itemsRow.scrollLeft : 0;
+    recentMediaItems = [];
+    hasMoreRecents = true;
+    await loadMoreRecents();
+    renderMediaPanel();
+    if (activeMediaTab === 'recents') {
+        const newItemsRow = document.querySelector('.media-panel-items-row');
+        if (newItemsRow) newItemsRow.scrollLeft = savedScroll;
     }
-    // Re-render just the item
-    const item = document.querySelector(`[data-media-id="${mediaId}"]`);
-    if (item) {
-        const media = recentMediaItems.find(m => m.id === mediaId);
-        if (media) {
-            const newItem = createRecentMediaItem(media);
-            item.replaceWith(newItem);
+}
+
+// Media picked in Recents becomes an attachment, so it can be reordered or removed in the Attachments tab.
+// The same file can also be in the draft as a fresh upload, so attachments are matched by their uploaded id.
+// Fresh uploads keep the lowercase id generated in the browser, while the server returns ids in uppercase,
+// so the ids are compared without regard to case.
+function isSameMediaId(a, b) {
+    return !!a && !!b && String(a).toLowerCase() === String(b).toLowerCase();
+}
+
+function isRecentMediaAttached(mediaId) {
+    return selectedAttachments.some(a => isSameMediaId(a.uploadedId, mediaId));
+}
+
+function toggleRecentMediaSelection(mediaId) {
+    if (isRecentMediaAttached(mediaId)) {
+        // Unpicking only takes the file out of the draft; it stays in Recents.
+        selectedAttachments = selectedAttachments.filter(a => !isSameMediaId(a.uploadedId, mediaId));
+    } else {
+        if (selectedAttachments.length >= MAX_ATTACHMENTS) {
+            alert(`Maximum ${MAX_ATTACHMENTS} attachments allowed`);
+            return;
         }
+        const media = recentMediaItems.find(m => m.id === mediaId);
+        if (!media) return;
+        selectedAttachments.push(recentMediaToAttachment(media));
     }
     // Save scroll position before full re-render
     const itemsRow = document.querySelector('.media-panel-items-row');
     const savedScroll = itemsRow ? itemsRow.scrollLeft : 0;
-    renderMediaPanel(); // Update tab badge count
+    renderMediaPanel(); // Update the selection marks and the Attachments tab
     const newItemsRow = document.querySelector('.media-panel-items-row');
     if (newItemsRow) newItemsRow.scrollLeft = savedScroll;
     updateSendButtonState();
@@ -1371,7 +1582,8 @@ async function deleteRecentMedia(mediaId) {
         await apiDeleteMedia(mediaId);
         // Remove from list and re-render
         recentMediaItems = recentMediaItems.filter(m => m.id !== mediaId);
-        selectedRecentIds.delete(mediaId);
+        // The file is gone from the server, so it can no longer be attached either.
+        selectedAttachments = selectedAttachments.filter(a => !isSameMediaId(a.uploadedId, mediaId));
         renderMediaPanel();
         updateSendButtonState();
     } catch (e) {
@@ -1379,22 +1591,25 @@ async function deleteRecentMedia(mediaId) {
     }
 }
 
-// Get selected recents as attachment objects (to be sent with message)
-function getSelectedRecentAttachments() {
-    return recentMediaItems
-        .filter(m => selectedRecentIds.has(m.id))
-        .map(m => ({
-            id: m.id,
-            uploadedId: m.id,
-            fileType: m.fileType,
-            file: { size: m.fileSize, type: '' },
-            preview: getPreviewUrl(m.id, m.fileType),
-            uploaded: true,
-            previewWidth: m.previewWidth,
-            previewHeight: m.previewHeight,
-            duration: m.duration || null,
-            fromRecents: true
-        }));
+// Turns a Recents item into an attachment. The file is already on the server, so it is ready to send.
+function recentMediaToAttachment(media) {
+    const isVideo = /^(mp4|webm|mov)$/i.test(media.fileType);
+    const extension = media.fileType.toLowerCase();
+    const mimeType = isVideo
+        ? `video/${extension}`
+        : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+    return {
+        id: crypto.randomUUID(),
+        uploadedId: media.id,
+        fileType: media.fileType,
+        file: { size: media.fileSize, type: mimeType },
+        preview: isVideo ? getVideoPreviewUrl(media.id) : getPreviewUrl(media.id, media.fileType),
+        uploaded: true,
+        previewWidth: media.previewWidth,
+        previewHeight: media.previewHeight,
+        duration: media.duration || null,
+        fromRecents: true
+    };
 }
 
 // Handle attachment file selection
@@ -1421,32 +1636,31 @@ function handleAttachmentFileSelect(event) {
     
     const filesToAdd = mediaFiles.slice(0, remainingSlots);
     
-    filesToAdd.forEach(file => {
-        const attachmentId = crypto.randomUUID();
-        const attachment = {
-            id: attachmentId,
-            file: file,
-            uploaded: false,
-            uploadProgress: 0,
-            uploading: false
-        };
-        selectedAttachments.push(attachment);
-    });
+    const newAttachments = filesToAdd.map(file => ({
+        id: crypto.randomUUID(),
+        file: file,
+        uploaded: false,
+        uploadProgress: 0,
+        uploading: false
+    }));
+    selectedAttachments.push(...newAttachments);
     
-    activeMediaTab = 'uploads';
+    activeMediaTab = 'attachments';
     updateAttachmentPreview();
     updateSendButtonState();
     
-    // Upload attachments with 100ms delay between each to avoid connection saturation
+    // Upload the new files with a short delay between each to avoid connection saturation.
+    // Only the files added here are queued, so attachments picked from Recents don't hold the queue up.
     (async () => {
-        for (let i = 0; i < selectedAttachments.length; i++) {
-            const attachment = selectedAttachments[i];
-            
-            // Start upload
+        for (let i = 0; i < newAttachments.length; i++) {
+            const attachment = newAttachments[i];
+            // Skip files the user removed from the draft while they were waiting.
+            if (!selectedAttachments.includes(attachment) && !attachment.keepInRecents) continue;
+
             uploadAttachment(attachment);
-            
+
             // Add delay before next upload (except for last one)
-            if (i < selectedAttachments.length - 1) {
+            if (i < newAttachments.length - 1) {
                 await delay(500);
             }
         }
@@ -1475,8 +1689,8 @@ function clearAllAttachments() {
             upload.xhr.abort();
         }
         
-        // Delete uploaded files from server (but not if editing existing message)
-        if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
+        // Delete uploaded files from server (but not if editing existing message, or if the file was picked from Recents)
+        if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !attachment.fromRecents && !editingMessage) {
             try {
                 await deleteUploadedAttachment(attachment);
             } catch (error) {
@@ -1585,8 +1799,12 @@ async function uploadAttachment(attachment) {
         attachment.previewHeight = previewHeight;
         attachment.duration = duration;
         attachmentUploads.delete(attachment.id);
-        // The user chose to only upload this file while it was still uploading; it is no longer part of the draft.
-        if (attachment.keepInRecents) return;
+        // The user chose to only upload this file while it was still uploading; it is no longer part of the draft,
+        // so it now belongs in Recents.
+        if (attachment.keepInRecents) {
+            refreshRecents();
+            return;
+        }
         hasConfirmedSendWithUploading = false; // reset confirm flag
         // Auto-expand when all uploads are done
         if (selectedAttachments.every(a => a.uploaded)) {
@@ -1627,7 +1845,8 @@ async function removeAttachment(attachmentId) {
     
     // If attachment is uploaded, delete it from server
     // But NOT if we're editing an existing message (the attachment will be handled server-side)
-    if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !editingMessage) {
+    // Files picked from Recents stay there; they are only taken out of the draft.
+    if (attachment.uploaded && attachment.uploadedId && attachment.fileType && !attachment.fromRecents && !editingMessage) {
         try {
             await deleteUploadedAttachment(attachment);
         } catch (error) {
@@ -1718,10 +1937,9 @@ function updateSendButtonState() {
     if (messageInput && sendButton) {
         const hasText = messageInput.value.trim().length > 0;
         const hasAnyAttachment = selectedAttachments.length > 0;
-        const hasSelectedRecents = selectedRecentIds.size > 0;
 
-        // Show send button if text is present OR any attachment exists (even uploading) OR recents selected
-        if (hasText || hasAnyAttachment || hasSelectedRecents) {
+        // Show send button if text is present OR any attachment exists (even uploading)
+        if (hasText || hasAnyAttachment) {
             sendButton.classList.remove('hidden');
             sendButton.classList.add('visible');
         } else {
@@ -2038,7 +2256,10 @@ function getComposeLanguage() {
 function handleSendButtonClick(event) {
     const messageInput = getMessageInputElement();
     const hasText = !!messageInput?.value.trim();
-    if (hasText || editingMessage || selectedAttachments.length === 0) {
+    // "Only upload media" means nothing for files picked from Recents, which are already uploaded,
+    // so the choice is offered only when there are new uploads in the draft.
+    const hasNewUploads = selectedAttachments.some(a => !a.fromRecents);
+    if (hasText || editingMessage || !hasNewUploads) {
         sendMessage();
         return;
     }
@@ -2084,26 +2305,26 @@ function saveAttachments() {
 
     updateAttachmentPreview();
     updateSendButtonState();
+    // Files that are still uploading refresh Recents again when they finish.
+    refreshRecents();
 }
 
 async function sendMessage(textOverride = null) {
     const messageInput = getMessageInputElement();
     const text = textOverride !== null ? textOverride.trim() : messageInput.value.trim();
     
-    // Merge selected recents into attachments consideration
-    const recentAttachments = getSelectedRecentAttachments();
-    
-    if (!text && selectedAttachments.length === 0 && recentAttachments.length === 0) return;
+    if (!text && selectedAttachments.length === 0) return;
     if (!currentChatId || !currentUser || !currentUser.info.id) return;
 
-    // Get uploaded attachments (only send those that are ready) + recents (always ready)
+    // Only send attachments that are ready, in the order the user arranged them.
+    // Media picked from Recents is always ready.
     const uploadedAttachments = selectedAttachments.filter(a => a.uploaded);
     const pendingCount = selectedAttachments.filter(a => !a.uploaded).length;
-    const allReadyAttachments = [...uploadedAttachments, ...recentAttachments];
+    const allReadyAttachments = uploadedAttachments;
 
     // If some attachments are still uploading, ask the user before proceeding
     if (pendingCount > 0) {
-        const readyCount = uploadedAttachments.length + recentAttachments.length;
+        const readyCount = uploadedAttachments.length;
         const hasAnythingToSend = text.length > 0 || readyCount > 0;
         if (!hasAnythingToSend) return; // nothing at all to send yet
         if (!hasConfirmedSendWithUploading) {
@@ -2169,9 +2390,8 @@ async function sendMessage(textOverride = null) {
         // Remove only the attachments that were sent
         const sentIds = new Set(uploadedAttachments.map(a => a.id));
         selectedAttachments = selectedAttachments.filter(a => !sentIds.has(a.id));
-        // Close recents and clear selection
+        // Close recents
         isRecentsPanelOpen = false;
-        selectedRecentIds.clear();
         if (selectedAttachments.length === 0) {
             attachmentUploads.clear();
         }
@@ -2208,6 +2428,10 @@ async function sendMessage(textOverride = null) {
 
     // Update message in chat with server response
     replaceMessageElement(message.localId, serverMessage);
+
+    if (shouldSendAttachments) {
+        refreshRecents();
+    }
 
     // Re-display chats to re-sort by latest message
     displayChats();
@@ -2272,6 +2496,10 @@ async function updateMessage(message, newText, newAttachments) {
 
     // Update chat list with updated message
     await updateChatListWithMessage(serverMessage);
+
+    if (uploadedAttachments.length > 0) {
+        refreshRecents();
+    }
 }
 
 // Add message to chat

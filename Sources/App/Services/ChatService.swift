@@ -599,9 +599,9 @@ actor ChatService: ChatServiceProtocol {
                 pivotsToSave.append(MessageToMedia(messageId: message.id!, mediaResourceId: attachmentId, position: index))
             }
 
-            if !attachmentsToRemove.isEmpty || currentAttachmentIds != newAttachmentIds {
-                shouldReload = true
-            }
+            // The pivots were recreated, so reload them even when only the order changed.
+            // Otherwise the response would still list the attachments in their old order.
+            shouldReload = true
         }
         
         if shouldSave {

@@ -3395,6 +3395,23 @@ input[type="text"]:disabled, textarea:disabled {
 
 .attachment-preview-item img {
     height: 100%;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+/* Upload thumbnails can be dragged to reorder them. */
+.attachment-preview-item[data-attachment-id] {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.attachment-preview-item.attachment-dragging {
+    z-index: 20;
+    cursor: grabbing !important;
+    opacity: 0.9;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    transition: none !important;
 }
 
 .attachment-preview-loading {
